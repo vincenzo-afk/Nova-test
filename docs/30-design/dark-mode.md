@@ -1,0 +1,3 @@
+# Dark Mode
+
+Dark mode is not an inverted light theme — surface elevation is communicated via layered subtle color shifts, not just black backgrounds, to preserve depth cues. The default theme is dark regardless of OS setting, with light available as an explicit override in Settings — this is a deliberate product decision, not a generic "follow the OS" default, per `docs/09-ui/design-system.md`'s Dark-mode-first default section (grounded in the power-user personas in `docs/01-product/user-personas.md`); this file previously stated the opposite (follows OS setting by default) and has been corrected to match the canonical decision.

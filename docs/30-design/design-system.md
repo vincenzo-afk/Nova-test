@@ -1,0 +1,3 @@
+# Design System Overview
+
+Token-based system: color, spacing, typography, and motion tokens are the single source of truth consumed by every component in `docs/41-components/`. No component hardcodes a raw hex/px value — see `design-tokens.md`. This document covers the mechanical token system (how tokens are structured and referenced); `docs/09-ui/design-system.md` covers the product-specific semantic layer built on top of these tokens (risk-tier confirmation color coding, the dark-mode-first default, and the audience-driven density/typography choices) — the two are complementary, not competing, and neither duplicates the other's content.

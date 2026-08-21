@@ -1,0 +1,71 @@
+# NOVA Implementation Plan
+
+## Source of truth
+
+The uploaded NOVA specification is the normative source for implementation. The governing order is the Constitution, system invariants and project constraints, component contracts and system-reference documents, then task-level decisions. When the specification is ambiguous or contradictory, implementation stops at that boundary and the ambiguity is recorded for review rather than silently resolved.
+
+The locked stack is TypeScript 5.x in strict mode, React 19, Electron with `contextIsolation: true` and no renderer Node integration, Vite, Tailwind CSS 4, Fastify, Zod, Prisma, SQLite for the local-first deployment, Redis/BullMQ for durable queued work, pnpm workspaces, Vitest, Playwright, ESLint, Prettier, Lucide, Motion, and Kotlin/Jetpack Compose/Gradle for the Android companion.
+
+## Delivery rules
+
+Every milestone is implemented test-first. The failing test is written and run before the implementation. A milestone is pushed only after its tests, linting, formatting, type checks, documentation, and applicable security checks pass. Every schema, event, API, or state-machine change updates its consumers, tests, and documentation in the same commit. Commits use the repository owner identity `vincenzo-afk <itsmebk2007@gmail.com>`.
+
+The Executor never reads Memory directly. The Planner never executes tools, changes workspace state, or grants permissions. All tool execution passes through the Permission Manager and Verifier. Every tool registration declares `idempotent` and `verification_signal` explicitly. `Unverified` is never reported as `Completed`.
+
+## Milestone sequence
+
+| Milestone | Scope | Primary specification sources | Verification evidence | Push gate |
+|---|---|---|---|---|
+| M0 | Documentation synchronization, repository governance, workspace skeleton, and implementation plan | `AGENTS.md`, `CONSTITUTION.md`, `docs/00-implementation-governance/`, `docs/14-development/technology-stack.md` | Documentation link check, workspace layout check, clean Git state | Plan and source documentation committed and pushed |
+| M1 | Runtime foundations: strict shared types, Result/error contracts, event envelope, in-memory communication bus for local development, lifecycle state machine, State Manager, Runtime Manager orchestration, startup/shutdown sequencing | `docs/02-architecture/communication-model.md`, `docs/02-architecture/dependency-map.md`, `docs/02-architecture/lifecycle.md`, `docs/03-runtime/service-lifecycle.md`, `docs/03-runtime/state-manager.md`, `docs/03-runtime/runtime-manager.md`, `docs/26-system-reference/02-startup-sequence.md`, `03-shutdown-sequence.md` | Unit tests for all lifecycle transitions and illegal transitions, event deduplication tests, startup/shutdown order integration tests, type/lint/format checks | All M1 tests pass and evidence is recorded |
+| M2 | Memory tier 0/1: working and episodic memory, SQLite/Prisma persistence boundary, schema-version monotonicity, tombstone/supersession behavior, replayable checkpoints | `docs/04-memory/memory-architecture.md`, `memory-storage.md`, `memory-versioning.md`, `memory-lifecycle.md`, `memory-conflict-resolution.md`, `docs/03-runtime/failure-recovery.md` | Persistence integration tests, migration tests, corruption/recovery tests, idempotent writes, required negative cases | M2 tests and migration checks pass |
+| M3 | Minimal observer path, beginning with a filesystem observer, event normalization, state updates, coalescing/debounce, and observer recovery | `docs/07-observers/`, `docs/02-architecture/event-driven-architecture.md`, applicable `docs/25-failure-modes/` entries | Observer unit/integration tests, duplicate event handling, conflict-window tests, event-storm simulation | M3 observer and integration evidence passes |
+| M4 | Planner, Executor, and Verifier contracts; deterministic-first decision path; task state and safe pause/checkpoint behavior; permission boundary interfaces | `docs/03-runtime/planner.md`, `executor.md`, `verifier.md`, `planner-executor-contract.md`, `docs/05-ai/deterministic-first.md`, `docs/10-security/permissions.md` | Test-first contract tests, full documented state-transition coverage, permission-denial tests, verification outcome tests, failure/recovery tests | M4 contract and recovery suite passes |
+| M5 | Model Router and exactly one provider end-to-end, with provider schema validation, timeouts, retry/circuit-breaker policy, and deterministic fallback behavior where documented | `docs/05-ai/model-router.md`, `provider-interface.md`, `docs/18-providers/` | Provider contract tests with a fake provider, timeout/retry tests, circuit-breaker tests, schema rejection tests | One provider works end-to-end without fallback-chain scope creep |
+| M6 | Tool Registry and execution-priority chain, explicit idempotency/verification metadata, resource locks, and safe tool adapters | `docs/06-tools/`, `docs/03-runtime/resource-manager.md`, `docs/26-system-reference/19-ordering-concurrency-and-retry-rules.md` | Registry validation tests, idempotency tests, permission tests, lock/concurrency tests, verification-signal tests | Tool execution is gated, observable, and verified |
+| M7 | Knowledge Graph, retrieval, ranking, embeddings boundary, graph acyclicity for constrained edge types, and memory-aware context building | `docs/04-memory/knowledge-graph.md`, `retrieval-engine.md`, `memory-ranking.md`, `ontology.md`, `docs/05-ai/context-builder.md` | Graph cycle tests, retrieval/ranking tests, schema-version tests, context-builder integration tests | Memory and context path passes required tests |
+| M8 | Desktop UI shell: Electron main/preload/renderer separation, React 19, Vite, Tailwind, router, read-only chat first, then documented screens/components | `docs/09-ui/`, `docs/40-screens/`, `docs/41-components/`, `docs/30-design/`, `docs/42-design-qa/` | Renderer unit tests, IPC boundary tests, Playwright smoke tests, accessibility/responsive checks, visual regression where specified | UI exposes only documented capabilities and passes E2E smoke tests |
+| M9 | Security and permissions: permission manager, secrets boundary, audit events, path containment, confirmation-required actions, and destructive-action policy | `docs/10-security/`, `docs/03-runtime/permission-manager.md`, `docs/06-tools/tool-interface.md` | Denial and escalation tests, path traversal/symlink tests, audit trail tests, SAST and dependency checks | Security gates pass with no hardcoded credentials or bypasses |
+| M10 | Plugin host and sandbox lifecycle, manifest validation, capability limits, isolation, install/update/uninstall flows | `docs/16-extensibility/` | Plugin lifecycle transition coverage, malformed manifest tests, isolation and crash tests, permission tests | Plugin capabilities cannot bypass core boundaries |
+| M11 | Workflow Engine and graph execution using stable Planner/Executor/Verifier primitives | `docs/17-workflow/`, relevant `docs/37-edge-cases/` | Workflow graph validation, loop/timeout/deadlock tests, checkpoint/resume tests, integration tests | Workflow behavior is bounded, resumable, and verified |
+| M12 | Additional providers, multi-device protocol, Android companion, voice, channels, autonomy, collaboration, CLI, backup/restore, diagnostics, and production hardening in documented prerequisite order | `docs/18-providers/` through `docs/28-multi-device-protocol/`, `docs/27-cli/`, `docs/38-disaster-recovery/`, `docs/47-runbooks/`, `docs/48-incident-response/` | Surface-specific unit/integration/E2E/simulation/chaos tests, performance budgets, recovery drills, release checks | Full documented Definition of Done and final verification pass |
+
+## Milestone acceptance format
+
+Each feature is accepted only through concrete Given/When/Then statements. The following baseline criteria apply to every milestone and are expanded beside the relevant tests:
+
+| Category | Acceptance criterion |
+|---|---|
+| Happy path | **Given** all documented prerequisites are ready, **when** the feature’s primary operation is invoked, **then** the documented observable result and event evidence are produced. |
+| Failure modes | **Given** each applicable documented failure trigger, **when** the trigger occurs, **then** the documented error code, state, recovery action, or escalation result is observed. |
+| Boundaries | **Given** empty, maximum, concurrent, null, zero, negative, duplicate, malformed, and timeout inputs where the contract permits them, **when** the operation runs, **then** it rejects or handles them exactly as documented. |
+| Permission/security | **Given** an actor without the required capability or risk authorization, **when** the operation is attempted, **then** it is denied, audited, and does not mutate protected state. |
+| Idempotency/retry | **Given** a retried or duplicate request, **when** it is processed, **then** the final state and external side effects are not duplicated beyond the documented at-least-once contract. |
+| Observability | **Given** a successful, failed, degraded, or unverified operation, **when** it completes, **then** the documented event, correlation ID, stable error code, and diagnostic evidence are emitted. |
+
+## Initial implementation order
+
+The first code milestone will not attempt the UI or AI surfaces. It will establish the shared contracts and runtime foundations needed by every downstream component:
+
+1. Workspace package configuration and strict TypeScript settings.
+2. Shared `Result` and stable error-code types.
+3. Communication envelope and in-memory development bus with duplicate-message protection.
+4. Service lifecycle state machine and lifecycle interface.
+5. State Manager observation resolution and query interface.
+6. Runtime Manager registry, dependency-order supervision, heartbeat handling, restart budget, and degraded state.
+7. System startup and shutdown orchestrators with documented order assertions.
+8. Vitest tests written before each implementation unit, plus lint, formatting, typecheck, and link-check scripts.
+
+The local in-memory bus is a development/test transport only; the production transport remains the documented named-pipe communication bus. No undocumented production substitution will be made.
+
+## Stop and escalation conditions
+
+Implementation stops and requests clarification if two normative documents disagree, a required technology or public name is missing, a component needs behavior outside its documented contract, a new top-level directory is needed outside the monorepo layout, or a security/performance decision is not specified. No silent assumptions will be recorded as completed work.
+
+## References
+
+[1]: ./docs/00-implementation-governance/ai-constitution.md "NOVA AI Constitution"
+[2]: ./docs/00-implementation-governance/technology-lock.md "NOVA Technology Lock"
+[3]: ./docs/43-ai-development/implementation-order.md "NOVA Canonical Implementation Order"
+[4]: ./docs/12-testing/testing-strategy.md "NOVA Testing Strategy"
+[5]: ./docs/26-system-reference/15-build-contracts.md "NOVA Build Contracts"

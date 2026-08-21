@@ -1,0 +1,55 @@
+{
+  "$schema_note": "Machine-readable derivative of docs/02-architecture/dependency-map.md. That document is the canonical, human-readable source; if this file and that document ever disagree, the document wins and this file is stale — regenerate it to match, per docs/00-overview/normative-precedence.md's rule for diagrams/derived artifacts. Do not hand-edit this file without also editing the source document in the same change.",
+  "generated_from": "docs/02-architecture/dependency-map.md",
+  "edge_semantics": "Each entry in 'depends_on' means the node depends on (requires) that dependency to function correctly, matching dependency-map.md's mermaid diagram direction exactly.",
+  "nodes": [
+    "runtime_manager",
+    "memory",
+    "knowledge_graph",
+    "observer",
+    "state_manager",
+    "task_manager",
+    "scheduler",
+    "context_builder",
+    "planner",
+    "model_router",
+    "tool_registry",
+    "resource_manager",
+    "permission_manager",
+    "executor",
+    "verifier",
+    "api_gateway",
+    "ui_layer"
+  ],
+  "edges": [
+    { "from": "memory", "depends_on": "knowledge_graph" },
+    { "from": "observer", "depends_on": "state_manager" },
+    { "from": "observer", "depends_on": "memory" },
+    { "from": "state_manager", "depends_on": "task_manager" },
+    { "from": "memory", "depends_on": "context_builder" },
+    { "from": "knowledge_graph", "depends_on": "context_builder" },
+    { "from": "context_builder", "depends_on": "planner" },
+    { "from": "model_router", "depends_on": "planner" },
+    { "from": "tool_registry", "depends_on": "planner" },
+    { "from": "planner", "depends_on": "task_manager" },
+    { "from": "scheduler", "depends_on": "task_manager" },
+    { "from": "tool_registry", "depends_on": "executor" },
+    { "from": "resource_manager", "depends_on": "executor" },
+    { "from": "permission_manager", "depends_on": "executor" },
+    { "from": "executor", "depends_on": "verifier" },
+    { "from": "state_manager", "depends_on": "verifier" },
+    { "from": "verifier", "depends_on": "memory" },
+    { "from": "task_manager", "depends_on": "api_gateway" },
+    { "from": "api_gateway", "depends_on": "ui_layer" }
+  ],
+  "invariants": {
+    "no_cycles": "This graph must remain a DAG (docs/02-architecture/dependency-map.md's Circular-dependency rule). An AI agent adding a new edge must verify the addition does not create a cycle before committing — do not rely on manual inspection alone; run a topological sort and reject the change if it fails.",
+    "startup_order_is_a_topological_sort": "docs/26-system-reference/02-startup-sequence.md's boot order must remain consistent with a valid topological sort of this graph — a new edge that would require reordering the startup sequence requires updating that document in the same change, per this file's atomic-update expectations (docs/26-system-reference/20-versioning-contracts.md's Atomic update checklist).",
+    "failure_domain_containment": "A node's failure must only be able to affect its dependents (nodes with a path TO it via depends_on), never nodes outside that reachable set, per dependency-map.md's Failure-domain consequence section."
+  },
+  "how_to_use_for_verification": [
+    "Before adding a new service or a new dependency edge, add it to this file's 'edges' array (and the human-readable diagram in the same change, per the atomic-update rule).",
+    "Run a cycle-detection check (e.g., Kahn's algorithm / DFS-based topological sort) over the resulting graph.",
+    "If a cycle is detected, do not proceed — resolve it the way dependency-map.md's Circular-dependency rule describes (direction of data flow at a point in time, not mutual dependency), the same way the Verifier/State Manager near-cycle was resolved there."
+  ]
+}
