@@ -15,7 +15,7 @@
     "prepare:memory-test": "node scripts/prepare-memory-test.mjs",
     "test": "pnpm --filter @nova/shared build && pnpm prepare:memory-test && vitest run",
     "test:watch": "vitest",
-    "typecheck": "pnpm prepare:memory-client && tsc -b",
+    "typecheck": "pnpm prepare:memory-client && pnpm -r --if-present typecheck",
     "verify": "pnpm check:links && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
   },
   "dependencies": {

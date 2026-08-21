@@ -4,7 +4,8 @@
     { "path": "./packages/shared" },
     { "path": "./services/state" },
     { "path": "./services/runtime" },
-    { "path": "./services/memory" }
+    { "path": "./services/memory" },
+    { "path": "./services/observers" }
   ],
   "compilerOptions": {
     "target": "ES2022",

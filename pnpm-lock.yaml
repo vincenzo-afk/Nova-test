@@ -55,6 +55,12 @@ importers:
         specifier: 6.19.3
         version: 6.19.3(typescript@5.9.3)
 
+  services/observers:
+    dependencies:
+      '@nova/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+
   services/runtime:
     dependencies:
       '@nova/shared':
