@@ -1,5 +1,6 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 import { z } from "zod";
+import type { ResourceManager } from "./resource-manager.js";
 
 export type RiskTier = "read_only" | "reversible_write" | "destructive_irreversible";
 export type ExecutionTier =
@@ -197,6 +198,7 @@ export class Executor {
   constructor(
     private readonly permissionManager: PermissionManager,
     private readonly tools: ReadonlyMap<string, ToolRegistration>,
+    private readonly resourceManager?: ResourceManager,
   ) {}
 
   async execute(step: ExecutionStep): Promise<Result<ExecutionResult>> {
@@ -223,6 +225,23 @@ export class Executor {
       });
     }
 
+    let lockGranted = false;
+    if (this.resourceManager && action.risk_tier !== "read_only") {
+      const lockResult = this.resourceManager.acquire(step.task_id, step.required_locks);
+      if (!lockResult.ok) {
+        return lockResult;
+      }
+      if (lockResult.value.status === "queued") {
+        return err({
+          code: "NOVA-TL003",
+          message: "Required resource locks are currently held by another task.",
+          retryable: true,
+          details: { taskId: step.task_id },
+        });
+      }
+      lockGranted = true;
+    }
+
     try {
       const result = await action.execute(step.parameters);
       return ok({ ...result, step_id: step.step_id });
@@ -232,6 +251,10 @@ export class Executor {
         message: cause instanceof Error ? cause.message : "Tool invocation failed.",
         retryable: action.idempotent,
       });
+    } finally {
+      if (lockGranted) {
+        this.resourceManager?.release(step.task_id);
+      }
     }
   }
 }

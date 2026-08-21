@@ -11,6 +11,7 @@ export const stableErrorCodeSchema = z.enum([
   "NOVA-MEM003",
   "NOVA-SEC001",
   "NOVA-TL002",
+  "NOVA-TL003",
   "NOVA-TL004",
   "NOVA-TL005",
   "NOVA-TSK004",
