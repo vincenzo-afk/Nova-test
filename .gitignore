@@ -1,6 +1,10 @@
 node_modules/
 dist/
+out/
+release/
 coverage/
+.vite/
+*.log
 *.tsbuildinfo
 .env
 .env.*

@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible problem in Nova.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove secrets, private data, and access tokens before submitting.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+      description: Identify the commit, tag, or version where the problem occurred.
+      placeholder: "043f31e or 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Node.js version, and pnpm version.
+      placeholder: "Ubuntu 24.04, Node 22, pnpm 9.15.5"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: List the smallest reliable sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized logs
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I removed secrets and private user data.
+          required: true
+        - label: I searched existing issues for duplicates.
+          required: true
