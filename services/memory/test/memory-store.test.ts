@@ -1,0 +1,137 @@
+import { resolve } from "node:path";
+import { PrismaClient } from "../src/generated/index.js";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { MemoryStore } from "../src/memory-store.js";
+import { MemoryVersioning } from "../src/memory-versioning.js";
+
+const databaseUrl = `file:${resolve("services/memory/prisma/test.db")}`;
+const client = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+
+const unwrap = <T>(result: { ok: true; value: T } | { ok: false; error: { message: string } }) => {
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+  return result.value;
+};
+
+describe("MemoryStore", () => {
+  let store: MemoryStore;
+
+  beforeAll(async () => {
+    await client.$connect();
+    store = new MemoryStore(client, "workspace-a");
+  });
+
+  beforeEach(async () => {
+    await client.workingMemoryEntry.deleteMany();
+    await client.recentMemoryEntry.deleteMany();
+    await client.longTermMemoryEntry.deleteMany();
+  });
+
+  afterAll(async () => {
+    await client.$disconnect();
+  });
+
+  it("promotes working memory to recent memory but requires verification for long-term promotion", async () => {
+    const working = unwrap(
+      await store.writeWorking({
+        taskId: "task-1",
+        contentRef: "outcome-1",
+        schemaVersion: "1.0.0",
+      }),
+    );
+    const recent = unwrap(
+      await store.promoteWorkingToRecent({
+        workingId: working.id,
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        confidence: 0.8,
+      }),
+    );
+
+    const rejected = await store.promoteRecentToLongTerm({ recentId: recent.id, verified: false });
+    const promoted = unwrap(
+      await store.promoteRecentToLongTerm({ recentId: recent.id, verified: true }),
+    );
+
+    expect(rejected).toMatchObject({ ok: false, error: { code: "NOVA-TSK004" } });
+    expect(promoted.sourceLineageId).toBe(recent.id);
+  });
+
+  it("keeps memory scoped to the workspace database boundary", async () => {
+    const working = unwrap(
+      await store.writeWorking({ taskId: "task-1", contentRef: "private", schemaVersion: "1.0.0" }),
+    );
+    const recent = unwrap(
+      await store.promoteWorkingToRecent({
+        workingId: working.id,
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        confidence: 0.9,
+      }),
+    );
+    const otherWorkspace = new MemoryStore(client, "workspace-b");
+
+    const result = await otherWorkspace.readRecent(recent.id);
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-MEM003" } });
+  });
+
+  it("detects checksum corruption instead of returning tampered content", async () => {
+    const working = unwrap(
+      await store.writeWorking({
+        taskId: "task-1",
+        contentRef: "original",
+        schemaVersion: "1.0.0",
+      }),
+    );
+    const recent = unwrap(
+      await store.promoteWorkingToRecent({
+        workingId: working.id,
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        confidence: 0.9,
+      }),
+    );
+    await client.$executeRaw`UPDATE recent_memory_entries SET content_ref = 'tampered' WHERE id = ${recent.id}`;
+
+    const result = await store.readRecent(recent.id);
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-MEM001" } });
+  });
+
+  it("retains superseded records and links them to the replacement", async () => {
+    const first = unwrap(
+      await store.writeRecent({
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        contentRef: "old",
+        confidence: 0.6,
+        schemaVersion: "1.0.0",
+      }),
+    );
+    const replacement = unwrap(
+      await store.writeRecent({
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        contentRef: "new",
+        confidence: 0.95,
+        schemaVersion: "1.0.0",
+      }),
+    );
+
+    unwrap(await store.supersedeRecent(first.id, replacement.id));
+    const stored = unwrap(await store.readRecent(first.id));
+
+    expect(stored.status).toBe("SUPERSEDED");
+    expect(stored.supersededById).toBe(replacement.id);
+  });
+});
+
+describe("MemoryVersioning", () => {
+  it("accepts additive upgrades and rejects schema downgrades", () => {
+    expect(MemoryVersioning.isForwardOrEqual("1.0.0", "1.1.0")).toBe(true);
+    expect(MemoryVersioning.isForwardOrEqual("1.1.0", "1.0.0")).toBe(false);
+    expect(MemoryVersioning.isForwardOrEqual("1.0.0", "1.0.0")).toBe(true);
+  });
+});

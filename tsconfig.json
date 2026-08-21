@@ -3,7 +3,8 @@
   "references": [
     { "path": "./packages/shared" },
     { "path": "./services/state" },
-    { "path": "./services/runtime" }
+    { "path": "./services/runtime" },
+    { "path": "./services/memory" }
   ],
   "compilerOptions": {
     "target": "ES2022",

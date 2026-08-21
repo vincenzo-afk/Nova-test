@@ -6,6 +6,8 @@ export const stableErrorCodeSchema = z.enum([
   "NOVA-EVT002",
   "NOVA-MEM001",
   "NOVA-MEM002",
+  "NOVA-MEM003",
+  "NOVA-TSK004",
 ]);
 
 export type StableErrorCode = z.infer<typeof stableErrorCodeSchema>;

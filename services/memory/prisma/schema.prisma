@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model WorkingMemoryEntry {
+  id             String   @id
+  workspaceId    String   @map("workspace_id")
+  taskId         String   @map("task_id")
+  contentRef     String   @map("content_ref")
+  schemaVersion  String   @map("schema_version")
+  contentChecksum String  @map("content_checksum")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId, taskId])
+  @@map("working_memory_entries")
+}
+
+model RecentMemoryEntry {
+  id              String   @id
+  workspaceId     String   @map("workspace_id")
+  identityId      String   @map("identity_id")
+  sourceTaskId    String   @map("source_task_id")
+  contentRef      String   @map("content_ref")
+  confidence      Float
+  schemaVersion   String   @map("schema_version")
+  contentChecksum String   @map("content_checksum")
+  status          String   @default("ACTIVE")
+  supersededById  String?  @map("superseded_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId, identityId, createdAt])
+  @@index([supersededById])
+  @@map("recent_memory_entries")
+}
+
+model LongTermMemoryEntry {
+  id              String   @id
+  workspaceId     String   @map("workspace_id")
+  identityId      String   @map("identity_id")
+  contentRef      String   @map("content_ref")
+  confidence      Float
+  verifiedAt      DateTime @map("verified_at")
+  sourceLineageId String   @map("source_lineage_id")
+  schemaVersion   String   @map("schema_version")
+  contentChecksum String   @map("content_checksum")
+
+  @@index([workspaceId, identityId, verifiedAt])
+  @@index([sourceLineageId])
+  @@map("long_term_memory_entries")
+}
