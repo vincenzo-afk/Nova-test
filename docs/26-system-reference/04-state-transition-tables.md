@@ -113,6 +113,21 @@ stale; fix this table to match it, per
 | `Failed`/`Unverified` (retries exhausted, per Task Lifecycle) | Retry budget exhausted for a node on the critical path | Node routed to dead-letter queue | Workflow-level behavior only, not a node terminal *state* — per `FM-02-017`; the node's own state remains `Failed`/`Unverified` as terminal, and the workflow surfaces the failure explicitly rather than retrying silently forever |
 | Any non-terminal node state | Human-approval node denies, or a Rollback node is reached | Rollback invoked for every completed node on the path | `docs/17-workflow/workflow-engine.md`'s Rollback node, `docs/03-runtime/failure-recovery.md`'s compensation mechanisms |
 
+## Incident Lifecycle
+
+Derived from `docs/48-incident-response/incident-lifecycle.md`. Every stage is
+append-only and records an owner and timestamp; transitions not listed here
+are invalid.
+
+| Current State | Event | Next State | Guard / Condition |
+|---|---|---|---|
+| — (`[*]`) | Incident detected | `Detected` | A new incident receives a stable incident ID |
+| `Detected` | Triage severity assigned | `Triaged` | Severity is recorded by the incident owner |
+| `Triaged` | Mitigation started | `Mitigated` | The active impact is contained or a fallback is in place |
+| `Mitigated` | Root cause fixed | `Resolved` | The owner records the resolution detail |
+| `Resolved` | Postmortem completed | `Postmortem` | Root cause and follow-up detail are recorded |
+| `Postmortem` | — | — | Terminal state; no outgoing transitions |
+
 ## Session
 
 | Current State | Event | Next State | Guard / Condition |

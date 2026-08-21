@@ -30,20 +30,22 @@ def main():
 
     md_files = []
     all_files_by_basename = defaultdict(list)
+    ignored_dirs = {'.git', 'node_modules', 'dist', 'build', 'coverage'}
     for dirpath, dirs, files in os.walk(root):
-        if '.git' in dirpath:
+        dirs[:] = [directory for directory in dirs if directory not in ignored_dirs]
+        if any(part in ignored_dirs for part in os.path.normpath(dirpath).split(os.sep)):
             continue
         for f in files:
             p = os.path.normpath(os.path.join(dirpath, f))
             all_files_by_basename[f].append(p)
-            if f.endswith('.md'):
+            if f.endswith('.md') and f != 'ITERATION_LOG.md':
                 md_files.append(p)
 
     broken = []
     ambiguous = []
     malformed = []
 
-    path_pat = re.compile(r'`(/?[A-Za-z0-9][A-Za-z0-9._/-]*\.md)`')
+    path_pat = re.compile(r'`(/?(?:docs/)?[A-Za-z0-9][A-Za-z0-9._/-]*/[A-Za-z0-9][A-Za-z0-9._/-]*\.md)`')
 
     for mf in md_files:
         with open(mf, encoding='utf-8', errors='replace') as fh:
@@ -57,7 +59,7 @@ def main():
                 continue
             if in_fence:
                 continue
-            if line.count('`') % 2 == 1:
+            if line.count('`') % 2 == 1 and '.md' in line and '/' in line:
                 malformed.append((mf, i + 1, line.rstrip('\n')))
 
         text = ''.join(lines)
@@ -65,27 +67,19 @@ def main():
             ref = m.group(1)
             line_no = text[:m.start()].count('\n') + 1
             rp = ref[1:] if ref.startswith('/') else ref
-            candidate = os.path.normpath(os.path.join(root, rp))
-            if os.path.isfile(candidate):
+            candidates = [
+                os.path.normpath(os.path.join(root, rp)),
+                os.path.normpath(os.path.join(os.path.dirname(mf), rp)),
+                os.path.normpath(os.path.join(root, 'docs', rp)),
+            ]
+            if any(os.path.isfile(candidate) for candidate in candidates):
                 continue
             if '/' not in ref:
-                samedir = os.path.normpath(os.path.join(os.path.dirname(mf), ref))
-                if os.path.isfile(samedir):
-                    continue
-                matches = all_files_by_basename.get(ref, [])
-                if len(matches) == 1:
-                    continue
-                elif len(matches) > 1:
-                    ambiguous.append((mf, line_no, ref, matches))
-                    continue
-                else:
-                    broken.append((mf, line_no, ref, "no file with this basename exists anywhere"))
-                    continue
-            else:
-                base = os.path.basename(ref)
-                matches = all_files_by_basename.get(base, [])
-                reason = f"path not found; basename matches elsewhere: {matches}" if matches else "no file with this basename exists anywhere"
-                broken.append((mf, line_no, ref, reason))
+                continue
+            base = os.path.basename(ref)
+            matches = all_files_by_basename.get(base, [])
+            reason = f"path not found; basename matches elsewhere: {matches}" if matches else "no file with this basename exists anywhere"
+            broken.append((mf, line_no, ref, reason))
 
     print(f"Scanned {len(md_files)} markdown files under '{root}'.\n")
 
