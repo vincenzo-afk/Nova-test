@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const stableErrorCodeSchema = z.enum([
   "NOVA-AI001",
+  "NOVA-AI002",
   "NOVA-CFG001",
   "NOVA-EVT001",
   "NOVA-EVT002",
