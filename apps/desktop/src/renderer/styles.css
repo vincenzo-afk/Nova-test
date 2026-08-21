@@ -385,3 +385,128 @@ h2 {
     padding: 48px 42px;
   }
 }
+
+.surface-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.surface-card {
+  min-height: 142px;
+  padding: 18px;
+  border: 1px solid #2b3653;
+  border-radius: 14px;
+  background: rgba(18, 26, 48, 0.78);
+}
+.surface-card p {
+  margin: 18px 0 0;
+  color: #9ba7c2;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.task-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid #40506f;
+  border-radius: 999px;
+  color: #b8f36a;
+  font-size: 11px;
+  font-weight: 700;
+}
+.state-strip {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #35415f;
+  border-radius: 12px;
+  background: rgba(13, 19, 37, 0.7);
+}
+.state-strip strong {
+  color: #eef2fa;
+  font-size: 13px;
+}
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: 236px 1fr;
+  }
+  .main-panel {
+    padding: 42px 34px;
+  }
+  .surface-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+.onboarding-steps {
+  display: grid;
+  gap: 14px;
+}
+.onboarding-step {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #2b3653;
+  border-radius: 14px;
+  background: rgba(18, 26, 48, 0.78);
+}
+.onboarding-step > div {
+  min-width: 0;
+}
+.onboarding-step strong {
+  color: #eef2fa;
+  font-size: 14px;
+}
+.onboarding-step p {
+  margin: 8px 0 14px;
+}
+.step-number {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  color: #0b1020;
+  background: #b8f36a;
+  font-weight: 900;
+}
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choice {
+  padding: 9px 12px;
+  border: 1px solid #40506f;
+  border-radius: 9px;
+  color: #cdd5e7;
+  background: #131d35;
+  font-size: 12px;
+}
+.choice:hover,
+.choice.active {
+  border-color: #b8f36a;
+  color: #0b1020;
+  background: #b8f36a;
+}
+.compact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 8px;
+}
+.step-status {
+  display: inline-block;
+  margin-top: 10px;
+  color: #b8f36a;
+  font-size: 11px;
+  font-weight: 700;
+}

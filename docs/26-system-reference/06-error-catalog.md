@@ -61,8 +61,8 @@ catalog itself drifting).
 | `NOVA-NET003` | Credential expired or revoked | Network | Prompt for re-authentication | `FM-11-009` |
 | `NOVA-CFG001` | Invalid configuration value (schema validation failed) | Config | Reject at load, surface specific field | `FM-15-004` |
 | `NOVA-CFG002` | Required environment variable missing at startup | Config | Fail startup with named-variable error | `FM-20-002` |
-| `NOVA-WF001` | Workflow node exceeded max-iteration ceiling | Workflow | Terminate loop, alert for manual review | `FM-02-016` |
-| `NOVA-WF002` | Workflow node retries exhausted | Workflow | Route to dead-letter, surface failure explicitly | `FM-02-017` |
+| `NOVA-WFL001` | Workflow node disappeared or violated the workflow graph contract | Workflow | Stop execution, persist checkpoint, surface failure | `FM-02-016` |
+| `NOVA-WFL002` | Workflow execution exceeded a bound or failed verification | Workflow | Stop execution, persist checkpoint, route to recovery/manual review | `FM-02-017` |
 | `NOVA-EVT001` | Event causality chain exceeded max-hop ceiling | Event Bus | Break loop, reject events past ceiling | `FM-15-028` |
 | `NOVA-EVT002` | Subscriber failed processing event with no defined policy | Event Bus | Route to dead-letter queue | `FM-15-029` |
 | `NOVA-SYNC001` | Split-brain state detected across devices | Multi-Device | Merge via conflict resolution; surface unresolvable to user | `FM-10-017` |
