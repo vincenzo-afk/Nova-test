@@ -65,6 +65,32 @@ describe("KnowledgeGraph", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-MEM002" } });
   });
 
+  it("traverses explicit outgoing relationships within the bounded depth", () => {
+    const graph = new KnowledgeGraph();
+    graph.addNode(project);
+    graph.addNode(tool);
+    graph.addEdge({
+      id: "edge-query",
+      type: "depends_on",
+      from_node_id: project.id,
+      to_node_id: tool.id,
+      weight: 1,
+    });
+
+    expect(
+      graph.query({ node_id: project.id, direction: "out", edge_type: "depends_on", depth: 1 }),
+    ).toMatchObject({
+      ok: true,
+      value: { root: project, nodes: [tool], edges: [{ id: "edge-query" }] },
+    });
+    expect(
+      graph.query({ node_id: project.id, direction: "sideways" as "in", depth: 1 }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+  });
+
   it("rejects a cycle for constrained edge types while allowing inactive nodes to remain queryable explicitly", () => {
     const graph = new KnowledgeGraph();
     graph.addNode(project);

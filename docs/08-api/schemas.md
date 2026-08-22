@@ -65,6 +65,33 @@ queried separately rather than conflated with task execution state.
 }
 ```
 
+## Knowledge Graph query (REST `POST /graph/query`)
+
+```json
+{
+  "node_id": "string",
+  "direction": "in | out | both (default: both)",
+  "edge_type": "optional fixed ontology edge type",
+  "depth": "integer from 1 to 3 (default: 1)"
+}
+```
+
+The response contains the root node, all matching nodes reached within the
+requested traversal depth, and the matching edges used to reach them:
+
+```json
+{
+  "root": { "id": "string", "type": "string", "name": "string", "properties": {}, "active": true },
+  "nodes": [],
+  "edges": []
+}
+```
+
+`direction` selects incoming, outgoing, or both relationship directions.
+When `edge_type` is supplied, only that fixed ontology relationship type is
+traversed. The default depth is one hop; depth three is the REST safety
+maximum.
+
 ## Memory record lookup (REST `GET /memory/{record_id}`, response)
 
 ```json

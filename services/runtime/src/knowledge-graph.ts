@@ -40,6 +40,19 @@ export interface GraphEdge {
   readonly weight: number;
 }
 
+export interface GraphQueryInput {
+  readonly node_id: string;
+  readonly direction?: "in" | "out" | "both";
+  readonly edge_type?: GraphEdgeType;
+  readonly depth?: number;
+}
+
+export interface GraphQueryResult {
+  readonly root: GraphNode;
+  readonly nodes: readonly GraphNode[];
+  readonly edges: readonly GraphEdge[];
+}
+
 export interface RetrievalCandidate {
   readonly id: string;
   readonly content: string;
@@ -155,6 +168,64 @@ export class KnowledgeGraph {
       const node = this.nodes.get(id);
       return node ? [node] : [];
     });
+  }
+
+  query(input: GraphQueryInput): Result<GraphQueryResult> {
+    const root = this.nodes.get(input.node_id);
+    if (!root) {
+      return err({ code: "NOVA-MEM003", message: "Graph node does not exist.", retryable: false });
+    }
+    const direction = input.direction ?? "both";
+    const depth = input.depth ?? 1;
+    if (direction !== "in" && direction !== "out" && direction !== "both") {
+      return err({
+        code: "NOVA-CFG001",
+        message: "Graph query direction or depth is invalid.",
+        retryable: false,
+      });
+    }
+    if (depth < 1 || depth > 3 || !Number.isInteger(depth)) {
+      return err({
+        code: "NOVA-CFG001",
+        message: "Graph query direction or depth is invalid.",
+        retryable: false,
+      });
+    }
+    if (input.edge_type !== undefined && !edgeTypes.has(input.edge_type)) {
+      return err({
+        code: "NOVA-MEM002",
+        message: "Graph query edge type is outside the fixed ontology.",
+        retryable: false,
+      });
+    }
+
+    const visited = new Set<string>([root.id]);
+    const frontier = [root.id];
+    const resultNodes: GraphNode[] = [];
+    const resultEdges: GraphEdge[] = [];
+    for (let level = 0; level < depth && frontier.length > 0; level += 1) {
+      const next: string[] = [];
+      for (const nodeId of frontier) {
+        for (const edge of this.edges.values()) {
+          if (input.edge_type !== undefined && edge.type !== input.edge_type) continue;
+          const outgoing = edge.from_node_id === nodeId;
+          const incoming = edge.to_node_id === nodeId;
+          const allowed =
+            direction === "out" ? outgoing : direction === "in" ? incoming : outgoing || incoming;
+          if (!allowed) continue;
+          const neighborId = outgoing ? edge.to_node_id : edge.from_node_id;
+          if (!resultEdges.some((existing) => existing.id === edge.id)) resultEdges.push(edge);
+          if (visited.has(neighborId)) continue;
+          const neighbor = this.nodes.get(neighborId);
+          if (!neighbor) continue;
+          visited.add(neighborId);
+          resultNodes.push(neighbor);
+          next.push(neighborId);
+        }
+      }
+      frontier.splice(0, frontier.length, ...next);
+    }
+    return ok({ root, nodes: resultNodes, edges: resultEdges });
   }
 
   private validDirection(edgeType: GraphEdgeType, from: GraphNodeType, to: GraphNodeType): boolean {

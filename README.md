@@ -170,6 +170,7 @@ The runtime exports `PublicApiServer`, which binds to a configurable local HTTP 
 | `POST` | `/v1/tasks`                  | `task.submit`    | Validates the task body, propagates `x-correlation-id` or generates one, and returns the handler’s initial task snapshot with HTTP `202`. |
 | `POST` | `/v1/search`                 | `memory.read`    | Validates `query`, optional project/entity filters, and ISO time ranges before routing to the Retrieval Fusion handler.                   |
 | `GET`  | `/v1/memory/{record_id}`     | `memory.read`    | Returns a single memory record with its documented provenance lineage, or a typed not-found response.                                     |
+| `POST` | `/v1/graph/query`            | `memory.read`    | Queries a graph node with explicit direction, optional ontology edge type, and bounded traversal depth from 1 to 3.                       |
 | `GET`  | `/v1/tasks/{task_id}`        | `task.read`      | Returns the current task snapshot or a typed not-found response.                                                                          |
 | `GET`  | `/v1/tasks`                  | `task.read`      | Returns cursor-paginated task snapshots with `next_cursor` and `has_more`.                                                                |
 | `POST` | `/v1/tasks/{task_id}/cancel` | `task.cancel`    | Requests cancellation and returns the updated snapshot with HTTP `202`.                                                                   |
@@ -253,7 +254,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, cursor-paginated tool listing, and plugin-tool registration. The remaining documented graph, permissions, configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
+- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, cursor-paginated tool listing, and plugin-tool registration. The remaining documented permissions, configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 

@@ -64,6 +64,12 @@ export interface SearchInput {
     readonly entity_type?: string;
   };
 }
+export interface GraphQueryInput {
+  readonly node_id: string;
+  readonly direction: "in" | "out" | "both";
+  readonly edge_type?: string;
+  readonly depth: number;
+}
 
 export interface PublicApiHandlers {
   readonly submitTask: (input: TaskSubmissionInput, correlationId: string) => Promise<unknown>;
@@ -73,6 +79,10 @@ export interface PublicApiHandlers {
   readonly search?: (input: SearchInput, correlationId: string) => Promise<unknown>;
   readonly getMemoryRecord?: (
     recordId: string,
+    correlationId: string,
+  ) => Promise<unknown | undefined>;
+  readonly queryGraph?: (
+    input: GraphQueryInput,
     correlationId: string,
   ) => Promise<unknown | undefined>;
   readonly listTools?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
@@ -202,6 +212,32 @@ export class PublicApiServer {
       } else {
         response.setHeader("x-correlation-id", correlationId);
         this.send(response, 200, result);
+      }
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/graph/query") {
+      if (!this.requireScope(principal, "memory.read", response)) return;
+      if (!this.options.handlers.queryGraph) {
+        this.send(response, 501, {
+          error: { code: "NOVA-TL004", message: "Graph-query handler is not configured." },
+        });
+        return;
+      }
+      try {
+        const input = await this.readGraphQueryInput(request);
+        const result = await this.options.handlers.queryGraph(input, correlationId);
+        if (result === undefined) {
+          this.send(response, 404, {
+            error: { code: "NOVA-MEM003", message: "Graph node does not exist." },
+          });
+        } else {
+          response.setHeader("x-correlation-id", correlationId);
+          this.send(response, 200, result);
+        }
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Graph query failed.";
+        this.send(response, 400, { error: { code: "NOVA-TL003", message } });
       }
       return;
     }
@@ -427,6 +463,40 @@ export class PublicApiServer {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
       ? candidate
       : undefined;
+  }
+
+  private async readGraphQueryInput(request: IncomingMessage): Promise<GraphQueryInput> {
+    const value = await this.readJsonBody(request);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Graph query body must be a JSON object.");
+    }
+    const body = value as Record<string, unknown>;
+    const nodeId = body.node_id;
+    const direction = body.direction ?? "both";
+    const edgeType = body.edge_type;
+    const depth = body.depth ?? 1;
+    if (typeof nodeId !== "string" || nodeId.length === 0) {
+      throw new Error("Graph query node_id must be a non-empty string.");
+    }
+    if (direction !== "in" && direction !== "out" && direction !== "both") {
+      throw new Error(
+        "Graph query direction must be in, out, or both; depth must be an integer from 1 to 3.",
+      );
+    }
+    if (edgeType !== undefined && (typeof edgeType !== "string" || edgeType.length === 0)) {
+      throw new Error("Graph query edge_type must be a non-empty string when supplied.");
+    }
+    if (typeof depth !== "number" || !Number.isInteger(depth) || depth < 1 || depth > 3) {
+      throw new Error(
+        "Graph query direction must be in, out, or both; depth must be an integer from 1 to 3.",
+      );
+    }
+    return {
+      node_id: nodeId,
+      direction,
+      ...(edgeType === undefined ? {} : { edge_type: edgeType }),
+      depth,
+    };
   }
 
   private async readSearchInput(request: IncomingMessage): Promise<SearchInput> {
