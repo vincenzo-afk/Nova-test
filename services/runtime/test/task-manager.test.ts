@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { TaskManager } from "../src/task-manager.js";
 
 describe("TaskManager", () => {
+  it("lists a snapshot of all authoritative task records", () => {
+    const manager = new TaskManager();
+    const first = manager.create({ goal: "first" });
+    const second = manager.create({ goal: "second" });
+
+    expect(manager.list()).toEqual([
+      first.ok ? first.value : undefined,
+      second.ok ? second.value : undefined,
+    ]);
+  });
+
   it("persists the complete happy-path lifecycle to Completed", () => {
     const manager = new TaskManager();
     manager.create({ task_id: "task-1", goal: "read report", correlation_id: "corr-1" });

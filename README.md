@@ -258,7 +258,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 ### Known limitations and next work
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
-- The runtime now exposes a real `RuntimeTaskCoordinator` for Planner → Permission Manager → Executor → Verifier execution and correlated task-progress events. The desktop composition root still needs to instantiate and wire this coordinator into the packaged desktop distribution.
+- The runtime now exposes a real `RuntimeTaskCoordinator` and `RuntimeApplication` composition root for Planner → Permission Manager → Executor → Verifier execution, correlated task-progress events, configuration, webhook, REST, and WebSocket services. The Electron main process still needs to instantiate this composition root and connect it to packaged desktop lifecycle and recovery.
 - The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, configuration listing and section-level updates, cursor-paginated tool listing, plugin-tool registration, and webhook registration through the real WebhookManager boundary. The runtime also provides the authenticated WebSocket event transport at `/v1/events` with live CommunicationBus delivery, topic authorization, bounded replay, and backpressure handling.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.

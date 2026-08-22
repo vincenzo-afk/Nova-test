@@ -83,6 +83,13 @@ export class TaskManager {
     return task ? ok(task) : err(this.notFound(taskId));
   }
 
+  list(): readonly TaskRecord[] {
+    return [...this.tasks.values()].map((task) => ({
+      ...task,
+      step_history: [...task.step_history],
+    }));
+  }
+
   transition(
     taskId: string,
     target: TaskState,
