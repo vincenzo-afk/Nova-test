@@ -9,12 +9,17 @@ import type {
 } from "./orchestration.js";
 import type { TaskManager, TaskRecord } from "./task-manager.js";
 
+export interface TaskCheckpointPersistence {
+  append(record: TaskRecord, status: "Created" | "Valid"): Promise<Result<void>>;
+}
+
 export interface RuntimeTaskCoordinatorOptions {
   readonly tasks: TaskManager;
   readonly planner: Planner;
   readonly executor: Executor;
   readonly verifier: Verifier;
   readonly events: CommunicationBus;
+  readonly persistence?: TaskCheckpointPersistence;
   readonly sourceService?: string;
 }
 
@@ -32,6 +37,19 @@ export class RuntimeTaskCoordinator {
   }): Result<TaskRecord> {
     const created = this.options.tasks.create(input);
     if (created.ok) void this.publish(created.value).catch(() => undefined);
+    return created;
+  }
+
+  public async submitDurable(input: {
+    readonly goal: string;
+    readonly correlation_id?: string;
+    readonly task_id?: string;
+  }): Promise<Result<TaskRecord>> {
+    const created = this.options.tasks.create(input);
+    if (!created.ok) return created;
+    const persisted = await this.persist(created.value, "Created");
+    if (!persisted.ok) return persisted;
+    await this.publish(created.value);
     return created;
   }
 
@@ -78,7 +96,7 @@ export class RuntimeTaskCoordinator {
     }
 
     for (const entry of verdicts) {
-      const history = this.options.tasks.appendStepHistory(taskId, entry);
+      const history = await this.appendStepHistory(taskId, entry);
       if (!history.ok) return history;
     }
     const outcome = verdicts.some((entry) => entry.verdict.outcome === "failed")
@@ -93,7 +111,7 @@ export class RuntimeTaskCoordinator {
     taskId: string,
     history: Readonly<Record<string, unknown>>,
   ): Promise<Result<TaskRecord>> {
-    const appended = this.options.tasks.appendStepHistory(taskId, history);
+    const appended = await this.appendStepHistory(taskId, history);
     if (!appended.ok) return appended;
     return this.transition(taskId, "Failed");
   }
@@ -103,8 +121,24 @@ export class RuntimeTaskCoordinator {
     target: "Planning" | "Executing" | "Verifying" | "Completed" | "Unverified" | "Failed",
   ): Promise<Result<TaskRecord>> {
     const transitioned = this.options.tasks.transition(taskId, target);
-    if (transitioned.ok) await this.publish(transitioned.value);
+    if (!transitioned.ok) return transitioned;
+    const persisted = await this.persist(transitioned.value, "Valid");
+    if (!persisted.ok) return persisted;
+    await this.publish(transitioned.value);
     return transitioned;
+  }
+
+  private async appendStepHistory(taskId: string, step: unknown): Promise<Result<TaskRecord>> {
+    const appended = this.options.tasks.appendStepHistory(taskId, step);
+    if (!appended.ok) return appended;
+    const persisted = await this.persist(appended.value, "Valid");
+    if (!persisted.ok) return persisted;
+    return appended;
+  }
+
+  private async persist(record: TaskRecord, status: "Created" | "Valid"): Promise<Result<void>> {
+    if (!this.options.persistence) return { ok: true, value: undefined };
+    return this.options.persistence.append(record, status);
   }
 
   private async publish(record: TaskRecord): Promise<void> {

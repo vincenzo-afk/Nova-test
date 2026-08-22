@@ -154,6 +154,22 @@ exports.Prisma.LongTermMemoryEntryScalarFieldEnum = {
   contentChecksum: 'contentChecksum'
 };
 
+exports.Prisma.TaskCheckpointScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  taskId: 'taskId',
+  checkpointStatus: 'checkpointStatus',
+  state: 'state',
+  goal: 'goal',
+  correlationId: 'correlationId',
+  retryCount: 'retryCount',
+  stepHistoryJson: 'stepHistoryJson',
+  waitingUserReason: 'waitingUserReason',
+  reason: 'reason',
+  updatedAt: 'updatedAt',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -168,7 +184,8 @@ exports.Prisma.NullsOrder = {
 exports.Prisma.ModelName = {
   WorkingMemoryEntry: 'WorkingMemoryEntry',
   RecentMemoryEntry: 'RecentMemoryEntry',
-  LongTermMemoryEntry: 'LongTermMemoryEntry'
+  LongTermMemoryEntry: 'LongTermMemoryEntry',
+  TaskCheckpoint: 'TaskCheckpoint'
 };
 
 /**

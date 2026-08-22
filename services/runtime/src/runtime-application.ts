@@ -1,16 +1,24 @@
-import { InMemoryCommunicationBus } from "@nova/shared";
+import { InMemoryCommunicationBus, type Result } from "@nova/shared";
 import { LocalApiTokenIssuer, PublicApiServer, type PublicApiServerOptions } from "./rest-api.js";
 import { ConfigurationStore, type NovaConfiguration } from "./configuration-store.js";
-import { RuntimeTaskCoordinator } from "./runtime-task-coordinator.js";
+import {
+  RuntimeTaskCoordinator,
+  type TaskCheckpointPersistence,
+} from "./runtime-task-coordinator.js";
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore } from "./permission-grant-store.js";
 import type { Executor, Planner, Verifier } from "./orchestration.js";
+import type { TaskRecord } from "./task-manager.js";
 import { WebhookManager } from "./webhook-manager.js";
 import {
   CommunicationBusEventJournal,
   PublicWebSocketServer,
   type PublicWebSocketServerOptions,
 } from "./websocket-api.js";
+
+export interface TaskRecoveryPersistence {
+  recoverAfterCrash(): Promise<Result<readonly TaskRecord[]>>;
+}
 
 export interface RuntimeApplicationOptions {
   readonly configuration: NovaConfiguration;
@@ -22,6 +30,7 @@ export interface RuntimeApplicationOptions {
   readonly websocketPort?: number;
   readonly taskManager?: TaskManager;
   readonly permissionStore?: PermissionGrantStore;
+  readonly persistence?: TaskCheckpointPersistence & TaskRecoveryPersistence;
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
 }
@@ -36,9 +45,11 @@ export class RuntimeApplication {
   public readonly coordinator: RuntimeTaskCoordinator;
   public readonly rest: PublicApiServer;
   public readonly websocket: PublicWebSocketServer;
+  private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
 
   public constructor(options: RuntimeApplicationOptions) {
     const bus = new InMemoryCommunicationBus();
+    this.optionsPersistence = options.persistence;
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -51,6 +62,7 @@ export class RuntimeApplication {
       executor: options.executor,
       verifier: options.verifier,
       events: bus,
+      ...(options.persistence === undefined ? {} : { persistence: options.persistence }),
     });
     this.rest = new PublicApiServer(this.restOptions(options));
     this.websocket = new PublicWebSocketServer({
@@ -65,6 +77,11 @@ export class RuntimeApplication {
   }
 
   public async start(): Promise<void> {
+    if (this.optionsPersistence) {
+      const recovered = await this.optionsPersistence.recoverAfterCrash();
+      if (!recovered.ok) throw new Error(recovered.error.message);
+      this.tasks.restore(recovered.value);
+    }
     await this.rest.start();
     try {
       await this.websocket.start();
@@ -98,7 +115,9 @@ export class RuntimeApplication {
       ...(options.restPort === undefined ? {} : { port: options.restPort }),
       handlers: {
         submitTask: async (input) => {
-          const result = this.coordinator.submit({ goal: input.goal });
+          const result = this.optionsPersistence
+            ? await this.coordinator.submitDurable({ goal: input.goal })
+            : this.coordinator.submit({ goal: input.goal });
           if (!result.ok) throw new Error(result.error.message);
           return result.value;
         },

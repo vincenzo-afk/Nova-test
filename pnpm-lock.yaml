@@ -42,6 +42,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@nova/memory':
+        specifier: workspace:*
+        version: link:../../services/memory
       '@nova/runtime':
         specifier: workspace:*
         version: link:../../services/runtime

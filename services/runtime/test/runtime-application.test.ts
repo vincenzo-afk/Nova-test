@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { ok } from "@nova/shared";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
 
@@ -59,6 +60,54 @@ describe("RuntimeApplication", () => {
     expect(await listed.json()).toMatchObject({ items: [task] });
     expect(config.status).toBe(200);
     expect(await config.json()).toEqual(configuration);
+  });
+
+  it("recovers persisted in-flight tasks before starting its listeners and durably acknowledges submission", async () => {
+    const appended: string[] = [];
+    const persistence = {
+      recoverAfterCrash: async () =>
+        ok([
+          {
+            task_id: "recover-me",
+            goal: "recover",
+            correlation_id: "corr-recover",
+            state: "Executing" as const,
+            retry_count: 0,
+            step_history: [],
+            updated_at: new Date().toISOString(),
+          },
+        ]),
+      append: async (record: { task_id: string }) => {
+        appended.push(record.task_id);
+        return ok(undefined);
+      },
+    };
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      persistence,
+    });
+    applications.push(application);
+    await application.start();
+    const token = application.issueToken(["task.submit", "task.read"]);
+
+    expect(application.tasks.get("recover-me")).toMatchObject({
+      ok: true,
+      value: { state: "Unverified" },
+    });
+    const submitted = await fetch(`${application.restUrl()}/v1/tasks`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ goal: "persist me", priority: "interactive" }),
+    });
+
+    expect(submitted.status).toBe(202);
+    expect(appended).toEqual([expect.any(String)]);
   });
 
   it("exposes the authenticated WebSocket URL from the same composed application", async () => {

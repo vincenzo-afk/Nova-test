@@ -10,6 +10,7 @@
     "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
+    "@nova/memory": "workspace:*",
     "@nova/runtime": "workspace:*",
     "@nova/shared": "workspace:*",
     "react": "^19.0.0",

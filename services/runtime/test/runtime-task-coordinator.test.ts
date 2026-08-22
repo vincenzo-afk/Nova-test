@@ -43,6 +43,33 @@ const tool: ToolRegistration = {
 };
 
 describe("RuntimeTaskCoordinator", () => {
+  it("persists task checkpoints before returning and after lifecycle mutations", async () => {
+    const checkpoints: Array<{ state: string; status: string }> = [];
+    const persistence = {
+      append: async (record: { state: string }, status: string) => {
+        checkpoints.push({ state: record.state, status });
+        return { ok: true as const, value: undefined };
+      },
+    };
+    const tasks = new TaskManager();
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      events: new InMemoryCommunicationBus(),
+      persistence,
+    });
+
+    const submitted = await coordinator.submitDurable({ goal: "durable task" });
+
+    expect(submitted).toMatchObject({ ok: true, value: { state: "Created" } });
+    expect(checkpoints).toEqual([{ state: "Created", status: "Created" }]);
+  });
+
   it("executes a deterministic task through planning, permission, execution, and verification", async () => {
     const bus = new InMemoryCommunicationBus();
     const events: unknown[] = [];

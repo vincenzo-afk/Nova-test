@@ -28,6 +28,11 @@ export type RecentMemoryEntry = $Result.DefaultSelection<Prisma.$RecentMemoryEnt
  * 
  */
 export type LongTermMemoryEntry = $Result.DefaultSelection<Prisma.$LongTermMemoryEntryPayload>
+/**
+ * Model TaskCheckpoint
+ * 
+ */
+export type TaskCheckpoint = $Result.DefaultSelection<Prisma.$TaskCheckpointPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -176,6 +181,16 @@ export class PrismaClient<
     * ```
     */
   get longTermMemoryEntry(): Prisma.LongTermMemoryEntryDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.taskCheckpoint`: Exposes CRUD operations for the **TaskCheckpoint** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TaskCheckpoints
+    * const taskCheckpoints = await prisma.taskCheckpoint.findMany()
+    * ```
+    */
+  get taskCheckpoint(): Prisma.TaskCheckpointDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -619,7 +634,8 @@ export namespace Prisma {
   export const ModelName: {
     WorkingMemoryEntry: 'WorkingMemoryEntry',
     RecentMemoryEntry: 'RecentMemoryEntry',
-    LongTermMemoryEntry: 'LongTermMemoryEntry'
+    LongTermMemoryEntry: 'LongTermMemoryEntry',
+    TaskCheckpoint: 'TaskCheckpoint'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -638,7 +654,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "workingMemoryEntry" | "recentMemoryEntry" | "longTermMemoryEntry"
+      modelProps: "workingMemoryEntry" | "recentMemoryEntry" | "longTermMemoryEntry" | "taskCheckpoint"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -864,6 +880,80 @@ export namespace Prisma {
           }
         }
       }
+      TaskCheckpoint: {
+        payload: Prisma.$TaskCheckpointPayload<ExtArgs>
+        fields: Prisma.TaskCheckpointFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TaskCheckpointFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TaskCheckpointFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>
+          }
+          findFirst: {
+            args: Prisma.TaskCheckpointFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TaskCheckpointFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>
+          }
+          findMany: {
+            args: Prisma.TaskCheckpointFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>[]
+          }
+          create: {
+            args: Prisma.TaskCheckpointCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>
+          }
+          createMany: {
+            args: Prisma.TaskCheckpointCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TaskCheckpointCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>[]
+          }
+          delete: {
+            args: Prisma.TaskCheckpointDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>
+          }
+          update: {
+            args: Prisma.TaskCheckpointUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>
+          }
+          deleteMany: {
+            args: Prisma.TaskCheckpointDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TaskCheckpointUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.TaskCheckpointUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>[]
+          }
+          upsert: {
+            args: Prisma.TaskCheckpointUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TaskCheckpointPayload>
+          }
+          aggregate: {
+            args: Prisma.TaskCheckpointAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTaskCheckpoint>
+          }
+          groupBy: {
+            args: Prisma.TaskCheckpointGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TaskCheckpointGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TaskCheckpointCountArgs<ExtArgs>
+            result: $Utils.Optional<TaskCheckpointCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -963,6 +1053,7 @@ export namespace Prisma {
     workingMemoryEntry?: WorkingMemoryEntryOmit
     recentMemoryEntry?: RecentMemoryEntryOmit
     longTermMemoryEntry?: LongTermMemoryEntryOmit
+    taskCheckpoint?: TaskCheckpointOmit
   }
 
   /* Types for Logging */
@@ -4247,6 +4338,1137 @@ export namespace Prisma {
 
 
   /**
+   * Model TaskCheckpoint
+   */
+
+  export type AggregateTaskCheckpoint = {
+    _count: TaskCheckpointCountAggregateOutputType | null
+    _avg: TaskCheckpointAvgAggregateOutputType | null
+    _sum: TaskCheckpointSumAggregateOutputType | null
+    _min: TaskCheckpointMinAggregateOutputType | null
+    _max: TaskCheckpointMaxAggregateOutputType | null
+  }
+
+  export type TaskCheckpointAvgAggregateOutputType = {
+    retryCount: number | null
+  }
+
+  export type TaskCheckpointSumAggregateOutputType = {
+    retryCount: number | null
+  }
+
+  export type TaskCheckpointMinAggregateOutputType = {
+    id: string | null
+    workspaceId: string | null
+    taskId: string | null
+    checkpointStatus: string | null
+    state: string | null
+    goal: string | null
+    correlationId: string | null
+    retryCount: number | null
+    stepHistoryJson: string | null
+    waitingUserReason: string | null
+    reason: string | null
+    updatedAt: Date | null
+    createdAt: Date | null
+  }
+
+  export type TaskCheckpointMaxAggregateOutputType = {
+    id: string | null
+    workspaceId: string | null
+    taskId: string | null
+    checkpointStatus: string | null
+    state: string | null
+    goal: string | null
+    correlationId: string | null
+    retryCount: number | null
+    stepHistoryJson: string | null
+    waitingUserReason: string | null
+    reason: string | null
+    updatedAt: Date | null
+    createdAt: Date | null
+  }
+
+  export type TaskCheckpointCountAggregateOutputType = {
+    id: number
+    workspaceId: number
+    taskId: number
+    checkpointStatus: number
+    state: number
+    goal: number
+    correlationId: number
+    retryCount: number
+    stepHistoryJson: number
+    waitingUserReason: number
+    reason: number
+    updatedAt: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TaskCheckpointAvgAggregateInputType = {
+    retryCount?: true
+  }
+
+  export type TaskCheckpointSumAggregateInputType = {
+    retryCount?: true
+  }
+
+  export type TaskCheckpointMinAggregateInputType = {
+    id?: true
+    workspaceId?: true
+    taskId?: true
+    checkpointStatus?: true
+    state?: true
+    goal?: true
+    correlationId?: true
+    retryCount?: true
+    stepHistoryJson?: true
+    waitingUserReason?: true
+    reason?: true
+    updatedAt?: true
+    createdAt?: true
+  }
+
+  export type TaskCheckpointMaxAggregateInputType = {
+    id?: true
+    workspaceId?: true
+    taskId?: true
+    checkpointStatus?: true
+    state?: true
+    goal?: true
+    correlationId?: true
+    retryCount?: true
+    stepHistoryJson?: true
+    waitingUserReason?: true
+    reason?: true
+    updatedAt?: true
+    createdAt?: true
+  }
+
+  export type TaskCheckpointCountAggregateInputType = {
+    id?: true
+    workspaceId?: true
+    taskId?: true
+    checkpointStatus?: true
+    state?: true
+    goal?: true
+    correlationId?: true
+    retryCount?: true
+    stepHistoryJson?: true
+    waitingUserReason?: true
+    reason?: true
+    updatedAt?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TaskCheckpointAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskCheckpoint to aggregate.
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCheckpoints to fetch.
+     */
+    orderBy?: TaskCheckpointOrderByWithRelationInput | TaskCheckpointOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TaskCheckpointWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCheckpoints from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCheckpoints.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TaskCheckpoints
+    **/
+    _count?: true | TaskCheckpointCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: TaskCheckpointAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TaskCheckpointSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TaskCheckpointMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TaskCheckpointMaxAggregateInputType
+  }
+
+  export type GetTaskCheckpointAggregateType<T extends TaskCheckpointAggregateArgs> = {
+        [P in keyof T & keyof AggregateTaskCheckpoint]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTaskCheckpoint[P]>
+      : GetScalarType<T[P], AggregateTaskCheckpoint[P]>
+  }
+
+
+
+
+  export type TaskCheckpointGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TaskCheckpointWhereInput
+    orderBy?: TaskCheckpointOrderByWithAggregationInput | TaskCheckpointOrderByWithAggregationInput[]
+    by: TaskCheckpointScalarFieldEnum[] | TaskCheckpointScalarFieldEnum
+    having?: TaskCheckpointScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TaskCheckpointCountAggregateInputType | true
+    _avg?: TaskCheckpointAvgAggregateInputType
+    _sum?: TaskCheckpointSumAggregateInputType
+    _min?: TaskCheckpointMinAggregateInputType
+    _max?: TaskCheckpointMaxAggregateInputType
+  }
+
+  export type TaskCheckpointGroupByOutputType = {
+    id: string
+    workspaceId: string
+    taskId: string
+    checkpointStatus: string
+    state: string
+    goal: string
+    correlationId: string
+    retryCount: number
+    stepHistoryJson: string
+    waitingUserReason: string | null
+    reason: string | null
+    updatedAt: Date
+    createdAt: Date
+    _count: TaskCheckpointCountAggregateOutputType | null
+    _avg: TaskCheckpointAvgAggregateOutputType | null
+    _sum: TaskCheckpointSumAggregateOutputType | null
+    _min: TaskCheckpointMinAggregateOutputType | null
+    _max: TaskCheckpointMaxAggregateOutputType | null
+  }
+
+  type GetTaskCheckpointGroupByPayload<T extends TaskCheckpointGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TaskCheckpointGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TaskCheckpointGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TaskCheckpointGroupByOutputType[P]>
+            : GetScalarType<T[P], TaskCheckpointGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TaskCheckpointSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    workspaceId?: boolean
+    taskId?: boolean
+    checkpointStatus?: boolean
+    state?: boolean
+    goal?: boolean
+    correlationId?: boolean
+    retryCount?: boolean
+    stepHistoryJson?: boolean
+    waitingUserReason?: boolean
+    reason?: boolean
+    updatedAt?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["taskCheckpoint"]>
+
+  export type TaskCheckpointSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    workspaceId?: boolean
+    taskId?: boolean
+    checkpointStatus?: boolean
+    state?: boolean
+    goal?: boolean
+    correlationId?: boolean
+    retryCount?: boolean
+    stepHistoryJson?: boolean
+    waitingUserReason?: boolean
+    reason?: boolean
+    updatedAt?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["taskCheckpoint"]>
+
+  export type TaskCheckpointSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    workspaceId?: boolean
+    taskId?: boolean
+    checkpointStatus?: boolean
+    state?: boolean
+    goal?: boolean
+    correlationId?: boolean
+    retryCount?: boolean
+    stepHistoryJson?: boolean
+    waitingUserReason?: boolean
+    reason?: boolean
+    updatedAt?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["taskCheckpoint"]>
+
+  export type TaskCheckpointSelectScalar = {
+    id?: boolean
+    workspaceId?: boolean
+    taskId?: boolean
+    checkpointStatus?: boolean
+    state?: boolean
+    goal?: boolean
+    correlationId?: boolean
+    retryCount?: boolean
+    stepHistoryJson?: boolean
+    waitingUserReason?: boolean
+    reason?: boolean
+    updatedAt?: boolean
+    createdAt?: boolean
+  }
+
+  export type TaskCheckpointOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "workspaceId" | "taskId" | "checkpointStatus" | "state" | "goal" | "correlationId" | "retryCount" | "stepHistoryJson" | "waitingUserReason" | "reason" | "updatedAt" | "createdAt", ExtArgs["result"]["taskCheckpoint"]>
+
+  export type $TaskCheckpointPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TaskCheckpoint"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      workspaceId: string
+      taskId: string
+      checkpointStatus: string
+      state: string
+      goal: string
+      correlationId: string
+      retryCount: number
+      stepHistoryJson: string
+      waitingUserReason: string | null
+      reason: string | null
+      updatedAt: Date
+      createdAt: Date
+    }, ExtArgs["result"]["taskCheckpoint"]>
+    composites: {}
+  }
+
+  type TaskCheckpointGetPayload<S extends boolean | null | undefined | TaskCheckpointDefaultArgs> = $Result.GetResult<Prisma.$TaskCheckpointPayload, S>
+
+  type TaskCheckpointCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TaskCheckpointFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TaskCheckpointCountAggregateInputType | true
+    }
+
+  export interface TaskCheckpointDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TaskCheckpoint'], meta: { name: 'TaskCheckpoint' } }
+    /**
+     * Find zero or one TaskCheckpoint that matches the filter.
+     * @param {TaskCheckpointFindUniqueArgs} args - Arguments to find a TaskCheckpoint
+     * @example
+     * // Get one TaskCheckpoint
+     * const taskCheckpoint = await prisma.taskCheckpoint.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TaskCheckpointFindUniqueArgs>(args: SelectSubset<T, TaskCheckpointFindUniqueArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one TaskCheckpoint that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TaskCheckpointFindUniqueOrThrowArgs} args - Arguments to find a TaskCheckpoint
+     * @example
+     * // Get one TaskCheckpoint
+     * const taskCheckpoint = await prisma.taskCheckpoint.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TaskCheckpointFindUniqueOrThrowArgs>(args: SelectSubset<T, TaskCheckpointFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TaskCheckpoint that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointFindFirstArgs} args - Arguments to find a TaskCheckpoint
+     * @example
+     * // Get one TaskCheckpoint
+     * const taskCheckpoint = await prisma.taskCheckpoint.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TaskCheckpointFindFirstArgs>(args?: SelectSubset<T, TaskCheckpointFindFirstArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TaskCheckpoint that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointFindFirstOrThrowArgs} args - Arguments to find a TaskCheckpoint
+     * @example
+     * // Get one TaskCheckpoint
+     * const taskCheckpoint = await prisma.taskCheckpoint.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TaskCheckpointFindFirstOrThrowArgs>(args?: SelectSubset<T, TaskCheckpointFindFirstOrThrowArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more TaskCheckpoints that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TaskCheckpoints
+     * const taskCheckpoints = await prisma.taskCheckpoint.findMany()
+     * 
+     * // Get first 10 TaskCheckpoints
+     * const taskCheckpoints = await prisma.taskCheckpoint.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const taskCheckpointWithIdOnly = await prisma.taskCheckpoint.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TaskCheckpointFindManyArgs>(args?: SelectSubset<T, TaskCheckpointFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a TaskCheckpoint.
+     * @param {TaskCheckpointCreateArgs} args - Arguments to create a TaskCheckpoint.
+     * @example
+     * // Create one TaskCheckpoint
+     * const TaskCheckpoint = await prisma.taskCheckpoint.create({
+     *   data: {
+     *     // ... data to create a TaskCheckpoint
+     *   }
+     * })
+     * 
+     */
+    create<T extends TaskCheckpointCreateArgs>(args: SelectSubset<T, TaskCheckpointCreateArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many TaskCheckpoints.
+     * @param {TaskCheckpointCreateManyArgs} args - Arguments to create many TaskCheckpoints.
+     * @example
+     * // Create many TaskCheckpoints
+     * const taskCheckpoint = await prisma.taskCheckpoint.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TaskCheckpointCreateManyArgs>(args?: SelectSubset<T, TaskCheckpointCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TaskCheckpoints and returns the data saved in the database.
+     * @param {TaskCheckpointCreateManyAndReturnArgs} args - Arguments to create many TaskCheckpoints.
+     * @example
+     * // Create many TaskCheckpoints
+     * const taskCheckpoint = await prisma.taskCheckpoint.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TaskCheckpoints and only return the `id`
+     * const taskCheckpointWithIdOnly = await prisma.taskCheckpoint.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TaskCheckpointCreateManyAndReturnArgs>(args?: SelectSubset<T, TaskCheckpointCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a TaskCheckpoint.
+     * @param {TaskCheckpointDeleteArgs} args - Arguments to delete one TaskCheckpoint.
+     * @example
+     * // Delete one TaskCheckpoint
+     * const TaskCheckpoint = await prisma.taskCheckpoint.delete({
+     *   where: {
+     *     // ... filter to delete one TaskCheckpoint
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TaskCheckpointDeleteArgs>(args: SelectSubset<T, TaskCheckpointDeleteArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one TaskCheckpoint.
+     * @param {TaskCheckpointUpdateArgs} args - Arguments to update one TaskCheckpoint.
+     * @example
+     * // Update one TaskCheckpoint
+     * const taskCheckpoint = await prisma.taskCheckpoint.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TaskCheckpointUpdateArgs>(args: SelectSubset<T, TaskCheckpointUpdateArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more TaskCheckpoints.
+     * @param {TaskCheckpointDeleteManyArgs} args - Arguments to filter TaskCheckpoints to delete.
+     * @example
+     * // Delete a few TaskCheckpoints
+     * const { count } = await prisma.taskCheckpoint.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TaskCheckpointDeleteManyArgs>(args?: SelectSubset<T, TaskCheckpointDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskCheckpoints.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TaskCheckpoints
+     * const taskCheckpoint = await prisma.taskCheckpoint.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TaskCheckpointUpdateManyArgs>(args: SelectSubset<T, TaskCheckpointUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TaskCheckpoints and returns the data updated in the database.
+     * @param {TaskCheckpointUpdateManyAndReturnArgs} args - Arguments to update many TaskCheckpoints.
+     * @example
+     * // Update many TaskCheckpoints
+     * const taskCheckpoint = await prisma.taskCheckpoint.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more TaskCheckpoints and only return the `id`
+     * const taskCheckpointWithIdOnly = await prisma.taskCheckpoint.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends TaskCheckpointUpdateManyAndReturnArgs>(args: SelectSubset<T, TaskCheckpointUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one TaskCheckpoint.
+     * @param {TaskCheckpointUpsertArgs} args - Arguments to update or create a TaskCheckpoint.
+     * @example
+     * // Update or create a TaskCheckpoint
+     * const taskCheckpoint = await prisma.taskCheckpoint.upsert({
+     *   create: {
+     *     // ... data to create a TaskCheckpoint
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TaskCheckpoint we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TaskCheckpointUpsertArgs>(args: SelectSubset<T, TaskCheckpointUpsertArgs<ExtArgs>>): Prisma__TaskCheckpointClient<$Result.GetResult<Prisma.$TaskCheckpointPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of TaskCheckpoints.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointCountArgs} args - Arguments to filter TaskCheckpoints to count.
+     * @example
+     * // Count the number of TaskCheckpoints
+     * const count = await prisma.taskCheckpoint.count({
+     *   where: {
+     *     // ... the filter for the TaskCheckpoints we want to count
+     *   }
+     * })
+    **/
+    count<T extends TaskCheckpointCountArgs>(
+      args?: Subset<T, TaskCheckpointCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TaskCheckpointCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TaskCheckpoint.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TaskCheckpointAggregateArgs>(args: Subset<T, TaskCheckpointAggregateArgs>): Prisma.PrismaPromise<GetTaskCheckpointAggregateType<T>>
+
+    /**
+     * Group by TaskCheckpoint.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TaskCheckpointGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TaskCheckpointGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TaskCheckpointGroupByArgs['orderBy'] }
+        : { orderBy?: TaskCheckpointGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TaskCheckpointGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTaskCheckpointGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TaskCheckpoint model
+   */
+  readonly fields: TaskCheckpointFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TaskCheckpoint.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TaskCheckpointClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TaskCheckpoint model
+   */
+  interface TaskCheckpointFieldRefs {
+    readonly id: FieldRef<"TaskCheckpoint", 'String'>
+    readonly workspaceId: FieldRef<"TaskCheckpoint", 'String'>
+    readonly taskId: FieldRef<"TaskCheckpoint", 'String'>
+    readonly checkpointStatus: FieldRef<"TaskCheckpoint", 'String'>
+    readonly state: FieldRef<"TaskCheckpoint", 'String'>
+    readonly goal: FieldRef<"TaskCheckpoint", 'String'>
+    readonly correlationId: FieldRef<"TaskCheckpoint", 'String'>
+    readonly retryCount: FieldRef<"TaskCheckpoint", 'Int'>
+    readonly stepHistoryJson: FieldRef<"TaskCheckpoint", 'String'>
+    readonly waitingUserReason: FieldRef<"TaskCheckpoint", 'String'>
+    readonly reason: FieldRef<"TaskCheckpoint", 'String'>
+    readonly updatedAt: FieldRef<"TaskCheckpoint", 'DateTime'>
+    readonly createdAt: FieldRef<"TaskCheckpoint", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TaskCheckpoint findUnique
+   */
+  export type TaskCheckpointFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * Filter, which TaskCheckpoint to fetch.
+     */
+    where: TaskCheckpointWhereUniqueInput
+  }
+
+  /**
+   * TaskCheckpoint findUniqueOrThrow
+   */
+  export type TaskCheckpointFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * Filter, which TaskCheckpoint to fetch.
+     */
+    where: TaskCheckpointWhereUniqueInput
+  }
+
+  /**
+   * TaskCheckpoint findFirst
+   */
+  export type TaskCheckpointFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * Filter, which TaskCheckpoint to fetch.
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCheckpoints to fetch.
+     */
+    orderBy?: TaskCheckpointOrderByWithRelationInput | TaskCheckpointOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskCheckpoints.
+     */
+    cursor?: TaskCheckpointWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCheckpoints from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCheckpoints.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskCheckpoints.
+     */
+    distinct?: TaskCheckpointScalarFieldEnum | TaskCheckpointScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCheckpoint findFirstOrThrow
+   */
+  export type TaskCheckpointFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * Filter, which TaskCheckpoint to fetch.
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCheckpoints to fetch.
+     */
+    orderBy?: TaskCheckpointOrderByWithRelationInput | TaskCheckpointOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TaskCheckpoints.
+     */
+    cursor?: TaskCheckpointWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCheckpoints from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCheckpoints.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TaskCheckpoints.
+     */
+    distinct?: TaskCheckpointScalarFieldEnum | TaskCheckpointScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCheckpoint findMany
+   */
+  export type TaskCheckpointFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * Filter, which TaskCheckpoints to fetch.
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TaskCheckpoints to fetch.
+     */
+    orderBy?: TaskCheckpointOrderByWithRelationInput | TaskCheckpointOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TaskCheckpoints.
+     */
+    cursor?: TaskCheckpointWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TaskCheckpoints from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TaskCheckpoints.
+     */
+    skip?: number
+    distinct?: TaskCheckpointScalarFieldEnum | TaskCheckpointScalarFieldEnum[]
+  }
+
+  /**
+   * TaskCheckpoint create
+   */
+  export type TaskCheckpointCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * The data needed to create a TaskCheckpoint.
+     */
+    data: XOR<TaskCheckpointCreateInput, TaskCheckpointUncheckedCreateInput>
+  }
+
+  /**
+   * TaskCheckpoint createMany
+   */
+  export type TaskCheckpointCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TaskCheckpoints.
+     */
+    data: TaskCheckpointCreateManyInput | TaskCheckpointCreateManyInput[]
+  }
+
+  /**
+   * TaskCheckpoint createManyAndReturn
+   */
+  export type TaskCheckpointCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * The data used to create many TaskCheckpoints.
+     */
+    data: TaskCheckpointCreateManyInput | TaskCheckpointCreateManyInput[]
+  }
+
+  /**
+   * TaskCheckpoint update
+   */
+  export type TaskCheckpointUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * The data needed to update a TaskCheckpoint.
+     */
+    data: XOR<TaskCheckpointUpdateInput, TaskCheckpointUncheckedUpdateInput>
+    /**
+     * Choose, which TaskCheckpoint to update.
+     */
+    where: TaskCheckpointWhereUniqueInput
+  }
+
+  /**
+   * TaskCheckpoint updateMany
+   */
+  export type TaskCheckpointUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TaskCheckpoints.
+     */
+    data: XOR<TaskCheckpointUpdateManyMutationInput, TaskCheckpointUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskCheckpoints to update
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * Limit how many TaskCheckpoints to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * TaskCheckpoint updateManyAndReturn
+   */
+  export type TaskCheckpointUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * The data used to update TaskCheckpoints.
+     */
+    data: XOR<TaskCheckpointUpdateManyMutationInput, TaskCheckpointUncheckedUpdateManyInput>
+    /**
+     * Filter which TaskCheckpoints to update
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * Limit how many TaskCheckpoints to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * TaskCheckpoint upsert
+   */
+  export type TaskCheckpointUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * The filter to search for the TaskCheckpoint to update in case it exists.
+     */
+    where: TaskCheckpointWhereUniqueInput
+    /**
+     * In case the TaskCheckpoint found by the `where` argument doesn't exist, create a new TaskCheckpoint with this data.
+     */
+    create: XOR<TaskCheckpointCreateInput, TaskCheckpointUncheckedCreateInput>
+    /**
+     * In case the TaskCheckpoint was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TaskCheckpointUpdateInput, TaskCheckpointUncheckedUpdateInput>
+  }
+
+  /**
+   * TaskCheckpoint delete
+   */
+  export type TaskCheckpointDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+    /**
+     * Filter which TaskCheckpoint to delete.
+     */
+    where: TaskCheckpointWhereUniqueInput
+  }
+
+  /**
+   * TaskCheckpoint deleteMany
+   */
+  export type TaskCheckpointDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TaskCheckpoints to delete
+     */
+    where?: TaskCheckpointWhereInput
+    /**
+     * Limit how many TaskCheckpoints to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * TaskCheckpoint without action
+   */
+  export type TaskCheckpointDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TaskCheckpoint
+     */
+    select?: TaskCheckpointSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TaskCheckpoint
+     */
+    omit?: TaskCheckpointOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -4300,6 +5522,25 @@ export namespace Prisma {
   };
 
   export type LongTermMemoryEntryScalarFieldEnum = (typeof LongTermMemoryEntryScalarFieldEnum)[keyof typeof LongTermMemoryEntryScalarFieldEnum]
+
+
+  export const TaskCheckpointScalarFieldEnum: {
+    id: 'id',
+    workspaceId: 'workspaceId',
+    taskId: 'taskId',
+    checkpointStatus: 'checkpointStatus',
+    state: 'state',
+    goal: 'goal',
+    correlationId: 'correlationId',
+    retryCount: 'retryCount',
+    stepHistoryJson: 'stepHistoryJson',
+    waitingUserReason: 'waitingUserReason',
+    reason: 'reason',
+    updatedAt: 'updatedAt',
+    createdAt: 'createdAt'
+  };
+
+  export type TaskCheckpointScalarFieldEnum = (typeof TaskCheckpointScalarFieldEnum)[keyof typeof TaskCheckpointScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -4574,6 +5815,100 @@ export namespace Prisma {
     contentChecksum?: StringWithAggregatesFilter<"LongTermMemoryEntry"> | string
   }
 
+  export type TaskCheckpointWhereInput = {
+    AND?: TaskCheckpointWhereInput | TaskCheckpointWhereInput[]
+    OR?: TaskCheckpointWhereInput[]
+    NOT?: TaskCheckpointWhereInput | TaskCheckpointWhereInput[]
+    id?: StringFilter<"TaskCheckpoint"> | string
+    workspaceId?: StringFilter<"TaskCheckpoint"> | string
+    taskId?: StringFilter<"TaskCheckpoint"> | string
+    checkpointStatus?: StringFilter<"TaskCheckpoint"> | string
+    state?: StringFilter<"TaskCheckpoint"> | string
+    goal?: StringFilter<"TaskCheckpoint"> | string
+    correlationId?: StringFilter<"TaskCheckpoint"> | string
+    retryCount?: IntFilter<"TaskCheckpoint"> | number
+    stepHistoryJson?: StringFilter<"TaskCheckpoint"> | string
+    waitingUserReason?: StringNullableFilter<"TaskCheckpoint"> | string | null
+    reason?: StringNullableFilter<"TaskCheckpoint"> | string | null
+    updatedAt?: DateTimeFilter<"TaskCheckpoint"> | Date | string
+    createdAt?: DateTimeFilter<"TaskCheckpoint"> | Date | string
+  }
+
+  export type TaskCheckpointOrderByWithRelationInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    taskId?: SortOrder
+    checkpointStatus?: SortOrder
+    state?: SortOrder
+    goal?: SortOrder
+    correlationId?: SortOrder
+    retryCount?: SortOrder
+    stepHistoryJson?: SortOrder
+    waitingUserReason?: SortOrderInput | SortOrder
+    reason?: SortOrderInput | SortOrder
+    updatedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCheckpointWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: TaskCheckpointWhereInput | TaskCheckpointWhereInput[]
+    OR?: TaskCheckpointWhereInput[]
+    NOT?: TaskCheckpointWhereInput | TaskCheckpointWhereInput[]
+    workspaceId?: StringFilter<"TaskCheckpoint"> | string
+    taskId?: StringFilter<"TaskCheckpoint"> | string
+    checkpointStatus?: StringFilter<"TaskCheckpoint"> | string
+    state?: StringFilter<"TaskCheckpoint"> | string
+    goal?: StringFilter<"TaskCheckpoint"> | string
+    correlationId?: StringFilter<"TaskCheckpoint"> | string
+    retryCount?: IntFilter<"TaskCheckpoint"> | number
+    stepHistoryJson?: StringFilter<"TaskCheckpoint"> | string
+    waitingUserReason?: StringNullableFilter<"TaskCheckpoint"> | string | null
+    reason?: StringNullableFilter<"TaskCheckpoint"> | string | null
+    updatedAt?: DateTimeFilter<"TaskCheckpoint"> | Date | string
+    createdAt?: DateTimeFilter<"TaskCheckpoint"> | Date | string
+  }, "id">
+
+  export type TaskCheckpointOrderByWithAggregationInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    taskId?: SortOrder
+    checkpointStatus?: SortOrder
+    state?: SortOrder
+    goal?: SortOrder
+    correlationId?: SortOrder
+    retryCount?: SortOrder
+    stepHistoryJson?: SortOrder
+    waitingUserReason?: SortOrderInput | SortOrder
+    reason?: SortOrderInput | SortOrder
+    updatedAt?: SortOrder
+    createdAt?: SortOrder
+    _count?: TaskCheckpointCountOrderByAggregateInput
+    _avg?: TaskCheckpointAvgOrderByAggregateInput
+    _max?: TaskCheckpointMaxOrderByAggregateInput
+    _min?: TaskCheckpointMinOrderByAggregateInput
+    _sum?: TaskCheckpointSumOrderByAggregateInput
+  }
+
+  export type TaskCheckpointScalarWhereWithAggregatesInput = {
+    AND?: TaskCheckpointScalarWhereWithAggregatesInput | TaskCheckpointScalarWhereWithAggregatesInput[]
+    OR?: TaskCheckpointScalarWhereWithAggregatesInput[]
+    NOT?: TaskCheckpointScalarWhereWithAggregatesInput | TaskCheckpointScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    workspaceId?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    taskId?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    checkpointStatus?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    state?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    goal?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    correlationId?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    retryCount?: IntWithAggregatesFilter<"TaskCheckpoint"> | number
+    stepHistoryJson?: StringWithAggregatesFilter<"TaskCheckpoint"> | string
+    waitingUserReason?: StringNullableWithAggregatesFilter<"TaskCheckpoint"> | string | null
+    reason?: StringNullableWithAggregatesFilter<"TaskCheckpoint"> | string | null
+    updatedAt?: DateTimeWithAggregatesFilter<"TaskCheckpoint"> | Date | string
+    createdAt?: DateTimeWithAggregatesFilter<"TaskCheckpoint"> | Date | string
+  }
+
   export type WorkingMemoryEntryCreateInput = {
     id: string
     workspaceId: string
@@ -4826,6 +6161,118 @@ export namespace Prisma {
     contentChecksum?: StringFieldUpdateOperationsInput | string
   }
 
+  export type TaskCheckpointCreateInput = {
+    id: string
+    workspaceId: string
+    taskId: string
+    checkpointStatus: string
+    state: string
+    goal: string
+    correlationId: string
+    retryCount: number
+    stepHistoryJson: string
+    waitingUserReason?: string | null
+    reason?: string | null
+    updatedAt: Date | string
+    createdAt?: Date | string
+  }
+
+  export type TaskCheckpointUncheckedCreateInput = {
+    id: string
+    workspaceId: string
+    taskId: string
+    checkpointStatus: string
+    state: string
+    goal: string
+    correlationId: string
+    retryCount: number
+    stepHistoryJson: string
+    waitingUserReason?: string | null
+    reason?: string | null
+    updatedAt: Date | string
+    createdAt?: Date | string
+  }
+
+  export type TaskCheckpointUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    taskId?: StringFieldUpdateOperationsInput | string
+    checkpointStatus?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    goal?: StringFieldUpdateOperationsInput | string
+    correlationId?: StringFieldUpdateOperationsInput | string
+    retryCount?: IntFieldUpdateOperationsInput | number
+    stepHistoryJson?: StringFieldUpdateOperationsInput | string
+    waitingUserReason?: NullableStringFieldUpdateOperationsInput | string | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCheckpointUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    taskId?: StringFieldUpdateOperationsInput | string
+    checkpointStatus?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    goal?: StringFieldUpdateOperationsInput | string
+    correlationId?: StringFieldUpdateOperationsInput | string
+    retryCount?: IntFieldUpdateOperationsInput | number
+    stepHistoryJson?: StringFieldUpdateOperationsInput | string
+    waitingUserReason?: NullableStringFieldUpdateOperationsInput | string | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCheckpointCreateManyInput = {
+    id: string
+    workspaceId: string
+    taskId: string
+    checkpointStatus: string
+    state: string
+    goal: string
+    correlationId: string
+    retryCount: number
+    stepHistoryJson: string
+    waitingUserReason?: string | null
+    reason?: string | null
+    updatedAt: Date | string
+    createdAt?: Date | string
+  }
+
+  export type TaskCheckpointUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    taskId?: StringFieldUpdateOperationsInput | string
+    checkpointStatus?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    goal?: StringFieldUpdateOperationsInput | string
+    correlationId?: StringFieldUpdateOperationsInput | string
+    retryCount?: IntFieldUpdateOperationsInput | number
+    stepHistoryJson?: StringFieldUpdateOperationsInput | string
+    waitingUserReason?: NullableStringFieldUpdateOperationsInput | string | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TaskCheckpointUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    workspaceId?: StringFieldUpdateOperationsInput | string
+    taskId?: StringFieldUpdateOperationsInput | string
+    checkpointStatus?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    goal?: StringFieldUpdateOperationsInput | string
+    correlationId?: StringFieldUpdateOperationsInput | string
+    retryCount?: IntFieldUpdateOperationsInput | number
+    stepHistoryJson?: StringFieldUpdateOperationsInput | string
+    waitingUserReason?: NullableStringFieldUpdateOperationsInput | string | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -5069,6 +6516,89 @@ export namespace Prisma {
     confidence?: SortOrder
   }
 
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[]
+    notIn?: number[]
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
+  export type TaskCheckpointCountOrderByAggregateInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    taskId?: SortOrder
+    checkpointStatus?: SortOrder
+    state?: SortOrder
+    goal?: SortOrder
+    correlationId?: SortOrder
+    retryCount?: SortOrder
+    stepHistoryJson?: SortOrder
+    waitingUserReason?: SortOrder
+    reason?: SortOrder
+    updatedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCheckpointAvgOrderByAggregateInput = {
+    retryCount?: SortOrder
+  }
+
+  export type TaskCheckpointMaxOrderByAggregateInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    taskId?: SortOrder
+    checkpointStatus?: SortOrder
+    state?: SortOrder
+    goal?: SortOrder
+    correlationId?: SortOrder
+    retryCount?: SortOrder
+    stepHistoryJson?: SortOrder
+    waitingUserReason?: SortOrder
+    reason?: SortOrder
+    updatedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCheckpointMinOrderByAggregateInput = {
+    id?: SortOrder
+    workspaceId?: SortOrder
+    taskId?: SortOrder
+    checkpointStatus?: SortOrder
+    state?: SortOrder
+    goal?: SortOrder
+    correlationId?: SortOrder
+    retryCount?: SortOrder
+    stepHistoryJson?: SortOrder
+    waitingUserReason?: SortOrder
+    reason?: SortOrder
+    updatedAt?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TaskCheckpointSumOrderByAggregateInput = {
+    retryCount?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[]
+    notIn?: number[]
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
   export type StringFieldUpdateOperationsInput = {
     set?: string
   }
@@ -5087,6 +6617,14 @@ export namespace Prisma {
 
   export type NullableStringFieldUpdateOperationsInput = {
     set?: string | null
+  }
+
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -5223,6 +6761,22 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[]
+    notIn?: number[]
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
 

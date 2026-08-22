@@ -90,6 +90,19 @@ export class TaskManager {
     }));
   }
 
+  restore(records: readonly TaskRecord[]): void {
+    this.tasks.clear();
+    for (const record of records) {
+      const recoveredState =
+        record.state === "Executing" || record.state === "Verifying" ? "Unverified" : record.state;
+      this.tasks.set(record.task_id, {
+        ...record,
+        state: recoveredState,
+        step_history: [...record.step_history],
+      });
+    }
+  }
+
   transition(
     taskId: string,
     target: TaskState,

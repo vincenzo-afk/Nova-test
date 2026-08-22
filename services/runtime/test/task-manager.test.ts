@@ -13,6 +13,33 @@ describe("TaskManager", () => {
     ]);
   });
 
+  it("restores persisted records and remaps in-flight states to Unverified", () => {
+    const manager = new TaskManager();
+    manager.restore([
+      {
+        task_id: "executing",
+        goal: "recover",
+        correlation_id: "corr-1",
+        state: "Executing",
+        retry_count: 0,
+        step_history: [],
+        updated_at: new Date().toISOString(),
+      },
+      {
+        task_id: "paused",
+        goal: "wait",
+        correlation_id: "corr-2",
+        state: "Paused",
+        retry_count: 0,
+        step_history: [],
+        updated_at: new Date().toISOString(),
+      },
+    ]);
+
+    expect(manager.get("executing")).toMatchObject({ ok: true, value: { state: "Unverified" } });
+    expect(manager.get("paused")).toMatchObject({ ok: true, value: { state: "Paused" } });
+  });
+
   it("persists the complete happy-path lifecycle to Completed", () => {
     const manager = new TaskManager();
     manager.create({ task_id: "task-1", goal: "read report", correlation_id: "corr-1" });

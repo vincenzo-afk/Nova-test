@@ -54,3 +54,23 @@ model LongTermMemoryEntry {
   @@index([sourceLineageId])
   @@map("long_term_memory_entries")
 }
+
+model TaskCheckpoint {
+  id                 String   @id
+  workspaceId        String   @map("workspace_id")
+  taskId             String   @map("task_id")
+  checkpointStatus   String   @map("checkpoint_status")
+  state              String
+  goal               String
+  correlationId      String   @map("correlation_id")
+  retryCount         Int      @map("retry_count")
+  stepHistoryJson    String   @map("step_history_json")
+  waitingUserReason  String?  @map("waiting_user_reason")
+  reason             String?
+  updatedAt          DateTime @map("updated_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId, taskId, createdAt])
+  @@index([workspaceId, checkpointStatus, createdAt])
+  @@map("task_checkpoints")
+}
