@@ -50,8 +50,8 @@ produces the retryable memory-storage error contract.
 recovery interfaces. The Prisma-backed `TaskCheckpointStore` from
 `@nova/memory` is the production adapter. Hosts are responsible for supplying
 the workspace identity and a migrated SQLite database before starting the
-application. This keeps migration and OS-user storage-path ownership at the
-host boundary rather than hiding it in a task-state component.
+application. This keeps migration and OS-user storage-path ownership at the host boundary rather than hiding it in a task-state component. The Electron host realizes this boundary by persisting one workspace UUID in its per-user `userData` directory, using `<userData>/memory/structured/nova.db`, applying the bundled migrations before runtime startup, and closing the Prisma client after listener shutdown.
+
 
 ## Verification
 

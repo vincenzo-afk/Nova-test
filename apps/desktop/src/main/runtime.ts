@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import {
   Executor,
   PermissionGrantStore,
@@ -6,6 +8,7 @@ import {
   RuntimeApplication,
   Verifier,
 } from "@nova/runtime";
+import { openDesktopPersistence } from "./persistence.js";
 
 const desktopPermissions = [
   { source: "filesystem", granted: false },
@@ -29,8 +32,24 @@ const desktopConfiguration = {
   personalization: {},
 };
 
-export const createDesktopRuntime = (): RuntimeApplication =>
-  new RuntimeApplication({
+export interface DesktopRuntimeOptions {
+  readonly userDataPath: string;
+  readonly migrationsPath?: string;
+}
+
+const defaultMigrationsPath = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../services/memory/prisma/migrations",
+);
+
+export async function createDesktopRuntime(
+  options: DesktopRuntimeOptions,
+): Promise<RuntimeApplication> {
+  const persistence = await openDesktopPersistence({
+    userDataPath: options.userDataPath,
+    migrationsPath: options.migrationsPath ?? defaultMigrationsPath,
+  });
+  return new RuntimeApplication({
     configuration: desktopConfiguration,
     permissionStore: new PermissionGrantStore({ initial: desktopPermissions }),
     planner: new Planner({ deterministic: new Map() }),
@@ -39,4 +58,7 @@ export const createDesktopRuntime = (): RuntimeApplication =>
       new Map(),
     ),
     verifier: new Verifier(),
+    persistence: persistence.checkpointStore,
+    dispose: persistence.close,
   });
+}

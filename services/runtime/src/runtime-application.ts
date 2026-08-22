@@ -33,6 +33,7 @@ export interface RuntimeApplicationOptions {
   readonly permissionStore?: PermissionGrantStore;
   readonly persistence?: TaskCheckpointPersistence & TaskRecoveryPersistence;
   readonly scheduler?: TaskScheduler;
+  readonly dispose?: () => Promise<void>;
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
 }
@@ -49,10 +50,12 @@ export class RuntimeApplication {
   public readonly rest: PublicApiServer;
   public readonly websocket: PublicWebSocketServer;
   private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
+  private readonly dispose: RuntimeApplicationOptions["dispose"];
 
   public constructor(options: RuntimeApplicationOptions) {
     const bus = new InMemoryCommunicationBus();
     this.optionsPersistence = options.persistence;
+    this.dispose = options.dispose;
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -96,8 +99,12 @@ export class RuntimeApplication {
   }
 
   public async stop(): Promise<void> {
-    await this.websocket.stop();
-    await this.rest.stop();
+    try {
+      await this.websocket.stop();
+      await this.rest.stop();
+    } finally {
+      await this.dispose?.();
+    }
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {

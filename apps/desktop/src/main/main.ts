@@ -88,12 +88,15 @@ const startGateway = async (): Promise<void> => {
     role: "server",
   });
   const gateway = new ApiGateway(gatewayBus);
-  runtimeApplication = createDesktopRuntime();
+  runtimeApplication = await createDesktopRuntime({
+    userDataPath: app.getPath("userData"),
+    migrationsPath: join(app.getAppPath(), "dist", "migrations"),
+  });
   await runtimeApplication.start();
   gateway.register("task.submit", async (data) => {
     const payload = data as { readonly goal?: string };
     if (!payload.goal) throw new Error("Task goal is required.");
-    const result = runtimeApplication?.coordinator.submit({ goal: payload.goal });
+    const result = await runtimeApplication?.coordinator.submitDurable({ goal: payload.goal });
     if (!result?.ok) throw new Error(result?.error.message ?? "Task submission failed.");
     return result.value satisfies TaskSnapshot;
   });
