@@ -7,6 +7,7 @@ import {
 } from "./runtime-task-coordinator.js";
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore } from "./permission-grant-store.js";
+import type { TaskScheduler } from "./task-scheduler.js";
 import type { Executor, Planner, Verifier } from "./orchestration.js";
 import type { TaskRecord } from "./task-manager.js";
 import { WebhookManager } from "./webhook-manager.js";
@@ -31,6 +32,7 @@ export interface RuntimeApplicationOptions {
   readonly taskManager?: TaskManager;
   readonly permissionStore?: PermissionGrantStore;
   readonly persistence?: TaskCheckpointPersistence & TaskRecoveryPersistence;
+  readonly scheduler?: TaskScheduler;
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
 }
@@ -43,6 +45,7 @@ export class RuntimeApplication {
   public readonly events: CommunicationBusEventJournal;
   public readonly webhook: WebhookManager;
   public readonly coordinator: RuntimeTaskCoordinator;
+  public readonly scheduler: TaskScheduler | undefined;
   public readonly rest: PublicApiServer;
   public readonly websocket: PublicWebSocketServer;
   private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
@@ -64,6 +67,7 @@ export class RuntimeApplication {
       events: bus,
       ...(options.persistence === undefined ? {} : { persistence: options.persistence }),
     });
+    this.scheduler = options.scheduler;
     this.rest = new PublicApiServer(this.restOptions(options));
     this.websocket = new PublicWebSocketServer({
       tokenIssuer: this.tokenIssuer,
@@ -119,6 +123,10 @@ export class RuntimeApplication {
             ? await this.coordinator.submitDurable({ goal: input.goal })
             : this.coordinator.submit({ goal: input.goal });
           if (!result.ok) throw new Error(result.error.message);
+          if (this.scheduler) {
+            this.scheduler.enqueue(result.value.task_id, input.priority);
+            void this.scheduler.dispatch();
+          }
           return result.value;
         },
         getTask: async (taskId) => {

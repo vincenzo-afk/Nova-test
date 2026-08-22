@@ -35,7 +35,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 ### Core capabilities
 
 - Permission-first Electron desktop onboarding with local/cloud provider choice and a concrete demonstration task.
-- Planner, executor, verifier, task-manager, tool-registry, deterministic model routing, and resource-locking boundaries.
+- Planner, executor, verifier, task-manager, priority/concurrency task scheduler, tool-registry, deterministic model routing, and resource-locking boundaries.
 - Working, recent, and long-term memory persistence with SQLite and Prisma, workspace scoping, checksums, lineage, and schema-version controls.
 - Filesystem observation with explicit permission gates, canonicalized paths, batching, hashing, and event delivery.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
@@ -151,9 +151,10 @@ The renderer exposes the task submission boundary through the preload API. A des
 
 ### Work with the runtime services
 
-Runtime services are exported from their workspace package where a public package entry exists. Direct service tests are the authoritative executable examples for service contracts. For example, the distributed scheduler is exercised by:
+Runtime services are exported from their workspace package where a public package entry exists. Direct service tests are the authoritative executable examples for service contracts. The local `TaskScheduler` requires explicit concurrency and starvation-aging configuration, dispatches interactive/default/background work with FIFO tie-breaking, and delegates execution to the real runtime coordinator boundary. The distributed placement scheduler is exercised by:
 
 ```bash
+pnpm exec vitest run services/runtime/test/task-scheduler.test.ts
 pnpm exec vitest run services/runtime/test/distributed-scheduler.test.ts
 ```
 

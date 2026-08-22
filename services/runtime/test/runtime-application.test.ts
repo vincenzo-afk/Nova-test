@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ok } from "@nova/shared";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
+import { TaskScheduler } from "../src/task-scheduler.js";
 
 const configuration = {
   schema_version: "1.0.0" as const,
@@ -60,6 +61,44 @@ describe("RuntimeApplication", () => {
     expect(await listed.json()).toMatchObject({ items: [task] });
     expect(config.status).toBe(200);
     expect(await config.json()).toEqual(configuration);
+  });
+
+  it("dispatches submitted REST tasks through the injected local scheduler", async () => {
+    const started: string[] = [];
+    const scheduler = new TaskScheduler(
+      {
+        execute: async (taskId) => {
+          started.push(taskId);
+          return ok(undefined);
+        },
+      },
+      { maxConcurrent: 1, starvationThresholdMs: 60_000 },
+    );
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      scheduler,
+    });
+    applications.push(application);
+    await application.start();
+    const token = application.issueToken(["task.submit", "task.read"]);
+
+    const submitted = await fetch(`${application.restUrl()}/v1/tasks`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ goal: "schedule me", priority: "background" }),
+    });
+    const task = (await submitted.json()) as { task_id: string };
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(submitted.status).toBe(202);
+    expect(started).toEqual([task.task_id]);
+    expect(scheduler.activeCount()).toBe(0);
   });
 
   it("recovers persisted in-flight tasks before starting its listeners and durably acknowledges submission", async () => {
