@@ -131,6 +131,22 @@ updated grant:
 A permission update takes effect immediately and a source that is not present
 in the current grant set returns a typed not-found response.
 
+## External event subscription (REST `POST /events/subscribe`)
+
+The registration request is backed by the local `WebhookManager`:
+
+```json
+{
+  "url": "https://example.test/nova-events",
+  "topics": ["task.progress", "system.status"]
+}
+```
+
+The response contains the generated registration identifier, the normalized
+topic set, delivery health, failure count, and the per-registration secret
+needed by the receiving endpoint to verify HMAC signatures. The secret is
+returned at registration time so it can be stored by the caller.
+
 ## Configuration (REST `GET /config`, `PATCH /config`)
 
 `GET /config` returns the complete versioned `NovaConfiguration` snapshot.

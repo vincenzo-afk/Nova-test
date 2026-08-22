@@ -11,7 +11,7 @@ connection.
 
 ## Scope
 
-Webhook-style external event delivery. The event *sources* being
+Webhook-style external event delivery. The event _sources_ being
 surfaced here are the same underlying task/system events described
 elsewhere; this document covers the delivery mechanism for consumers
 preferring callbacks over an open connection.
@@ -20,8 +20,9 @@ preferring callbacks over an open connection.
 
 An external API consumer registers a callback URL and a set of topics
 (mirroring the WebSocket API's subscribable topics in `websocket.md`) via
-the REST API (`rest-api.md`). NOVA delivers matching events as HTTP POST
-requests to that URL.
+`POST /v1/events/subscribe` in the REST API (`rest-api.md`), using the
+`{ "url": "https://…", "topics": ["topic.name"] }` request shape. NOVA
+delivers matching events as HTTP POST requests to that URL.
 
 ## Delivery guarantees
 

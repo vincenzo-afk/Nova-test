@@ -91,6 +91,10 @@ export interface ConfigurationUpdateInput {
   readonly section: ConfigurationSection;
   readonly value: unknown;
 }
+export interface WebhookSubscriptionInput {
+  readonly url: string;
+  readonly topics: readonly string[];
+}
 
 export interface PublicApiHandlers {
   readonly submitTask: (input: TaskSubmissionInput, correlationId: string) => Promise<unknown>;
@@ -115,6 +119,10 @@ export interface PublicApiHandlers {
   readonly getConfig?: (correlationId: string) => Promise<unknown>;
   readonly updateConfig?: (
     input: ConfigurationUpdateInput,
+    correlationId: string,
+  ) => Promise<unknown>;
+  readonly registerWebhook?: (
+    input: WebhookSubscriptionInput,
     correlationId: string,
   ) => Promise<unknown>;
   readonly listTools?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
@@ -270,6 +278,29 @@ export class PublicApiServer {
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "Graph query failed.";
         this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/events/subscribe") {
+      if (!this.requireScope(principal, "network.external", response)) return;
+      if (!this.options.handlers.registerWebhook) {
+        this.send(response, 501, {
+          error: {
+            code: "NOVA-EVT002",
+            message: "Webhook-registration handler is not configured.",
+          },
+        });
+        return;
+      }
+      try {
+        const input = await this.readWebhookSubscription(request);
+        const result = await this.options.handlers.registerWebhook(input, correlationId);
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 201, result);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Webhook registration failed.";
+        this.send(response, 400, { error: { code: "NOVA-EVT002", message } });
       }
       return;
     }
@@ -574,6 +605,28 @@ export class PublicApiServer {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
       ? candidate
       : undefined;
+  }
+
+  private async readWebhookSubscription(
+    request: IncomingMessage,
+  ): Promise<WebhookSubscriptionInput> {
+    const value = await this.readJsonBody(request);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Webhook URL must use http or https and topics must be non-empty.");
+    }
+    const body = value as Record<string, unknown>;
+    const url = body.url;
+    const topics = body.topics;
+    if (
+      typeof url !== "string" ||
+      !/^https?:\/\//i.test(url) ||
+      !Array.isArray(topics) ||
+      topics.length === 0 ||
+      topics.some((topic) => typeof topic !== "string" || topic.length === 0)
+    ) {
+      throw new Error("Webhook URL must use http or https and topics must be non-empty.");
+    }
+    return { url, topics };
   }
 
   private async readConfigurationUpdate(
