@@ -9,7 +9,7 @@ All notable changes to Nova are documented in this file.
 - TypeScript monorepo foundations for shared contracts, runtime services, memory, observers, state, and Electron desktop surfaces.
 - Planner, executor, verifier, task management, tools, model routing, workflows, plugins, providers, credentials, diagnostics, backup, restore, and operational recovery boundaries.
 - Cross-device pairing, sync, logical clocks, distributed Full Peer task scheduling, voice wake-claim coordination, channels, multi-agent coordination, and incident lifecycle management.
-- Named-pipe CommunicationBus, API Gateway, authenticated local REST task submission/status/list/cancel and memory-search endpoints with cursor pagination, signed webhook delivery with retry and health handling, secure Electron preload bridge, guided onboarding, performance-budget evaluation, integration tests, simulations, chaos tests, filesystem E2E tests, and documentation-link verification.
+- Named-pipe CommunicationBus, API Gateway, authenticated local REST task submission/status/list/cancel and memory-search endpoints with cursor pagination, authenticated REST tool listing and plugin-tool registration with independent scopes, signed webhook delivery with retry and health handling, secure Electron preload bridge, guided onboarding, performance-budget evaluation, integration tests, simulations, chaos tests, filesystem E2E tests, and documentation-link verification.
 - Production repository documentation, contribution infrastructure, security policy, issue forms, pull-request guidance, and CI workflow.
 
 ### Verification

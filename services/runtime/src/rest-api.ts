@@ -4,6 +4,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 export type ApiScope =
   | "memory.read"
   | "memory.write"
+  | "tools.read"
+  | "tools.register"
   | "files.read"
   | "files.write"
   | "tools.invoke:read_only"
@@ -69,6 +71,11 @@ export interface PublicApiHandlers {
   readonly listTasks?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
   readonly cancelTask?: (taskId: string, correlationId: string) => Promise<unknown | undefined>;
   readonly search?: (input: SearchInput, correlationId: string) => Promise<unknown>;
+  readonly listTools?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
+  readonly registerTool?: (
+    tool: Record<string, unknown>,
+    correlationId: string,
+  ) => Promise<unknown>;
 }
 
 export interface PublicApiServerOptions {
@@ -173,6 +180,42 @@ export class PublicApiServer {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/v1/tools") {
+      if (!this.requireScope(principal, "tools.read", response)) return;
+      if (!this.options.handlers.listTools) {
+        this.send(response, 501, {
+          error: { code: "NOVA-TL004", message: "Tool-list handler is not configured." },
+        });
+        return;
+      }
+      await this.listTools(url, correlationId, response);
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/v1/tools/register") {
+      if (!this.requireScope(principal, "tools.register", response)) return;
+      if (!this.options.handlers.registerTool) {
+        this.send(response, 501, {
+          error: { code: "NOVA-TL004", message: "Tool-registration handler is not configured." },
+        });
+        return;
+      }
+      try {
+        const value = await this.readJsonBody(request);
+        if (!value || typeof value !== "object" || Array.isArray(value))
+          throw new Error("Tool registration must be a JSON object.");
+        const result = await this.options.handlers.registerTool(
+          value as Record<string, unknown>,
+          correlationId,
+        );
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 201, result);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Tool registration failed.";
+        this.send(response, 400, { error: { code: "NOVA-TL002", message } });
+      }
+      return;
+    }
+
     const taskMatch = url.pathname.match(/^\/v1\/tasks\/([^/]+)(?:\/cancel)?$/);
     const taskId = taskMatch?.[1] ? decodeURIComponent(taskMatch[1]) : undefined;
     const isCancel = taskId !== undefined && url.pathname.endsWith("/cancel");
@@ -249,6 +292,41 @@ export class PublicApiServer {
     const cancelled = { ...(task as Record<string, unknown>), state: "cancelled" };
     this.submittedTasks.set(taskId, cancelled);
     return cancelled;
+  }
+
+  private async listTools(
+    url: URL,
+    correlationId: string,
+    response: ServerResponse,
+  ): Promise<void> {
+    const limitValue = Number(url.searchParams.get("limit") ?? "50");
+    const limit =
+      Number.isFinite(limitValue) && limitValue > 0 ? Math.min(200, Math.floor(limitValue)) : 50;
+    const cursor = url.searchParams.get("cursor") ?? undefined;
+    const offset = this.decodeCursor(cursor);
+    if (offset === undefined) {
+      this.send(response, 400, { error: { code: "NOVA-TL003", message: "cursor is invalid." } });
+      return;
+    }
+    const handler = this.options.handlers.listTools;
+    if (!handler) {
+      this.send(response, 501, {
+        error: { code: "NOVA-TL004", message: "Tool-list handler is not configured." },
+      });
+      return;
+    }
+    const items = await handler(
+      cursor === undefined ? { limit } : { cursor, limit },
+      correlationId,
+    );
+    const page = items.slice(offset, offset + limit);
+    const hasMore = offset + limit < items.length;
+    response.setHeader("x-correlation-id", correlationId);
+    this.send(response, 200, {
+      items: page,
+      next_cursor: hasMore ? this.encodeCursor(offset + limit) : null,
+      has_more: hasMore,
+    });
   }
 
   private async listTasks(
