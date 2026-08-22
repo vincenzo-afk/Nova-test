@@ -111,6 +111,13 @@ const startGateway = async (): Promise<void> => {
     if (!result?.ok) throw new Error(result?.error.message ?? "Task submission failed.");
     return result.value satisfies TaskSnapshot;
   });
+  gateway.register("task.get", async (data) => {
+    const payload = data as { readonly task_id?: string };
+    if (!payload.task_id) throw new Error("Task ID is required.");
+    const result = runtimeApplication?.tasks.get(payload.task_id);
+    if (!result?.ok) throw new Error(result?.error.message ?? "Task lookup failed.");
+    return result.value;
+  });
   gateway.register("permissions.get", async () =>
     permissions.map((permission) => ({ ...permission })),
   );

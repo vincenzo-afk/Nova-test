@@ -112,6 +112,25 @@ export const App = () => {
     if (firstRun) setView(initialView(true));
   }, [firstRun]);
 
+  useEffect(() => {
+    if (!lastTask) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const current = await window.nova.getTask(lastTask.task_id);
+        if (active) setLastTask(current);
+      } catch {
+        // The task monitor retains its last authoritative snapshot while the runtime is unavailable.
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 1_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [lastTask?.task_id]);
+
   const submitTask = async () => {
     const trimmed = goal.trim();
     if (!trimmed) return;
@@ -453,8 +472,8 @@ const TaskMonitor = ({ task }: { task: TaskSnapshot | null }) => (
             <span className="progress-fill" />
           </div>
           <p className="muted">
-            Created through the internal API boundary. Planner, Executor, and Verifier updates will
-            appear here.
+            Runtime state is refreshed from the authoritative TaskManager through the Electron IPC
+            boundary.
           </p>
         </>
       ) : (

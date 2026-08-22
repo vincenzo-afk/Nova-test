@@ -21,7 +21,7 @@ describe("Electron preload boundary", () => {
     expect(exposeInMainWorld).toHaveBeenCalledOnce();
     const [name, api] = exposeInMainWorld.mock.calls[0] as [string, Record<string, unknown>];
     expect(name).toBe("nova");
-    expect(Object.keys(api)).toEqual(["submitTask", "getPermissions", "setPermission"]);
+    expect(Object.keys(api)).toEqual(["submitTask", "getTask", "getPermissions", "setPermission"]);
   });
 
   it("forwards task and permission calls through IPC", async () => {
@@ -30,18 +30,21 @@ describe("Electron preload boundary", () => {
       string,
       {
         submitTask: (goal: string) => unknown;
+        getTask: (taskId: string) => unknown;
         getPermissions: () => unknown;
         setPermission: (source: string, granted: boolean) => unknown;
       },
     ];
 
     api.submitTask("read README");
+    api.getTask("task-1");
     api.getPermissions();
     api.setPermission("filesystem", true);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
-    expect(invoke).toHaveBeenNthCalledWith(2, "nova:permissions:get");
-    expect(invoke).toHaveBeenNthCalledWith(3, "nova:permissions:set", {
+    expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
+    expect(invoke).toHaveBeenNthCalledWith(3, "nova:permissions:get");
+    expect(invoke).toHaveBeenNthCalledWith(4, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
     });
