@@ -173,6 +173,8 @@ The runtime exports `PublicApiServer`, which binds to a configurable local HTTP 
 | `POST`  | `/v1/graph/query`            | `memory.read`    | Queries a graph node with explicit direction, optional ontology edge type, and bounded traversal depth from 1 to 3.                       |
 | `GET`   | `/v1/permissions`            | `config.read`    | Returns the current `{ source, granted }` permission grants.                                                                              |
 | `PATCH` | `/v1/permissions/{grant_id}` | `config.write`   | Treats `grant_id` as the permission source and updates its boolean `granted` value.                                                       |
+| `GET`   | `/v1/config`                 | `config.read`    | Returns the complete versioned `NovaConfiguration` snapshot.                                                                              |
+| `PATCH` | `/v1/config`                 | `config.write`   | Atomically updates one configuration section using `{ section, value }` and returns the updated snapshot.                                 |
 | `GET`   | `/v1/tasks/{task_id}`        | `task.read`      | Returns the current task snapshot or a typed not-found response.                                                                          |
 | `GET`   | `/v1/tasks`                  | `task.read`      | Returns cursor-paginated task snapshots with `next_cursor` and `has_more`.                                                                |
 | `POST`  | `/v1/tasks/{task_id}/cancel` | `task.cancel`    | Requests cancellation and returns the updated snapshot with HTTP `202`.                                                                   |
@@ -256,7 +258,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, cursor-paginated tool listing, and plugin-tool registration. The remaining documented configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
+- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, configuration listing and section-level updates, cursor-paginated tool listing, and plugin-tool registration. The remaining documented webhook-registration and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 

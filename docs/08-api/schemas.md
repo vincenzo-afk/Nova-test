@@ -131,6 +131,24 @@ updated grant:
 A permission update takes effect immediately and a source that is not present
 in the current grant set returns a typed not-found response.
 
+## Configuration (REST `GET /config`, `PATCH /config`)
+
+`GET /config` returns the complete versioned `NovaConfiguration` snapshot.
+`PATCH /config` updates one configuration section atomically:
+
+```json
+{
+  "section": "voice",
+  "value": { "enabled": true }
+}
+```
+
+The `section` must be one of `capabilities`, `devices`, `channels`,
+`plugins`, `mcp_servers`, `routing_policies`, `permissions`, `voice`, or
+`personalization`. The `value` is validated by the same section-level
+configuration boundary used by the local runtime store, and the response is
+the updated full configuration snapshot.
+
 ## WebSocket subscription message
 
 ```json

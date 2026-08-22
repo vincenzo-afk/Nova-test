@@ -77,6 +77,20 @@ export interface PermissionGrant {
 export interface PermissionPatch {
   readonly granted: boolean;
 }
+export type ConfigurationSection =
+  | "capabilities"
+  | "devices"
+  | "channels"
+  | "plugins"
+  | "mcp_servers"
+  | "routing_policies"
+  | "permissions"
+  | "voice"
+  | "personalization";
+export interface ConfigurationUpdateInput {
+  readonly section: ConfigurationSection;
+  readonly value: unknown;
+}
 
 export interface PublicApiHandlers {
   readonly submitTask: (input: TaskSubmissionInput, correlationId: string) => Promise<unknown>;
@@ -98,6 +112,11 @@ export interface PublicApiHandlers {
     patch: PermissionPatch,
     correlationId: string,
   ) => Promise<PermissionGrant | undefined>;
+  readonly getConfig?: (correlationId: string) => Promise<unknown>;
+  readonly updateConfig?: (
+    input: ConfigurationUpdateInput,
+    correlationId: string,
+  ) => Promise<unknown>;
   readonly listTools?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
   readonly registerTool?: (
     tool: Record<string, unknown>,
@@ -251,6 +270,43 @@ export class PublicApiServer {
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "Graph query failed.";
         this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      }
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/config") {
+      if (!this.requireScope(principal, "config.read", response)) return;
+      if (!this.options.handlers.getConfig) {
+        this.send(response, 501, {
+          error: { code: "NOVA-CFG001", message: "Configuration-read handler is not configured." },
+        });
+        return;
+      }
+      const result = await this.options.handlers.getConfig(correlationId);
+      response.setHeader("x-correlation-id", correlationId);
+      this.send(response, 200, result);
+      return;
+    }
+
+    if (request.method === "PATCH" && url.pathname === "/v1/config") {
+      if (!this.requireScope(principal, "config.write", response)) return;
+      if (!this.options.handlers.updateConfig) {
+        this.send(response, 501, {
+          error: {
+            code: "NOVA-CFG001",
+            message: "Configuration-update handler is not configured.",
+          },
+        });
+        return;
+      }
+      try {
+        const input = await this.readConfigurationUpdate(request);
+        const result = await this.options.handlers.updateConfig(input, correlationId);
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 200, result);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Configuration update failed.";
+        this.send(response, 400, { error: { code: "NOVA-CFG001", message } });
       }
       return;
     }
@@ -518,6 +574,34 @@ export class PublicApiServer {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
       ? candidate
       : undefined;
+  }
+
+  private async readConfigurationUpdate(
+    request: IncomingMessage,
+  ): Promise<ConfigurationUpdateInput> {
+    const value = await this.readJsonBody(request);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Configuration patch must contain section and value.");
+    }
+    const body = value as Record<string, unknown>;
+    const section = body.section;
+    if (
+      section !== "capabilities" &&
+      section !== "devices" &&
+      section !== "channels" &&
+      section !== "plugins" &&
+      section !== "mcp_servers" &&
+      section !== "routing_policies" &&
+      section !== "permissions" &&
+      section !== "voice" &&
+      section !== "personalization"
+    ) {
+      throw new Error("Configuration section is invalid.");
+    }
+    if (!("value" in body)) {
+      throw new Error("Configuration patch must contain section and value.");
+    }
+    return { section, value: body.value };
   }
 
   private async readPermissionPatch(request: IncomingMessage): Promise<PermissionPatch> {
