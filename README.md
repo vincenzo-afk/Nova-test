@@ -159,7 +159,17 @@ pnpm exec vitest run services/runtime/test/distributed-scheduler.test.ts
 
 ## API and IPC Reference
 
-Nova does not currently expose a public REST or WebSocket server in this repository. The implemented first-party boundary is internal IPC.
+Nova exposes a local authenticated REST task-submission boundary and an internal IPC boundary. The full REST endpoint catalog and WebSocket streaming surface remain staged for subsequent runtime integrations.
+
+### Local REST API
+
+The runtime exports `PublicApiServer`, which binds to a configurable local HTTP address and currently implements `POST /v1/tasks`. External consumers authenticate with an ephemeral locally issued bearer token scoped to the current OS-user session.
+
+| Method | Path        | Required scope | Behavior                                                                                                                                  |
+| ------ | ----------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/v1/tasks` | `task.submit`  | Validates the task body, propagates `x-correlation-id` or generates one, and returns the handler’s initial task snapshot with HTTP `202`. |
+
+The server also enforces a configurable per-token request limit, returns `401` for missing or invalid local tokens, `403` for insufficient scopes, `429` for rate-limit violations, and emits `x-nova-schema-version: 1.0.0` on responses.
 
 ### Electron preload API
 
@@ -236,7 +246,8 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- External REST, WebSocket, hosted sync, and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
+- The REST server currently implements task submission only. The remaining documented task status, search, graph, tools, permissions, configuration, webhook, and WebSocket operations require handlers backed by their respective runtime services.
+- Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 
 ## Testing
