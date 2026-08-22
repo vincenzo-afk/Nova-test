@@ -165,17 +165,19 @@ Nova exposes a local authenticated REST task-lifecycle boundary and an internal 
 
 The runtime exports `PublicApiServer`, which binds to a configurable local HTTP address and implements the task lifecycle, memory-search, and tool-registration routes below. External consumers authenticate with an ephemeral locally issued bearer token scoped to the current OS-user session.
 
-| Method | Path                         | Required scope   | Behavior                                                                                                                                  |
-| ------ | ---------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/v1/tasks`                  | `task.submit`    | Validates the task body, propagates `x-correlation-id` or generates one, and returns the handler’s initial task snapshot with HTTP `202`. |
-| `POST` | `/v1/search`                 | `memory.read`    | Validates `query`, optional project/entity filters, and ISO time ranges before routing to the Retrieval Fusion handler.                   |
-| `GET`  | `/v1/memory/{record_id}`     | `memory.read`    | Returns a single memory record with its documented provenance lineage, or a typed not-found response.                                     |
-| `POST` | `/v1/graph/query`            | `memory.read`    | Queries a graph node with explicit direction, optional ontology edge type, and bounded traversal depth from 1 to 3.                       |
-| `GET`  | `/v1/tasks/{task_id}`        | `task.read`      | Returns the current task snapshot or a typed not-found response.                                                                          |
-| `GET`  | `/v1/tasks`                  | `task.read`      | Returns cursor-paginated task snapshots with `next_cursor` and `has_more`.                                                                |
-| `POST` | `/v1/tasks/{task_id}/cancel` | `task.cancel`    | Requests cancellation and returns the updated snapshot with HTTP `202`.                                                                   |
-| `GET`  | `/v1/tools`                  | `tools.read`     | Returns cursor-paginated registered-tool metadata with `next_cursor` and `has_more`.                                                      |
-| `POST` | `/v1/tools/register`         | `tools.register` | Registers a plugin tool through the same trust and validation boundary as built-in tools; returns HTTP `201`.                             |
+| Method  | Path                         | Required scope   | Behavior                                                                                                                                  |
+| ------- | ---------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`  | `/v1/tasks`                  | `task.submit`    | Validates the task body, propagates `x-correlation-id` or generates one, and returns the handler’s initial task snapshot with HTTP `202`. |
+| `POST`  | `/v1/search`                 | `memory.read`    | Validates `query`, optional project/entity filters, and ISO time ranges before routing to the Retrieval Fusion handler.                   |
+| `GET`   | `/v1/memory/{record_id}`     | `memory.read`    | Returns a single memory record with its documented provenance lineage, or a typed not-found response.                                     |
+| `POST`  | `/v1/graph/query`            | `memory.read`    | Queries a graph node with explicit direction, optional ontology edge type, and bounded traversal depth from 1 to 3.                       |
+| `GET`   | `/v1/permissions`            | `config.read`    | Returns the current `{ source, granted }` permission grants.                                                                              |
+| `PATCH` | `/v1/permissions/{grant_id}` | `config.write`   | Treats `grant_id` as the permission source and updates its boolean `granted` value.                                                       |
+| `GET`   | `/v1/tasks/{task_id}`        | `task.read`      | Returns the current task snapshot or a typed not-found response.                                                                          |
+| `GET`   | `/v1/tasks`                  | `task.read`      | Returns cursor-paginated task snapshots with `next_cursor` and `has_more`.                                                                |
+| `POST`  | `/v1/tasks/{task_id}/cancel` | `task.cancel`    | Requests cancellation and returns the updated snapshot with HTTP `202`.                                                                   |
+| `GET`   | `/v1/tools`                  | `tools.read`     | Returns cursor-paginated registered-tool metadata with `next_cursor` and `has_more`.                                                      |
+| `POST`  | `/v1/tools/register`         | `tools.register` | Registers a plugin tool through the same trust and validation boundary as built-in tools; returns HTTP `201`.                             |
 
 The server uses the documented opaque cursor scheme with a default limit of 50 and a maximum of 200, clamps oversized limits, enforces a configurable per-token request limit, returns `401` for missing or invalid local tokens, `403` for insufficient scopes, `429` for rate-limit violations, and emits `x-nova-schema-version: 1.0.0` on responses.
 
@@ -254,7 +256,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, cursor-paginated tool listing, and plugin-tool registration. The remaining documented permissions, configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
+- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, cursor-paginated tool listing, and plugin-tool registration. The remaining documented configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 

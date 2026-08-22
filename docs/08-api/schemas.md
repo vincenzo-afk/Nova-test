@@ -110,6 +110,27 @@ The response preserves the record's provenance relationships as defined by
 `docs/04-memory/memory-lineage.md`; additional record metadata is returned by
 the backing memory handler when available.
 
+## Permissions (REST `GET /permissions`, `PATCH /permissions/{grant_id}`)
+
+The REST permission center uses the existing permission source as `grant_id`:
+
+```json
+[
+  { "source": "filesystem", "granted": false },
+  { "source": "applications", "granted": true }
+]
+```
+
+`PATCH /permissions/{grant_id}` accepts the following body and returns the
+updated grant:
+
+```json
+{ "granted": true }
+```
+
+A permission update takes effect immediately and a source that is not present
+in the current grant set returns a typed not-found response.
+
 ## WebSocket subscription message
 
 ```json

@@ -70,6 +70,13 @@ export interface GraphQueryInput {
   readonly edge_type?: string;
   readonly depth: number;
 }
+export interface PermissionGrant {
+  readonly source: string;
+  readonly granted: boolean;
+}
+export interface PermissionPatch {
+  readonly granted: boolean;
+}
 
 export interface PublicApiHandlers {
   readonly submitTask: (input: TaskSubmissionInput, correlationId: string) => Promise<unknown>;
@@ -85,6 +92,12 @@ export interface PublicApiHandlers {
     input: GraphQueryInput,
     correlationId: string,
   ) => Promise<unknown | undefined>;
+  readonly listPermissions?: (correlationId: string) => Promise<readonly PermissionGrant[]>;
+  readonly updatePermission?: (
+    grantId: string,
+    patch: PermissionPatch,
+    correlationId: string,
+  ) => Promise<PermissionGrant | undefined>;
   readonly listTools?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
   readonly registerTool?: (
     tool: Record<string, unknown>,
@@ -238,6 +251,48 @@ export class PublicApiServer {
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "Graph query failed.";
         this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      }
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/permissions") {
+      if (!this.requireScope(principal, "config.read", response)) return;
+      if (!this.options.handlers.listPermissions) {
+        this.send(response, 501, {
+          error: { code: "NOVA-CFG001", message: "Permission-list handler is not configured." },
+        });
+        return;
+      }
+      const result = await this.options.handlers.listPermissions(correlationId);
+      response.setHeader("x-correlation-id", correlationId);
+      this.send(response, 200, result);
+      return;
+    }
+
+    const permissionMatch = url.pathname.match(/^\/v1\/permissions\/([^/]+)$/);
+    if (request.method === "PATCH" && permissionMatch?.[1]) {
+      if (!this.requireScope(principal, "config.write", response)) return;
+      if (!this.options.handlers.updatePermission) {
+        this.send(response, 501, {
+          error: { code: "NOVA-CFG001", message: "Permission-update handler is not configured." },
+        });
+        return;
+      }
+      try {
+        const patch = await this.readPermissionPatch(request);
+        const grantId = decodeURIComponent(permissionMatch[1]);
+        const result = await this.options.handlers.updatePermission(grantId, patch, correlationId);
+        if (result === undefined) {
+          this.send(response, 404, {
+            error: { code: "NOVA-CFG001", message: "Permission grant not found." },
+          });
+        } else {
+          response.setHeader("x-correlation-id", correlationId);
+          this.send(response, 200, result);
+        }
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Permission update failed.";
+        this.send(response, 400, { error: { code: "NOVA-CFG001", message } });
       }
       return;
     }
@@ -463,6 +518,18 @@ export class PublicApiServer {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
       ? candidate
       : undefined;
+  }
+
+  private async readPermissionPatch(request: IncomingMessage): Promise<PermissionPatch> {
+    const value = await this.readJsonBody(request);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Permission patch must contain a boolean granted field.");
+    }
+    const granted = (value as Record<string, unknown>).granted;
+    if (typeof granted !== "boolean") {
+      throw new Error("Permission patch must contain a boolean granted field.");
+    }
+    return { granted };
   }
 
   private async readGraphQueryInput(request: IncomingMessage): Promise<GraphQueryInput> {
