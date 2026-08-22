@@ -34,20 +34,21 @@ field and `plugin-permissions.md`'s install-time review — a plugin
 manifest, external API token, or agent-instance allowlist entry is
 always one or more of these, never a free-text string invented ad hoc:
 
-| Scope | Grants |
-|---|---|
-| `memory.read` | Query Memory/Knowledge Graph via Search or direct entity lookup |
-| `memory.write` | Write a new memory record or Knowledge Graph node/edge |
-| `files.read` | Read file content within the caller's already-granted filesystem folder scope (`permissions.md`'s Path containment enforcement) |
-| `files.write` | Write/modify/delete a file within the caller's already-granted filesystem folder scope |
-| `tools.invoke:read_only` | Invoke a tool declared at the `read_only` risk tier (`docs/10-security/permissions.md`'s Execution risk tiers table) |
-| `tools.invoke:reversible_write` | Invoke a tool declared at the `reversible_write` risk tier |
+| Scope                                   | Grants                                                                                                                                                               |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory.read`                           | Query Memory/Knowledge Graph via Search or direct entity lookup                                                                                                      |
+| `memory.write`                          | Write a new memory record or Knowledge Graph node/edge                                                                                                               |
+| `files.read`                            | Read file content within the caller's already-granted filesystem folder scope (`permissions.md`'s Path containment enforcement)                                      |
+| `files.write`                           | Write/modify/delete a file within the caller's already-granted filesystem folder scope                                                                               |
+| `tools.invoke:read_only`                | Invoke a tool declared at the `read_only` risk tier (`docs/10-security/permissions.md`'s Execution risk tiers table)                                                 |
+| `tools.invoke:reversible_write`         | Invoke a tool declared at the `reversible_write` risk tier                                                                                                           |
 | `tools.invoke:destructive_irreversible` | Invoke a tool declared at the `destructive_irreversible` risk tier — granting this scope does not itself bypass the mandatory confirmation that tier always requires |
-| `task.submit` | Submit a new task to the Task Manager |
-| `task.cancel` | Cancel an in-flight task |
-| `config.read` | Read non-secret configuration values |
-| `config.write` | Modify configuration values, subject to `docs/14-development/configuration-schema.md`'s validation |
-| `network.external` | Make an outbound network call (a provider call, an MCP server connection, a webhook) |
+| `task.submit`                           | Submit a new task to the Task Manager                                                                                                                                |
+| `task.read`                             | Query task status and list tasks submitted to the current NOVA instance                                                                                              |
+| `task.cancel`                           | Cancel an in-flight task                                                                                                                                             |
+| `config.read`                           | Read non-secret configuration values                                                                                                                                 |
+| `config.write`                          | Modify configuration values, subject to `docs/14-development/configuration-schema.md`'s validation                                                                   |
+| `network.external`                      | Make an outbound network call (a provider call, an MCP server connection, a webhook)                                                                                 |
 
 A scope always names a capability, never a specific resource instance —
 narrowing to a specific folder, project, or provider is the separate

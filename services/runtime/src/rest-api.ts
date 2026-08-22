@@ -10,6 +10,7 @@ export type ApiScope =
   | "tools.invoke:reversible_write"
   | "tools.invoke:destructive_irreversible"
   | "task.submit"
+  | "task.read"
   | "task.cancel"
   | "config.read"
   | "config.write"
@@ -48,8 +49,16 @@ export interface TaskSubmissionInput {
   readonly priority: "interactive" | "background";
 }
 
+export interface TaskListQuery {
+  readonly cursor?: string;
+  readonly limit: number;
+}
+
 export interface PublicApiHandlers {
   readonly submitTask: (input: TaskSubmissionInput, correlationId: string) => Promise<unknown>;
+  readonly getTask?: (taskId: string, correlationId: string) => Promise<unknown | undefined>;
+  readonly listTasks?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
+  readonly cancelTask?: (taskId: string, correlationId: string) => Promise<unknown | undefined>;
 }
 
 export interface PublicApiServerOptions {
@@ -70,6 +79,7 @@ export class PublicApiServer {
   private readonly port: number;
   private readonly rateLimitPerMinute: number;
   private readonly rateWindows = new Map<string, RateWindow>();
+  private readonly submittedTasks = new Map<string, unknown>();
   private server: Server | undefined;
   private boundPort: number | undefined;
 
@@ -110,21 +120,18 @@ export class PublicApiServer {
   private async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     response.setHeader("content-type", "application/json; charset=utf-8");
     response.setHeader("x-nova-schema-version", "1.0.0");
-    if (request.method !== "POST" || request.url !== "/v1/tasks") {
-      this.send(response, 404, { error: { code: "NOVA-TL003", message: "Endpoint not found." } });
+    const url = new URL(request.url ?? "/", `http://${this.host}`);
+    const correlationId = this.correlationId(request.headers["x-correlation-id"]);
+    if (!correlationId) {
+      this.send(response, 400, {
+        error: { code: "NOVA-TL003", message: "x-correlation-id must be a UUID when supplied." },
+      });
       return;
     }
-
     const principal = this.authenticate(request.headers.authorization);
     if (!principal) {
       this.send(response, 401, {
         error: { code: "NOVA-SEC001", message: "A valid local bearer token is required." },
-      });
-      return;
-    }
-    if (!principal.scopes.includes("task.submit")) {
-      this.send(response, 403, {
-        error: { code: "NOVA-SEC001", message: "The token lacks the task.submit scope." },
       });
       return;
     }
@@ -136,21 +143,129 @@ export class PublicApiServer {
       return;
     }
 
-    const correlationId = this.correlationId(request.headers["x-correlation-id"]);
-    if (!correlationId) {
-      this.send(response, 400, {
-        error: { code: "NOVA-TL003", message: "x-correlation-id must be a UUID when supplied." },
-      });
+    const taskMatch = url.pathname.match(/^\/v1\/tasks\/([^/]+)(?:\/cancel)?$/);
+    const taskId = taskMatch?.[1] ? decodeURIComponent(taskMatch[1]) : undefined;
+    const isCancel = taskId !== undefined && url.pathname.endsWith("/cancel");
+    if (request.method === "POST" && url.pathname === "/v1/tasks") {
+      if (!this.requireScope(principal, "task.submit", response)) return;
+      try {
+        const input = await this.readTaskInput(request);
+        const result = await this.options.handlers.submitTask(input, correlationId);
+        this.rememberTask(result);
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 202, result);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Task request failed.";
+        this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      }
       return;
     }
+    if (request.method === "GET" && url.pathname === "/v1/tasks") {
+      if (!this.requireScope(principal, "task.read", response)) return;
+      await this.listTasks(url, correlationId, response);
+      return;
+    }
+    if (request.method === "GET" && taskId !== undefined && !isCancel) {
+      if (!this.requireScope(principal, "task.read", response)) return;
+      const result = this.options.handlers.getTask
+        ? await this.options.handlers.getTask(taskId, correlationId)
+        : this.submittedTasks.get(taskId);
+      if (result === undefined) {
+        this.send(response, 404, { error: { code: "NOVA-TL004", message: "Task not found." } });
+      } else {
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 200, result);
+      }
+      return;
+    }
+    if (request.method === "POST" && taskId !== undefined && isCancel) {
+      if (!this.requireScope(principal, "task.cancel", response)) return;
+      const result = this.options.handlers.cancelTask
+        ? await this.options.handlers.cancelTask(taskId, correlationId)
+        : this.cancelRememberedTask(taskId);
+      if (result === undefined) {
+        this.send(response, 404, { error: { code: "NOVA-TL004", message: "Task not found." } });
+      } else {
+        this.rememberTask(result);
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 202, result);
+      }
+      return;
+    }
+    this.send(response, 404, { error: { code: "NOVA-TL003", message: "Endpoint not found." } });
+  }
+
+  private requireScope(
+    principal: LocalApiPrincipal,
+    scope: ApiScope,
+    response: ServerResponse,
+  ): boolean {
+    if (principal.scopes.includes(scope)) return true;
+    this.send(response, 403, {
+      error: { code: "NOVA-SEC001", message: `The token lacks the ${scope} scope.` },
+    });
+    return false;
+  }
+
+  private rememberTask(result: unknown): void {
+    if (!result || typeof result !== "object") return;
+    const taskId = (result as Record<string, unknown>).task_id;
+    if (typeof taskId === "string" && taskId.length > 0) this.submittedTasks.set(taskId, result);
+  }
+
+  private cancelRememberedTask(taskId: string): unknown | undefined {
+    const task = this.submittedTasks.get(taskId);
+    if (!task || typeof task !== "object") return undefined;
+    const cancelled = { ...(task as Record<string, unknown>), state: "cancelled" };
+    this.submittedTasks.set(taskId, cancelled);
+    return cancelled;
+  }
+
+  private async listTasks(
+    url: URL,
+    correlationId: string,
+    response: ServerResponse,
+  ): Promise<void> {
+    const limitValue = Number(url.searchParams.get("limit") ?? "50");
+    const limit =
+      Number.isFinite(limitValue) && limitValue > 0 ? Math.min(200, Math.floor(limitValue)) : 50;
+    const cursor = url.searchParams.get("cursor") ?? undefined;
+    const offset = this.decodeCursor(cursor);
+    if (offset === undefined) {
+      this.send(response, 400, { error: { code: "NOVA-TL003", message: "cursor is invalid." } });
+      return;
+    }
+    const items = this.options.handlers.listTasks
+      ? await this.options.handlers.listTasks(
+          cursor === undefined ? { limit } : { cursor, limit },
+          correlationId,
+        )
+      : [...this.submittedTasks.values()];
+    const page = items.slice(offset, offset + limit);
+    const hasMore = offset + limit < items.length;
+    response.setHeader("x-correlation-id", correlationId);
+    this.send(response, 200, {
+      items: page,
+      next_cursor: hasMore ? this.encodeCursor(offset + limit) : null,
+      has_more: hasMore,
+    });
+  }
+
+  private encodeCursor(offset: number): string {
+    return Buffer.from(JSON.stringify({ offset }), "utf8").toString("base64url");
+  }
+
+  private decodeCursor(cursor: string | undefined): number | undefined {
+    if (cursor === undefined) return 0;
     try {
-      const input = await this.readTaskInput(request);
-      const result = await this.options.handlers.submitTask(input, correlationId);
-      response.setHeader("x-correlation-id", correlationId);
-      this.send(response, 202, result);
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Task request failed.";
-      this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      const parsed: unknown = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+      if (!parsed || typeof parsed !== "object") return undefined;
+      const offset = (parsed as Record<string, unknown>).offset;
+      return typeof offset === "number" && Number.isInteger(offset) && offset >= 0
+        ? offset
+        : undefined;
+    } catch {
+      return undefined;
     }
   }
 
