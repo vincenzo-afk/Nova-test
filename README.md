@@ -41,7 +41,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
 - Multi-agent coordination, authenticated network discovery, paired-device synchronization, distributed Full Peer task scheduling, and logical clocks.
 - Streaming-aware voice pipeline contracts, barge-in cancellation, and 150 ms multi-device wake-claim coordination.
-- Local IPC over named pipes, a UI-facing API Gateway, an authenticated REST task boundary, signed webhook delivery with retry/health handling, context-isolated Electron IPC, stable error codes, dead-letter recording, and release-blocking performance-budget evaluation.
+- Local IPC over named pipes, a UI-facing API Gateway, authenticated REST task and memory-search boundaries, signed webhook delivery with retry/health handling, context-isolated Electron IPC, stable error codes, dead-letter recording, and release-blocking performance-budget evaluation.
 
 ### Architecture overview
 
@@ -163,11 +163,12 @@ Nova exposes a local authenticated REST task-lifecycle boundary and an internal 
 
 ### Local REST API
 
-The runtime exports `PublicApiServer`, which binds to a configurable local HTTP address and implements the task lifecycle routes below. External consumers authenticate with an ephemeral locally issued bearer token scoped to the current OS-user session.
+The runtime exports `PublicApiServer`, which binds to a configurable local HTTP address and implements the task lifecycle and memory-search routes below. External consumers authenticate with an ephemeral locally issued bearer token scoped to the current OS-user session.
 
 | Method | Path                         | Required scope | Behavior                                                                                                                                  |
 | ------ | ---------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/v1/tasks`                  | `task.submit`  | Validates the task body, propagates `x-correlation-id` or generates one, and returns the handler’s initial task snapshot with HTTP `202`. |
+| `POST` | `/v1/search`                 | `memory.read`  | Validates `query`, optional project/entity filters, and ISO time ranges before routing to the Retrieval Fusion handler.                   |
 | `GET`  | `/v1/tasks/{task_id}`        | `task.read`    | Returns the current task snapshot or a typed not-found response.                                                                          |
 | `GET`  | `/v1/tasks`                  | `task.read`    | Returns cursor-paginated task snapshots with `next_cursor` and `has_more`.                                                                |
 | `POST` | `/v1/tasks/{task_id}/cancel` | `task.cancel`  | Requests cancellation and returns the updated snapshot with HTTP `202`.                                                                   |
@@ -249,7 +250,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, and task cancellation. The remaining documented search, graph, tools, permissions, configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
+- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, and memory search. The remaining documented graph, tools, permissions, configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 

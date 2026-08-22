@@ -54,11 +54,21 @@ export interface TaskListQuery {
   readonly limit: number;
 }
 
+export interface SearchInput {
+  readonly query: string;
+  readonly filters?: {
+    readonly project?: string;
+    readonly time_range?: { readonly start: string; readonly end: string };
+    readonly entity_type?: string;
+  };
+}
+
 export interface PublicApiHandlers {
   readonly submitTask: (input: TaskSubmissionInput, correlationId: string) => Promise<unknown>;
   readonly getTask?: (taskId: string, correlationId: string) => Promise<unknown | undefined>;
   readonly listTasks?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
   readonly cancelTask?: (taskId: string, correlationId: string) => Promise<unknown | undefined>;
+  readonly search?: (input: SearchInput, correlationId: string) => Promise<unknown>;
 }
 
 export interface PublicApiServerOptions {
@@ -140,6 +150,26 @@ export class PublicApiServer {
       this.send(response, 429, {
         error: { code: "NOVA-EVT001", message: "API rate limit exceeded." },
       });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/search") {
+      if (!this.requireScope(principal, "memory.read", response)) return;
+      if (!this.options.handlers.search) {
+        this.send(response, 501, {
+          error: { code: "NOVA-TL004", message: "Search handler is not configured." },
+        });
+        return;
+      }
+      try {
+        const input = await this.readSearchInput(request);
+        const result = await this.options.handlers.search(input, correlationId);
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 200, result);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Search request failed.";
+        this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      }
       return;
     }
 
@@ -295,16 +325,43 @@ export class PublicApiServer {
       : undefined;
   }
 
-  private async readTaskInput(request: IncomingMessage): Promise<TaskSubmissionInput> {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const chunk of request) {
-      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      size += buffer.byteLength;
-      if (size > 1_000_000) throw new Error("Request body exceeds the 1 MB limit.");
-      chunks.push(buffer);
+  private async readSearchInput(request: IncomingMessage): Promise<SearchInput> {
+    const value = await this.readJsonBody(request);
+    if (!value || typeof value !== "object") throw new Error("Request body must be a JSON object.");
+    const candidate = value as Record<string, unknown>;
+    if (typeof candidate.query !== "string" || candidate.query.trim().length === 0)
+      throw new Error("query must be a non-empty string.");
+    if (candidate.filters === undefined) return { query: candidate.query };
+    if (!candidate.filters || typeof candidate.filters !== "object")
+      throw new Error("filters must be an object.");
+    const filters = candidate.filters as Record<string, unknown>;
+    if (filters.project !== undefined && typeof filters.project !== "string")
+      throw new Error("filters.project must be a string.");
+    if (filters.entity_type !== undefined && typeof filters.entity_type !== "string")
+      throw new Error("filters.entity_type must be a string.");
+    let timeRange: { readonly start: string; readonly end: string } | undefined;
+    if (filters.time_range !== undefined) {
+      if (!filters.time_range || typeof filters.time_range !== "object")
+        throw new Error("filters.time_range must be an object.");
+      const range = filters.time_range as Record<string, unknown>;
+      if (typeof range.start !== "string" || typeof range.end !== "string")
+        throw new Error("filters.time_range requires start and end strings.");
+      if (Number.isNaN(Date.parse(range.start)) || Number.isNaN(Date.parse(range.end)))
+        throw new Error("filters.time_range values must be ISO 8601 timestamps.");
+      timeRange = { start: range.start, end: range.end };
     }
-    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return {
+      query: candidate.query,
+      filters: {
+        ...(typeof filters.project === "string" ? { project: filters.project } : {}),
+        ...(timeRange ? { time_range: timeRange } : {}),
+        ...(typeof filters.entity_type === "string" ? { entity_type: filters.entity_type } : {}),
+      },
+    };
+  }
+
+  private async readTaskInput(request: IncomingMessage): Promise<TaskSubmissionInput> {
+    const value = await this.readJsonBody(request);
     if (!value || typeof value !== "object") throw new Error("Request body must be a JSON object.");
     const candidate = value as Record<string, unknown>;
     if (typeof candidate.goal !== "string" || candidate.goal.trim().length === 0)
@@ -324,6 +381,18 @@ export class PublicApiServer {
         : {}),
       priority: candidate.priority === "background" ? "background" : "interactive",
     };
+  }
+
+  private async readJsonBody(request: IncomingMessage): Promise<unknown> {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of request) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buffer.byteLength;
+      if (size > 1_000_000) throw new Error("Request body exceeds the 1 MB limit.");
+      chunks.push(buffer);
+    }
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   }
 
   private send(response: ServerResponse, status: number, body: unknown): void {
