@@ -1,0 +1,152 @@
+import { describe, expect, it, vi } from "vitest";
+import { InMemoryCommunicationBus } from "@nova/shared";
+import {
+  Executor,
+  PermissionManager,
+  Planner,
+  Verifier,
+  type ToolRegistration,
+} from "../src/orchestration.js";
+import { TaskManager } from "../src/task-manager.js";
+import { RuntimeTaskCoordinator } from "../src/runtime-task-coordinator.js";
+
+const step = {
+  step_id: "step-1",
+  task_id: "placeholder",
+  correlation_id: "00000000-0000-4000-8000-000000000001",
+  capability_id: "capability.test",
+  resolved_tool_id: "tool.test",
+  action_id: "run",
+  parameters: { value: 42 },
+  risk_tier: "read_only" as const,
+  execution_tier: "internal_function" as const,
+  required_locks: [],
+  timeout_ms: 1_000,
+  confirmation_status: "not_required" as const,
+};
+
+const tool: ToolRegistration = {
+  tool_id: "tool.test",
+  deterministic: true,
+  actions: {
+    run: {
+      risk_tier: "read_only",
+      verification_signal: "api_response",
+      idempotent: true,
+      execute: vi.fn(async (parameters) => ({
+        status: "success" as const,
+        evidence: { type: "api_response" as const, value: parameters.value },
+        affected_resources: [],
+      })),
+    },
+  },
+};
+
+describe("RuntimeTaskCoordinator", () => {
+  it("executes a deterministic task through planning, permission, execution, and verification", async () => {
+    const bus = new InMemoryCommunicationBus();
+    const events: unknown[] = [];
+    bus.subscribe("task.progress", async (message) => {
+      events.push(message);
+    });
+    const tasks = new TaskManager();
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map([["run test", step]]) }),
+      executor: new Executor(
+        new PermissionManager({
+          allowedToolIds: new Set([tool.tool_id]),
+          confirmationTimeoutMs: 30_000,
+        }),
+        new Map([[tool.tool_id, tool]]),
+      ),
+      verifier: new Verifier(),
+      events: bus,
+    });
+
+    const submitted = coordinator.submit({ goal: "run test", correlation_id: step.correlation_id });
+    expect(submitted.ok).toBe(true);
+    if (!submitted.ok) return;
+
+    const completed = await coordinator.execute(submitted.value.task_id);
+
+    expect(completed).toMatchObject({
+      ok: true,
+      value: { state: "Completed", step_history: [{ verdict: { outcome: "verified" } }] },
+    });
+    expect(tool.actions.run.execute).toHaveBeenCalledWith({ value: 42 });
+    expect(events.map((event) => (event as { payload: { state: string } }).payload.state)).toEqual([
+      "Created",
+      "Planning",
+      "Executing",
+      "Verifying",
+      "Completed",
+    ]);
+  });
+
+  it("fails safely when the permission boundary denies the planned tool", async () => {
+    const tasks = new TaskManager();
+    const deniedExecute = vi.fn(tool.actions.run.execute);
+    const deniedTool: ToolRegistration = {
+      ...tool,
+      actions: { run: { ...tool.actions.run, execute: deniedExecute } },
+    };
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map([["denied", step]]) }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map([[deniedTool.tool_id, deniedTool]]),
+      ),
+      verifier: new Verifier(),
+      events: new InMemoryCommunicationBus(),
+    });
+
+    const submitted = coordinator.submit({ goal: "denied" });
+    if (!submitted.ok) throw new Error("Task submission failed.");
+    const result = await coordinator.execute(submitted.value.task_id);
+
+    expect(result).toMatchObject({ ok: true, value: { state: "Failed" } });
+    expect(deniedExecute).not.toHaveBeenCalled();
+  });
+
+  it("never reports Completed when execution has no verification evidence", async () => {
+    const tasks = new TaskManager();
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map([["unverified", step]]) }),
+      executor: new Executor(
+        new PermissionManager({
+          allowedToolIds: new Set([tool.tool_id]),
+          confirmationTimeoutMs: 30_000,
+        }),
+        new Map([
+          [
+            tool.tool_id,
+            {
+              ...tool,
+              actions: {
+                run: {
+                  ...tool.actions.run,
+                  execute: async () => ({
+                    status: "success" as const,
+                    evidence: { type: "none" as const, value: null },
+                    affected_resources: [],
+                  }),
+                },
+              },
+            },
+          ],
+        ]),
+      ),
+      verifier: new Verifier(),
+      events: new InMemoryCommunicationBus(),
+    });
+
+    const submitted = coordinator.submit({ goal: "unverified" });
+    if (!submitted.ok) throw new Error("Task submission failed.");
+    const result = await coordinator.execute(submitted.value.task_id);
+
+    expect(result).toMatchObject({ ok: true, value: { state: "Unverified" } });
+  });
+});
