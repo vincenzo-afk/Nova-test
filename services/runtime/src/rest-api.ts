@@ -71,6 +71,10 @@ export interface PublicApiHandlers {
   readonly listTasks?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
   readonly cancelTask?: (taskId: string, correlationId: string) => Promise<unknown | undefined>;
   readonly search?: (input: SearchInput, correlationId: string) => Promise<unknown>;
+  readonly getMemoryRecord?: (
+    recordId: string,
+    correlationId: string,
+  ) => Promise<unknown | undefined>;
   readonly listTools?: (query: TaskListQuery, correlationId: string) => Promise<readonly unknown[]>;
   readonly registerTool?: (
     tool: Record<string, unknown>,
@@ -176,6 +180,28 @@ export class PublicApiServer {
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "Search request failed.";
         this.send(response, 400, { error: { code: "NOVA-TL003", message } });
+      }
+      return;
+    }
+
+    const memoryRecordMatch = url.pathname.match(/^\/v1\/memory\/([^/]+)$/);
+    if (request.method === "GET" && memoryRecordMatch?.[1]) {
+      if (!this.requireScope(principal, "memory.read", response)) return;
+      if (!this.options.handlers.getMemoryRecord) {
+        this.send(response, 501, {
+          error: { code: "NOVA-TL004", message: "Memory-record handler is not configured." },
+        });
+        return;
+      }
+      const recordId = decodeURIComponent(memoryRecordMatch[1]);
+      const result = await this.options.handlers.getMemoryRecord(recordId, correlationId);
+      if (result === undefined) {
+        this.send(response, 404, {
+          error: { code: "NOVA-MEM003", message: "Memory record not found." },
+        });
+      } else {
+        response.setHeader("x-correlation-id", correlationId);
+        this.send(response, 200, result);
       }
       return;
     }

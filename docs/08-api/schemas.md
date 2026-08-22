@@ -65,6 +65,24 @@ queried separately rather than conflated with task execution state.
 }
 ```
 
+## Memory record lookup (REST `GET /memory/{record_id}`, response)
+
+```json
+{
+  "record_id": "string",
+  "lineage": [
+    { "relation": "derived_from", "source_record_id": "string" },
+    { "relation": "summarized_from", "source_record_ids": ["array of strings"] },
+    { "relation": "merged_from", "source_record_ids": ["array of strings"] },
+    { "relation": "split_from", "source_record_id": "string" }
+  ]
+}
+```
+
+The response preserves the record's provenance relationships as defined by
+`docs/04-memory/memory-lineage.md`; additional record metadata is returned by
+the backing memory handler when available.
+
 ## WebSocket subscription message
 
 ```json
