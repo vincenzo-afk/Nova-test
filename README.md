@@ -259,7 +259,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, configuration listing and section-level updates, cursor-paginated tool listing, plugin-tool registration, and webhook registration through the real WebhookManager boundary. The remaining documented WebSocket operations require a persistent streaming transport integration.
+- The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, configuration listing and section-level updates, cursor-paginated tool listing, plugin-tool registration, and webhook registration through the real WebhookManager boundary. The runtime also provides the authenticated WebSocket event transport at `/v1/events` with live CommunicationBus delivery, topic authorization, bounded replay, and backpressure handling.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 

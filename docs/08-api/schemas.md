@@ -131,6 +131,23 @@ updated grant:
 A permission update takes effect immediately and a source that is not present
 in the current grant set returns a typed not-found response.
 
+## WebSocket event streaming (`ws://127.0.0.1:<port>/v1/events`)
+
+The authenticated WebSocket transport accepts `subscribe`, `unsubscribe`, and
+`replay` command frames:
+
+```json
+{ "action": "subscribe", "topics": ["task.progress"] }
+{ "action": "unsubscribe", "topics": ["task.progress"] }
+{ "action": "replay", "from_message_id": "<message-id>" }
+```
+
+Live and replayed event frames use the shared message envelope with
+`message_id`, `topic`, `schema_version`, `timestamp`, `correlation_id`,
+`source_service`, and `payload`. The handshake requires an `Authorization:
+Bearer <local-token>` header. Replay is restricted to topics subscribed by the
+current session.
+
 ## External event subscription (REST `POST /events/subscribe`)
 
 The registration request is backed by the local `WebhookManager`:

@@ -14,10 +14,15 @@ are `schemas.md`.
 
 ## Connection model
 
-A client establishes one WebSocket connection and subscribes to one or
-more topics scoped to tasks or entities it has permission to observe —
-authenticated using the same token mechanism as the REST API
-(`docs/10-security/authentication.md`).
+A client establishes `ws://127.0.0.1:<port>/v1/events` and authenticates with
+the same local bearer token mechanism as the REST API
+(`docs/10-security/authentication.md`). The bearer token is sent in the
+WebSocket handshake's `Authorization` header. An unauthenticated handshake
+is rejected with HTTP 401 before the connection is upgraded.
+
+After the connection opens, the client sends JSON command frames. A client
+establishes one WebSocket connection and subscribes to one or more topics
+scoped to tasks or entities it has permission to observe.
 
 ## Subscribable topics
 
@@ -31,6 +36,26 @@ authenticated using the same token mechanism as the REST API
   building a live-updating external view (e.g., a custom dashboard),
   scoped to specific entity types or projects.
 
+## Command and replay frames
+
+Subscription commands use these shapes:
+
+```json
+{ "action": "subscribe", "topics": ["task.progress"] }
+{ "action": "unsubscribe", "topics": ["task.progress"] }
+```
+
+The server acknowledges each command with a corresponding `subscribed` or
+`unsubscribed` frame. A replay request uses one cursor:
+
+```json
+{ "action": "replay", "from_message_id": "<message-id>" }
+```
+
+or an ISO timestamp using `from_timestamp`. Replay is limited to the topics
+currently subscribed by the authenticated session. Task-progress events
+support replay; ephemeral system-status events may have no journaled history.
+
 ## Message delivery
 
 At-least-once delivery per topic, consistent with the internal
@@ -41,16 +66,19 @@ exactly as internal service consumers are.
 
 ## Reconnection and missed-message handling
 
-On reconnection after a dropped connection, a subscriber can request
-replay from a specific `message_id` or timestamp for topics that support
-it (task progress does; ephemeral system-status pings do not), so that a
+On reconnection after a dropped connection, a subscriber can request replay
+from a specific `message_id` or timestamp for topics that support it, so that a
 brief network interruption does not silently lose task-completion
-notifications.
+notifications. The runtime event journal retains a bounded history and
+forwards events published through the CommunicationBus event journal to live
+subscribers.
 
 ## Backpressure
 
-A slow consumer that cannot keep up with its subscribed topics is subject
-to the same overflow policy described in
+A slow consumer that cannot keep up with its subscribed topics is closed with
+WebSocket code 1013 after the configured buffered-byte threshold is exceeded,
+and receives a typed `NOVA-EVT002` buffer-limit error when the server can send
+it. This is subject to the same overflow policy described in
 `docs/02-architecture/communication-model.md` — the server does not block
 indefinitely waiting for a slow external consumer, and a consumer that
 falls too far behind is notified that it has missed messages and should
