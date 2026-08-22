@@ -1,29 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
-import { ApiGateway, type RuntimeApplication } from "@nova/runtime";
+import { ApiGateway, type PermissionGrant, type RuntimeApplication } from "@nova/runtime";
 import { createMessage, NamedPipeCommunicationBus } from "@nova/shared";
 import { createDesktopRuntime } from "./runtime.js";
-
-interface PermissionGrant {
-  readonly source: string;
-  granted: boolean;
-}
 
 interface TaskSnapshot {
   readonly task_id: string;
   readonly goal: string;
   readonly state: string;
 }
-
-const permissions: PermissionGrant[] = [
-  { source: "filesystem", granted: false },
-  { source: "applications", granted: false },
-  { source: "windows", granted: false },
-  { source: "browser", granted: false },
-  { source: "clipboard", granted: false },
-  { source: "notifications", granted: false },
-];
 
 let gatewayBus: NamedPipeCommunicationBus | undefined;
 let runtimeApplication: RuntimeApplication | undefined;
@@ -118,14 +104,19 @@ const startGateway = async (): Promise<void> => {
     if (!result?.ok) throw new Error(result?.error.message ?? "Task lookup failed.");
     return result.value;
   });
-  gateway.register("permissions.get", async () =>
-    permissions.map((permission) => ({ ...permission })),
-  );
+  gateway.register("permissions.get", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.permissions.list();
+  });
   gateway.register("permissions.set", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const payload = data as { readonly source?: string; readonly granted?: boolean };
-    const permission = permissions.find((item) => item.source === payload.source);
-    if (permission && typeof payload.granted === "boolean") permission.granted = payload.granted;
-    return permissions.map((item) => ({ ...item }));
+    if (!payload.source || typeof payload.granted !== "boolean") {
+      throw new Error("Permission source and boolean grant are required.");
+    }
+    const result = runtimeApplication.permissions.update(payload.source, payload.granted);
+    if (!result.ok) throw new Error(result.error.message);
+    return runtimeApplication.permissions.list();
   });
   await gatewayBus.start();
   await gateway.start();

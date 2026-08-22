@@ -3,6 +3,7 @@ import { LocalApiTokenIssuer, PublicApiServer, type PublicApiServerOptions } fro
 import { ConfigurationStore, type NovaConfiguration } from "./configuration-store.js";
 import { RuntimeTaskCoordinator } from "./runtime-task-coordinator.js";
 import { TaskManager } from "./task-manager.js";
+import { PermissionGrantStore } from "./permission-grant-store.js";
 import type { Executor, Planner, Verifier } from "./orchestration.js";
 import { WebhookManager } from "./webhook-manager.js";
 import {
@@ -20,6 +21,7 @@ export interface RuntimeApplicationOptions {
   readonly restPort?: number;
   readonly websocketPort?: number;
   readonly taskManager?: TaskManager;
+  readonly permissionStore?: PermissionGrantStore;
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
 }
@@ -27,6 +29,7 @@ export interface RuntimeApplicationOptions {
 export class RuntimeApplication {
   public readonly tokenIssuer: LocalApiTokenIssuer;
   public readonly tasks: TaskManager;
+  public readonly permissions: PermissionGrantStore;
   public readonly configuration: ConfigurationStore;
   public readonly events: CommunicationBusEventJournal;
   public readonly webhook: WebhookManager;
@@ -38,6 +41,7 @@ export class RuntimeApplication {
     const bus = new InMemoryCommunicationBus();
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
+    this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
     this.configuration = new ConfigurationStore({ initial: options.configuration });
     this.events = new CommunicationBusEventJournal(bus);
     this.webhook = options.webhookManager ?? new WebhookManager({});
@@ -103,6 +107,11 @@ export class RuntimeApplication {
           return result.ok ? result.value : undefined;
         },
         listTasks: async () => this.tasks.list(),
+        listPermissions: async () => this.permissions.list(),
+        updatePermission: async (grantId, patch) => {
+          const result = this.permissions.update(grantId, patch.granted);
+          return result.ok ? result.value : undefined;
+        },
         getConfig: async () => this.configuration.snapshot(),
         updateConfig: async (input) => {
           const result = this.configuration.update(input.section, input.value as never);

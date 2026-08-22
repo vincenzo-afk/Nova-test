@@ -16,5 +16,13 @@ describe("desktop runtime composition", () => {
     expect(runtime.restUrl()).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
     expect(runtime.websocketUrl()).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/v1\/events$/);
     expect(runtime.configuration.snapshot()).toMatchObject({ schema_version: "1.0.0" });
+    expect(runtime.permissions.list()).toEqual([
+      { source: "filesystem", granted: false },
+      { source: "applications", granted: false },
+      { source: "windows", granted: false },
+      { source: "browser", granted: false },
+      { source: "clipboard", granted: false },
+      { source: "notifications", granted: false },
+    ]);
   });
 });

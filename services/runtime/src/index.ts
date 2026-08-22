@@ -8,3 +8,4 @@ export * from "./runtime-task-coordinator.js";
 export * from "./runtime-application.js";
 export * from "./orchestration.js";
 export * from "./task-manager.js";
+export * from "./permission-grant-store.js";
