@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
-import { ApiGateway } from "@nova/runtime";
+import { ApiGateway, type RuntimeApplication } from "@nova/runtime";
 import { createMessage, NamedPipeCommunicationBus } from "@nova/shared";
+import { createDesktopRuntime } from "./runtime.js";
 
 interface PermissionGrant {
   readonly source: string;
@@ -25,6 +26,7 @@ const permissions: PermissionGrant[] = [
 ];
 
 let gatewayBus: NamedPipeCommunicationBus | undefined;
+let runtimeApplication: RuntimeApplication | undefined;
 
 const createWindow = async (): Promise<void> => {
   const window = new BrowserWindow({
@@ -100,13 +102,14 @@ const startGateway = async (): Promise<void> => {
     role: "server",
   });
   const gateway = new ApiGateway(gatewayBus);
+  runtimeApplication = createDesktopRuntime();
+  await runtimeApplication.start();
   gateway.register("task.submit", async (data) => {
     const payload = data as { readonly goal?: string };
-    return {
-      task_id: `task-${Date.now()}`,
-      goal: payload.goal ?? "",
-      state: "Created",
-    } satisfies TaskSnapshot;
+    if (!payload.goal) throw new Error("Task goal is required.");
+    const result = runtimeApplication?.coordinator.submit({ goal: payload.goal });
+    if (!result?.ok) throw new Error(result?.error.message ?? "Task submission failed.");
+    return result.value satisfies TaskSnapshot;
   });
   gateway.register("permissions.get", async () =>
     permissions.map((permission) => ({ ...permission })),
@@ -130,6 +133,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("before-quit", () => {
+  void runtimeApplication?.stop();
   void gatewayBus?.close();
 });
 
