@@ -41,7 +41,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
 - Multi-agent coordination, authenticated network discovery, paired-device synchronization, distributed Full Peer task scheduling, and logical clocks.
 - Streaming-aware voice pipeline contracts, barge-in cancellation, and 150 ms multi-device wake-claim coordination.
-- Local IPC over named pipes, a UI-facing API Gateway, context-isolated Electron IPC, stable error codes, dead-letter recording, and release-blocking performance-budget evaluation.
+- Local IPC over named pipes, a UI-facing API Gateway, an authenticated REST task boundary, signed webhook delivery with retry/health handling, context-isolated Electron IPC, stable error codes, dead-letter recording, and release-blocking performance-budget evaluation.
 
 ### Architecture overview
 
@@ -236,7 +236,7 @@ The runtime workspace contains service-focused modules for orchestration, memory
 - [x] Device pairing, sync, session continuity, network discovery, distributed task scheduling, logical clocks, and Android companion permissions.
 - [x] Voice pipeline, streaming-oriented contracts, barge-in, and multi-device wake-claim coordination.
 - [x] Backup, isolated restore, upgrades, conservative repair, resource arbitration, incident lifecycle, runbooks, and CLI boundaries.
-- [x] Performance-budget evaluation, recorded-replay simulation, chaos recovery, filesystem E2E, desktop preload, and documentation-link verification.
+- [x] Performance-budget evaluation, signed webhook delivery, recorded-replay simulation, chaos recovery, filesystem E2E, desktop preload, and documentation-link verification.
 
 ### Changelog
 
@@ -246,7 +246,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 - The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
 - The current desktop task handler creates a `Created` task snapshot; wiring the full runtime execution graph into a packaged desktop distribution is a subsequent integration stage.
-- The REST server currently implements task submission only. The remaining documented task status, search, graph, tools, permissions, configuration, webhook, and WebSocket operations require handlers backed by their respective runtime services.
+- The REST server currently implements task submission only. The remaining documented task status, search, graph, tools, permissions, configuration, webhook-registration, and WebSocket operations require handlers backed by their respective runtime services. The webhook delivery manager is available as a runtime boundary but is not yet registered through REST.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
 - Hardware model installation and speech-provider binaries are not bundled by the repository.
 
