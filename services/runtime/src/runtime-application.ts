@@ -5,10 +5,14 @@ import type {
 } from "@nova/memory";
 import { InMemoryCommunicationBus, err, ok, type Result } from "@nova/shared";
 import {
+  ClipboardObserver,
+  NativeClipboardEventBridge,
+  type NativeClipboardEventBridgeContract,
   NativeWindowsEventBridge,
   type NativeWindowsEventBridgeContract,
   WindowsApplicationObserver,
   type WindowsObserverState,
+  type ClipboardObserverState,
 } from "@nova/observers";
 import { WorldModel } from "@nova/state";
 import { LocalApiTokenIssuer, PublicApiServer, type PublicApiServerOptions } from "./rest-api.js";
@@ -57,6 +61,7 @@ export interface RuntimeApplicationOptions {
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
   readonly windowObserverBridge?: NativeWindowsEventBridgeContract;
+  readonly clipboardObserverBridge?: NativeClipboardEventBridgeContract;
   readonly observationIndexer?: ObservationIndexer;
   readonly registeredTools?: readonly RegisteredTool[];
 }
@@ -73,6 +78,7 @@ export class RuntimeApplication {
   public readonly rest: PublicApiServer;
   public readonly websocket: PublicWebSocketServer;
   public readonly windowsObserver: WindowsApplicationObserver;
+  public readonly clipboardObserver: ClipboardObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -105,6 +111,11 @@ export class RuntimeApplication {
       bridge: options.windowObserverBridge ?? new NativeWindowsEventBridge(),
       bus,
     });
+    this.clipboardObserver = new ClipboardObserver({
+      permissions: this.permissions,
+      bridge: options.clipboardObserverBridge ?? new NativeClipboardEventBridge(),
+      bus,
+    });
     this.webhook = options.webhookManager ?? new WebhookManager({});
     this.coordinator = new RuntimeTaskCoordinator({
       tasks: this.tasks,
@@ -133,7 +144,8 @@ export class RuntimeApplication {
       if (!recovered.ok) throw new Error(recovered.error.message);
       this.tasks.restore(recovered.value);
     }
-    await this.syncObservers();
+    const observers = await this.syncObservers();
+    if (!observers.ok) throw new Error(observers.error.message);
     await this.rest.start();
     try {
       await this.websocket.start();
@@ -146,6 +158,7 @@ export class RuntimeApplication {
   public async stop(): Promise<void> {
     try {
       if (this.windowsObserver.state() !== "Disabled") await this.windowsObserver.revoke();
+      if (this.clipboardObserver.state() !== "Disabled") await this.clipboardObserver.revoke();
       this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
@@ -180,6 +193,8 @@ export class RuntimeApplication {
   }
 
   public async syncObservers(): Promise<Result<WindowsObserverState>> {
+    const clipboard = await this.syncClipboardObserver();
+    if (!clipboard.ok) return err(clipboard.error);
     const grants = new Map(this.permissions.list().map((grant) => [grant.source, grant.granted]));
     const permitted = grants.get("applications") === true && grants.get("windows") === true;
     if (!permitted) {
@@ -188,6 +203,19 @@ export class RuntimeApplication {
     }
     if (this.windowsObserver.state() === "Disabled") return await this.windowsObserver.enable();
     return ok(this.windowsObserver.state());
+  }
+
+  public async syncClipboardObserver(): Promise<Result<ClipboardObserverState>> {
+    const metadataGranted = this.permissions
+      .list()
+      .some((grant) => grant.source === "clipboard_metadata" && grant.granted);
+    if (!metadataGranted) {
+      if (this.clipboardObserver.state() !== "Disabled")
+        return await this.clipboardObserver.revoke();
+      return ok("Disabled");
+    }
+    if (this.clipboardObserver.state() === "Disabled") return await this.clipboardObserver.enable();
+    return ok(this.clipboardObserver.state());
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {
