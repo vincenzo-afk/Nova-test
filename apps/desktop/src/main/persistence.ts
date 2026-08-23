@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { TaskCheckpointStore, PrismaClient } from "@nova/memory";
+import { MemoryStore, TaskCheckpointStore, PrismaClient } from "@nova/memory";
 
 const WORKSPACE_FILE = "workspace.json";
 const WORKSPACE_SCHEMA_VERSION = "1.0.0";
@@ -22,6 +22,7 @@ export interface DesktopPersistence {
   readonly databasePath: string;
   readonly workspaceId: string;
   readonly checkpointStore: TaskCheckpointStore;
+  readonly memoryStore: MemoryStore;
   close(): Promise<void>;
 }
 
@@ -42,6 +43,7 @@ export async function openDesktopPersistence(
       databasePath,
       workspaceId,
       checkpointStore: new TaskCheckpointStore(client, workspaceId),
+      memoryStore: new MemoryStore(client, workspaceId),
       close: () => client.$disconnect(),
     };
   } catch (cause) {

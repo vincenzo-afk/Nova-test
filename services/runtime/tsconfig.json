@@ -4,6 +4,11 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "references": [{ "path": "../../packages/shared" }],
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../services/memory" },
+    { "path": "../observers" },
+    { "path": "../state" }
+  ],
   "include": ["src/**/*.ts"]
 }

@@ -4,8 +4,8 @@ export type OperatingSystem = "windows" | "macos" | "linux" | "android" | "unkno
 export interface HardwareProbe {
   readonly cpu_architecture: "x86_64" | "arm64" | "unknown";
   readonly cpu_cores: number;
-  readonly avx2: boolean;
-  readonly avx512: boolean;
+  readonly avx2: boolean | "unknown";
+  readonly avx512: boolean | "unknown";
   readonly gpu_vendor: "nvidia" | "amd" | "apple" | "intel" | null;
   readonly gpu_vram_gb: number;
   readonly gpu_accelerator: "cuda" | "rocm" | "metal" | "opencl" | null;

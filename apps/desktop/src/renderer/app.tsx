@@ -1,4 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import type {
+  ConfiguredCapabilityRecord,
+  ConfigurationSectionName,
+  NovaConfiguration,
+  PersonalizationCategory,
+  PersonalizationPreferenceRecord,
+} from "@nova/runtime";
 import {
   canOpenView,
   desktopNavOrder,
@@ -94,9 +101,19 @@ export const App = () => {
   const [lastTask, setLastTask] = useState<TaskSnapshot | null>(null);
   const [providerMode, setProviderMode] = useState<ProviderMode | null>(null);
   const [demonstrationTaskCompleted, setDemonstrationTaskCompleted] = useState(false);
+  const [configuration, setConfiguration] = useState<NovaConfiguration | null>(null);
+  const [configurationError, setConfigurationError] = useState<string | null>(null);
 
   useEffect(() => {
     void window.nova.getPermissions().then(setPermissions);
+    void window.nova
+      .getConfig()
+      .then(setConfiguration)
+      .catch((error: unknown) =>
+        setConfigurationError(
+          error instanceof Error ? error.message : "Configuration unavailable.",
+        ),
+      );
   }, []);
 
   const observerGranted = useMemo(
@@ -143,6 +160,16 @@ export const App = () => {
   const togglePermission = async (source: string, granted: boolean) => {
     const updated = await window.nova.setPermission(source, granted);
     setPermissions(updated);
+  };
+
+  const updateConfiguration = async (
+    section: ConfigurationSectionName,
+    value: NovaConfiguration[ConfigurationSectionName],
+  ): Promise<NovaConfiguration> => {
+    const updated = await window.nova.updateConfig(section, value);
+    setConfiguration(updated);
+    setConfigurationError(null);
+    return updated;
   };
 
   const submitDemonstrationTask = async (demoGoal: string) => {
@@ -224,6 +251,18 @@ export const App = () => {
             <TaskMonitor task={lastTask} />
           ) : view === "home" ? (
             <HomeView permissions={permissions} task={lastTask} />
+          ) : view === "provider" ? (
+            <ProviderSettings
+              configuration={configuration}
+              error={configurationError}
+              onUpdate={updateConfiguration}
+            />
+          ) : view === "settings" ? (
+            <SettingsView
+              configuration={configuration}
+              error={configurationError}
+              onUpdate={updateConfiguration}
+            />
           ) : (
             <SurfaceView view={view} />
           )}
@@ -516,6 +555,261 @@ const HomeView = ({
     </div>
   </section>
 );
+
+const ProviderSettings = ({
+  configuration,
+  error,
+  onUpdate,
+}: {
+  configuration: NovaConfiguration | null;
+  error: string | null;
+  onUpdate: (
+    section: ConfigurationSectionName,
+    value: NovaConfiguration[ConfigurationSectionName],
+  ) => Promise<NovaConfiguration>;
+}) => {
+  const capability = configuration?.capabilities.llm;
+  const configuredProvider = capability?.providers[0];
+  const [providerId, setProviderId] = useState(configuredProvider?.provider_id ?? "");
+  const [vaultReference, setVaultReference] = useState(
+    configuredProvider?.credential?.vault_reference ?? "",
+  );
+  const [policy, setPolicy] = useState<ConfiguredCapabilityRecord["active_policy"]>(
+    capability?.active_policy ?? "privacy-first",
+  );
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProviderId(configuredProvider?.provider_id ?? "");
+    setVaultReference(configuredProvider?.credential?.vault_reference ?? "");
+    setPolicy(capability?.active_policy ?? "privacy-first");
+  }, [capability, configuredProvider]);
+
+  const save = async () => {
+    const trimmedProvider = providerId.trim();
+    if (!trimmedProvider) {
+      setStatus("Enter a provider or model identifier.");
+      return;
+    }
+    const provider = {
+      provider_id: trimmedProvider,
+      enabled: true,
+      priority: 1,
+      ...(vaultReference.trim() ? { credential: { vault_reference: vaultReference.trim() } } : {}),
+    };
+    const nextCapability: ConfiguredCapabilityRecord = {
+      capability_id: "llm",
+      domain: "text-generation",
+      required: true,
+      providers: [provider],
+      active_policy: policy,
+      manual_override: null,
+    };
+    try {
+      await onUpdate("capabilities", {
+        ...(configuration?.capabilities ?? {}),
+        llm: nextCapability,
+      });
+      setStatus("Provider/model settings saved.");
+    } catch (saveError: unknown) {
+      setStatus(
+        saveError instanceof Error ? saveError.message : "Provider settings could not be saved.",
+      );
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="provider-settings-title">
+      <div className="section-kicker">Provider Settings / Persistent configuration</div>
+      <h1 id="provider-settings-title">Choose how NOVA reasons.</h1>
+      <p className="lede">
+        Provider identifiers and routing policy are saved locally. Credentials remain opaque vault
+        references.
+      </p>
+      {error ? (
+        <div className="state-strip">
+          <strong>Configuration unavailable</strong>
+          <span>{error}</span>
+        </div>
+      ) : null}
+      <div className="surface-grid">
+        <article className="surface-card">
+          <label htmlFor="provider-id">Provider or model identifier</label>
+          <input
+            id="provider-id"
+            value={providerId}
+            onChange={(event) => setProviderId(event.target.value)}
+            placeholder="local.llm or provider-model-id"
+          />
+          <label htmlFor="vault-reference">Optional vault reference</label>
+          <input
+            id="vault-reference"
+            value={vaultReference}
+            onChange={(event) => setVaultReference(event.target.value)}
+            placeholder="vault://provider-credential"
+          />
+          <label htmlFor="routing-policy">Routing policy</label>
+          <select
+            id="routing-policy"
+            value={policy}
+            onChange={(event) =>
+              setPolicy(event.target.value as ConfiguredCapabilityRecord["active_policy"])
+            }
+          >
+            <option value="privacy-first">Privacy first</option>
+            <option value="latency-optimized">Latency optimized</option>
+            <option value="cost-optimized">Cost optimized</option>
+            <option value="manual">Manual</option>
+          </select>
+          <button type="button" onClick={() => void save()}>
+            Save provider settings
+          </button>
+          {status ? (
+            <p className="muted" role="status">
+              {status}
+            </p>
+          ) : null}
+        </article>
+      </div>
+    </section>
+  );
+};
+
+const SettingsView = ({
+  configuration,
+  error,
+  onUpdate,
+}: {
+  configuration: NovaConfiguration | null;
+  error: string | null;
+  onUpdate: (
+    section: ConfigurationSectionName,
+    value: NovaConfiguration[ConfigurationSectionName],
+  ) => Promise<NovaConfiguration>;
+}) => {
+  const preferences = configuration?.personalization.preferences ?? [];
+  const [id, setId] = useState(preferences[0]?.id ?? "tone.default");
+  const [category, setCategory] = useState<PersonalizationCategory>(
+    preferences[0]?.category ?? "tone",
+  );
+  const [valueText, setValueText] = useState(
+    JSON.stringify(preferences[0]?.value ?? { style: "concise" }, null, 2),
+  );
+  const [status, setStatus] = useState<string | null>(null);
+
+  const savePreference = async () => {
+    let value: unknown;
+    try {
+      value = JSON.parse(valueText) as unknown;
+    } catch {
+      setStatus("Preference value must be valid JSON.");
+      return;
+    }
+    const record: PersonalizationPreferenceRecord = {
+      id: id.trim(),
+      category,
+      value,
+      enabled: true,
+      source: "user",
+      updated_at: new Date().toISOString(),
+    };
+    if (!record.id) {
+      setStatus("Preference id is required.");
+      return;
+    }
+    const next = [...preferences.filter((preference) => preference.id !== record.id), record];
+    try {
+      await onUpdate("personalization", { preferences: next });
+      setStatus("Personalization preference saved.");
+    } catch (saveError: unknown) {
+      setStatus(saveError instanceof Error ? saveError.message : "Preference could not be saved.");
+    }
+  };
+
+  const resetPreference = async (preferenceId?: string) => {
+    const next = preferenceId
+      ? preferences.filter((preference) => preference.id !== preferenceId)
+      : [];
+    try {
+      await onUpdate("personalization", { preferences: next });
+      setStatus(preferenceId ? "Preference reset." : "All personalization reset.");
+    } catch (resetError: unknown) {
+      setStatus(
+        resetError instanceof Error ? resetError.message : "Preference could not be reset.",
+      );
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="settings-title">
+      <div className="section-kicker">Settings / Visible personalization</div>
+      <h1 id="settings-title">Make NOVA fit your working style.</h1>
+      <p className="lede">
+        Preferences are explicit policy records. They can be inspected, edited, or reset and never
+        retrain the model.
+      </p>
+      {error ? (
+        <div className="state-strip">
+          <strong>Configuration unavailable</strong>
+          <span>{error}</span>
+        </div>
+      ) : null}
+      <div className="surface-grid">
+        <article className="surface-card">
+          <label htmlFor="preference-id">Preference id</label>
+          <input id="preference-id" value={id} onChange={(event) => setId(event.target.value)} />
+          <label htmlFor="preference-category">Category</label>
+          <select
+            id="preference-category"
+            value={category}
+            onChange={(event) => setCategory(event.target.value as PersonalizationCategory)}
+          >
+            <option value="tone">Tone</option>
+            <option value="tool-default">Tool default</option>
+            <option value="provider-default">Provider default</option>
+            <option value="proactive-timing">Proactive timing</option>
+            <option value="routing-preference">Routing preference</option>
+          </select>
+          <label htmlFor="preference-value">Structured value (JSON)</label>
+          <textarea
+            id="preference-value"
+            rows={7}
+            value={valueText}
+            onChange={(event) => setValueText(event.target.value)}
+          />
+          <button type="button" onClick={() => void savePreference()}>
+            Save preference
+          </button>
+          <button type="button" onClick={() => void resetPreference()}>
+            Reset all personalization
+          </button>
+          {status ? (
+            <p className="muted" role="status">
+              {status}
+            </p>
+          ) : null}
+        </article>
+        <article className="surface-card">
+          <strong>Stored preferences</strong>
+          {preferences.length === 0 ? (
+            <p className="muted">No personalization records are stored.</p>
+          ) : (
+            preferences.map((preference) => (
+              <div className="task-header" key={preference.id}>
+                <span>
+                  {preference.id} · {preference.category}
+                </span>
+                <button type="button" onClick={() => void resetPreference(preference.id)}>
+                  Reset
+                </button>
+              </div>
+            ))
+          )}
+        </article>
+      </div>
+    </section>
+  );
+};
 
 const SurfaceView = ({ view }: { view: SurfaceView }) => {
   const meta = surfaceMeta[view];

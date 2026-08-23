@@ -49,6 +49,10 @@ to State Manager (`docs/03-runtime/state-manager.md`) for more accurate
 conflict resolution when reasoning about what the user is actually
 engaged with.
 
+## Native implementation boundary
+
+The Windows desktop observer is implemented as a host-owned native bridge: WinEvent hooks (`SetWinEventHook`) capture window creation, destruction, foreground focus, and title changes; WMI process trace notifications capture application launch and close; and the bridge enriches events with the monitor identifier, virtual-desktop identifier, and bounded z-order metadata where Windows exposes them. It emits only normalized JSON events to the Node runtime. The renderer never receives a native handle or raw window contents. The runtime starts this bridge only when both the `applications` and `windows` observation permissions are granted, stops it immediately on revocation, and forwards the resulting events to the session-only World Model focus hierarchy.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-10-desktop-android-distributed-sync.md` — failure modes for this subsystem

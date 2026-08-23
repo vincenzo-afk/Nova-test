@@ -31,6 +31,10 @@ initial installation are `updates.md`.
    experience is designed to feel useful immediately, not "empty until
    trained."
 
+## Current repository bootstrap boundary
+
+The repository currently provides `pnpm install:windows` as a non-destructive source-checkout bootstrap for development and verification. It installs the frozen workspace dependencies, builds the Electron desktop package, and creates user-scoped data directories. It does not yet produce the standard Windows installer package described in step 1, register the NOVA Windows service, install third-party software, delete data, download arbitrary files, or start observers. The packaged installer and service-registration implementation remain a separate release milestone and must not be implied by the bootstrap command.
+
 ## No silent background activity before consent
 
 This is a hard requirement of the installer sequence, not an

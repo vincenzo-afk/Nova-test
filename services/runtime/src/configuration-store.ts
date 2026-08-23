@@ -1,8 +1,45 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 
+export type ConfiguredRoutingPolicy =
+  "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+
+export type PersonalizationCategory =
+  "tool-default" | "provider-default" | "proactive-timing" | "routing-preference" | "tone";
+
+export interface CapabilityProviderRecord {
+  readonly provider_id: string;
+  readonly enabled: boolean;
+  readonly priority: number;
+  readonly credential?: { readonly vault_reference: string };
+}
+
+export interface ConfiguredCapabilityRecord {
+  readonly capability_id: string;
+  readonly domain: string;
+  readonly required: boolean;
+  readonly providers: readonly CapabilityProviderRecord[];
+  readonly active_policy: ConfiguredRoutingPolicy;
+  readonly manual_override: string | null;
+}
+
+export type CapabilityRegistryConfiguration = Readonly<Record<string, ConfiguredCapabilityRecord>>;
+
+export interface PersonalizationPreferenceRecord {
+  readonly id: string;
+  readonly category: PersonalizationCategory;
+  readonly value: unknown;
+  readonly enabled: boolean;
+  readonly source: "user" | "feedback";
+  readonly updated_at: string;
+}
+
+export interface PersonalizationConfiguration {
+  readonly preferences: readonly PersonalizationPreferenceRecord[];
+}
+
 export interface NovaConfiguration {
   readonly schema_version: "1.0.0";
-  readonly capabilities: Readonly<Record<string, unknown>>;
+  readonly capabilities: CapabilityRegistryConfiguration;
   readonly devices: readonly unknown[];
   readonly channels: readonly unknown[];
   readonly plugins: readonly unknown[];
@@ -10,10 +47,11 @@ export interface NovaConfiguration {
   readonly routing_policies: Readonly<Record<string, unknown>>;
   readonly permissions: Readonly<Record<string, unknown>>;
   readonly voice: Readonly<Record<string, unknown>>;
-  readonly personalization: Readonly<Record<string, unknown>>;
+  readonly personalization: PersonalizationConfiguration;
 }
 
-export type ConfigurationSection = keyof Omit<NovaConfiguration, "schema_version">;
+export type ConfigurationSectionName = keyof Omit<NovaConfiguration, "schema_version">;
+type ConfigurationSection = ConfigurationSectionName;
 
 export interface ConfigurationWarning {
   readonly section: string;
@@ -72,6 +110,14 @@ export class ConfigurationStore {
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
     return ok(undefined);
+  }
+
+  public resetPersonalization(preferenceId?: string): Result<void> {
+    const current = this.configuration.personalization.preferences;
+    const preferences = preferenceId
+      ? current.filter((preference) => preference.id !== preferenceId)
+      : [];
+    return this.update("personalization", { preferences });
   }
 
   public export(): string {
@@ -134,6 +180,15 @@ export class ConfigurationStore {
   }
 
   private validateSection(section: ConfigurationSection, value: unknown): Result<void> {
+    if (containsInlineCredential(value))
+      return err(
+        this.configError(
+          "Credential values must be vault references, never inline secrets.",
+          section,
+        ),
+      );
+    if (section === "capabilities") return this.validateCapabilities(value);
+    if (section === "personalization") return this.validatePersonalization(value);
     if (section === "routing_policies") {
       if (!isRecord(value))
         return err(this.configError("Routing policies must be an object.", section));
@@ -181,13 +236,177 @@ export class ConfigurationStore {
     } else if (!isRecord(value)) {
       return err(this.configError(`${section} must be an object.`, section));
     }
-    if (containsInlineCredential(value))
+    return ok(undefined);
+  }
+
+  private validateCapabilities(value: unknown): Result<void> {
+    if (!isRecord(value))
+      return err(this.configError("Capabilities must be an object.", "capabilities"));
+    for (const [capabilityId, rawCapability] of Object.entries(value)) {
+      if (!isRecord(rawCapability))
+        return err(
+          this.configError("Capability record must be an object.", `capabilities.${capabilityId}`),
+        );
+      if (rawCapability.capability_id !== capabilityId)
+        return err(
+          this.configError(
+            "Capability record id must match its configuration key.",
+            `capabilities.${capabilityId}.capability_id`,
+          ),
+        );
+      if (typeof rawCapability.domain !== "string" || rawCapability.domain.length === 0)
+        return err(
+          this.configError("Capability domain is required.", `capabilities.${capabilityId}.domain`),
+        );
+      if (typeof rawCapability.required !== "boolean")
+        return err(
+          this.configError(
+            "Capability required must be boolean.",
+            `capabilities.${capabilityId}.required`,
+          ),
+        );
+      if (!Array.isArray(rawCapability.providers))
+        return err(
+          this.configError(
+            "Capability providers must be an array.",
+            `capabilities.${capabilityId}.providers`,
+          ),
+        );
+      for (const [index, rawProvider] of rawCapability.providers.entries()) {
+        if (!isRecord(rawProvider))
+          return err(
+            this.configError(
+              "Provider record must be an object.",
+              `capabilities.${capabilityId}.providers.${index}`,
+            ),
+          );
+        if (typeof rawProvider.provider_id !== "string" || rawProvider.provider_id.length === 0)
+          return err(
+            this.configError(
+              "Provider id is required.",
+              `capabilities.${capabilityId}.providers.${index}.provider_id`,
+            ),
+          );
+        if (typeof rawProvider.enabled !== "boolean")
+          return err(
+            this.configError(
+              "Provider enabled must be boolean.",
+              `capabilities.${capabilityId}.providers.${index}.enabled`,
+            ),
+          );
+        if (
+          typeof rawProvider.priority !== "number" ||
+          !Number.isInteger(rawProvider.priority) ||
+          rawProvider.priority < 1
+        )
+          return err(
+            this.configError(
+              "Provider priority must be a positive integer.",
+              `capabilities.${capabilityId}.providers.${index}.priority`,
+            ),
+          );
+        if (rawProvider.credential !== undefined) {
+          if (
+            !isRecord(rawProvider.credential) ||
+            typeof rawProvider.credential.vault_reference !== "string" ||
+            rawProvider.credential.vault_reference.length === 0
+          )
+            return err(
+              this.configError(
+                "Provider credentials must contain a vault reference.",
+                `capabilities.${capabilityId}.providers.${index}.credential`,
+              ),
+            );
+        }
+      }
+      if (!isRoutingPolicy(rawCapability.active_policy))
+        return err(
+          this.configError(
+            "Capability active policy is invalid.",
+            `capabilities.${capabilityId}.active_policy`,
+          ),
+        );
+      if (
+        rawCapability.manual_override !== null &&
+        typeof rawCapability.manual_override !== "string"
+      )
+        return err(
+          this.configError(
+            "Capability manual override must be a provider identifier or null.",
+            `capabilities.${capabilityId}.manual_override`,
+          ),
+        );
+      if (
+        typeof rawCapability.manual_override === "string" &&
+        !this.availableProviderIds.has(rawCapability.manual_override)
+      )
+        return err(
+          this.configError(
+            "Capability manual override references an unavailable provider.",
+            `capabilities.${capabilityId}.manual_override`,
+          ),
+        );
+    }
+    return ok(undefined);
+  }
+
+  private validatePersonalization(value: unknown): Result<void> {
+    if (!isRecord(value) || !Array.isArray(value.preferences))
       return err(
         this.configError(
-          "Credential values must be vault references, never inline secrets.",
-          section,
+          "Personalization must contain a preferences array.",
+          "personalization.preferences",
         ),
       );
+    const ids = new Set<string>();
+    for (const [index, preference] of value.preferences.entries()) {
+      if (!isRecord(preference))
+        return err(
+          this.configError(
+            "Personalization preference must be an object.",
+            `personalization.preferences.${index}`,
+          ),
+        );
+      if (typeof preference.id !== "string" || preference.id.length === 0 || ids.has(preference.id))
+        return err(
+          this.configError(
+            "Personalization preference id must be non-empty and unique.",
+            `personalization.preferences.${index}.id`,
+          ),
+        );
+      ids.add(preference.id);
+      if (!isPersonalizationCategory(preference.category))
+        return err(
+          this.configError(
+            "Personalization preference category is invalid.",
+            `personalization.preferences.${index}.category`,
+          ),
+        );
+      if (typeof preference.enabled !== "boolean")
+        return err(
+          this.configError(
+            "Personalization preference enabled must be boolean.",
+            `personalization.preferences.${index}.enabled`,
+          ),
+        );
+      if (preference.source !== "user" && preference.source !== "feedback")
+        return err(
+          this.configError(
+            "Personalization preference source is invalid.",
+            `personalization.preferences.${index}.source`,
+          ),
+        );
+      if (
+        typeof preference.updated_at !== "string" ||
+        Number.isNaN(Date.parse(preference.updated_at))
+      )
+        return err(
+          this.configError(
+            "Personalization preference updated_at must be a date string.",
+            `personalization.preferences.${index}.updated_at`,
+          ),
+        );
+    }
     return ok(undefined);
   }
 
@@ -206,6 +425,20 @@ function containsInlineCredential(value: unknown): boolean {
     if (containsInlineCredential(nested)) return true;
   }
   return false;
+}
+
+function isRoutingPolicy(value: unknown): value is ConfiguredRoutingPolicy {
+  return ["privacy-first", "latency-optimized", "cost-optimized", "manual"].includes(String(value));
+}
+
+function isPersonalizationCategory(value: unknown): value is PersonalizationCategory {
+  return [
+    "tool-default",
+    "provider-default",
+    "proactive-timing",
+    "routing-preference",
+    "tone",
+  ].includes(String(value));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

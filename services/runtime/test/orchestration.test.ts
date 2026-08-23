@@ -1,6 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import type { ExecutionStep, ToolRegistration } from "../src/orchestration.js";
+import { ResourceManager } from "../src/resource-manager.js";
+import { createWorkspaceCodeTool } from "../src/workspace-code-executor.js";
+
+const temporaryDirectories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
+  );
+});
 
 const step = (overrides: Partial<ExecutionStep> = {}): ExecutionStep => ({
   step_id: "step-1",
@@ -131,6 +144,52 @@ describe("PermissionManager and Executor", () => {
     );
 
     expect(result).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+  });
+});
+
+describe("Workspace code execution through Executor", () => {
+  it("requires explicit confirmation and releases the workspace lock after approved execution", async () => {
+    const root = await mkdtemp(join(tmpdir(), "nova-orchestration-code-"));
+    temporaryDirectories.push(root);
+    const script = join(root, "ok.mjs");
+    await writeFile(script, "process.stdout.write('verified');\n", "utf8");
+    const codeTool = createWorkspaceCodeTool({
+      workspaceRoot: root,
+      runtimes: { node: process.execPath },
+    });
+    const resources = new ResourceManager();
+    const executor = new Executor(
+      new PermissionManager({
+        allowedToolIds: new Set([codeTool.registration.tool_id]),
+        confirmationTimeoutMs: 300_000,
+      }),
+      new Map([[codeTool.registration.tool_id, codeTool.registration]]),
+      resources,
+    );
+    const planned = step({
+      resolved_tool_id: codeTool.registration.tool_id,
+      action_id: "run_script",
+      capability_id: "workspace.code",
+      execution_tier: "cli",
+      risk_tier: "destructive_irreversible",
+      required_locks: [`workspace:${root}`],
+      parameters: { runtime_id: "node", script_path: script, args: [], timeout_ms: 2_000 },
+      confirmation_status: "pending",
+    });
+
+    const blocked = await executor.execute(planned);
+    expect(blocked).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(resources.holder(`workspace:${root}`)).toBeUndefined();
+
+    const completed = await executor.execute({ ...planned, confirmation_status: "approved" });
+    expect(completed).toMatchObject({
+      ok: true,
+      value: {
+        status: "success",
+        evidence: { type: "exit_code", value: { exit_code: 0, stdout: "verified" } },
+      },
+    });
+    expect(resources.holder(`workspace:${root}`)).toBeUndefined();
   });
 });
 

@@ -6,6 +6,9 @@ const novaApi = {
   getPermissions: () => ipcRenderer.invoke("nova:permissions:get"),
   setPermission: (source: string, granted: boolean) =>
     ipcRenderer.invoke("nova:permissions:set", { source, granted }),
+  getConfig: () => ipcRenderer.invoke("nova:config:get"),
+  updateConfig: (section: string, value: unknown) =>
+    ipcRenderer.invoke("nova:config:update", { section, value }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { ObservationIndexer } from "@nova/memory";
 import {
   Executor,
   PermissionGrantStore,
@@ -7,6 +8,7 @@ import {
   Planner,
   RuntimeApplication,
   Verifier,
+  type RuntimeApplicationOptions,
 } from "@nova/runtime";
 import { openDesktopPersistence } from "./persistence.js";
 
@@ -29,12 +31,14 @@ const desktopConfiguration = {
   routing_policies: {},
   permissions: {},
   voice: {},
-  personalization: {},
+  personalization: { preferences: [] },
 };
 
 export interface DesktopRuntimeOptions {
   readonly userDataPath: string;
   readonly migrationsPath?: string;
+  readonly windowObserverBridge?: RuntimeApplicationOptions["windowObserverBridge"];
+  readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
 }
 
 const defaultMigrationsPath = resolve(
@@ -60,5 +64,10 @@ export async function createDesktopRuntime(
     verifier: new Verifier(),
     persistence: persistence.checkpointStore,
     dispose: persistence.close,
+    ...(options.windowObserverBridge === undefined
+      ? {}
+      : { windowObserverBridge: options.windowObserverBridge }),
+    observationIndexer:
+      options.observationIndexer ?? new ObservationIndexer(persistence.memoryStore),
   });
 }

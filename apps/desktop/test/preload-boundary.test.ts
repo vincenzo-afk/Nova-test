@@ -21,7 +21,14 @@ describe("Electron preload boundary", () => {
     expect(exposeInMainWorld).toHaveBeenCalledOnce();
     const [name, api] = exposeInMainWorld.mock.calls[0] as [string, Record<string, unknown>];
     expect(name).toBe("nova");
-    expect(Object.keys(api)).toEqual(["submitTask", "getTask", "getPermissions", "setPermission"]);
+    expect(Object.keys(api)).toEqual([
+      "submitTask",
+      "getTask",
+      "getPermissions",
+      "setPermission",
+      "getConfig",
+      "updateConfig",
+    ]);
   });
 
   it("forwards task and permission calls through IPC", async () => {
@@ -33,6 +40,8 @@ describe("Electron preload boundary", () => {
         getTask: (taskId: string) => unknown;
         getPermissions: () => unknown;
         setPermission: (source: string, granted: boolean) => unknown;
+        getConfig: () => unknown;
+        updateConfig: (section: string, value: unknown) => unknown;
       },
     ];
 
@@ -40,6 +49,8 @@ describe("Electron preload boundary", () => {
     api.getTask("task-1");
     api.getPermissions();
     api.setPermission("filesystem", true);
+    api.getConfig();
+    api.updateConfig("personalization", { preferences: [] });
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -47,6 +58,11 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(4, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(5, "nova:config:get");
+    expect(invoke).toHaveBeenNthCalledWith(6, "nova:config:update", {
+      section: "personalization",
+      value: { preferences: [] },
     });
   });
 });

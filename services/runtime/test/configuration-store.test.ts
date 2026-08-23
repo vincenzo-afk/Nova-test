@@ -1,6 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConfigurationStore, type NovaConfiguration } from "../src/configuration-store.js";
 
+const capability = () => ({
+  capability_id: "llm",
+  domain: "text-generation",
+  required: true,
+  providers: [
+    {
+      provider_id: "local.llm",
+      enabled: true,
+      priority: 1,
+      credential: { vault_reference: "vault://local-llm" },
+    },
+  ],
+  active_policy: "manual",
+  manual_override: "local.llm",
+});
+
+const personalization = () => ({
+  preferences: [
+    {
+      id: "tone.concise",
+      category: "tone",
+      value: { style: "concise" },
+      enabled: true,
+      source: "user",
+      updated_at: "2026-08-23T00:00:00.000Z",
+    },
+  ],
+});
+
 const base = (): NovaConfiguration => ({
   schema_version: "1.0.0",
   capabilities: {},
@@ -11,7 +40,7 @@ const base = (): NovaConfiguration => ({
   routing_policies: {},
   permissions: {},
   voice: { enabled: false, wake_word: "nova", always_listening: false },
-  personalization: {},
+  personalization: { preferences: [] },
 });
 
 describe("ConfigurationStore", () => {
@@ -76,6 +105,50 @@ describe("ConfigurationStore", () => {
       value: { warnings: [{ section: "routing_policies" }] },
     });
     expect(target.snapshot().routing_policies).toEqual({});
+  });
+
+  it("accepts documented capability provider records with vault-only credentials", () => {
+    const store = new ConfigurationStore({
+      initial: base(),
+      availableProviderIds: new Set(["local.llm"]),
+    });
+
+    expect(store.update("capabilities", { llm: capability() })).toMatchObject({ ok: true });
+    expect(store.snapshot().capabilities).toEqual({ llm: capability() });
+  });
+
+  it("rejects malformed capability records atomically", () => {
+    const store = new ConfigurationStore({ initial: base() });
+    const before = store.snapshot();
+
+    const result = store.update("capabilities", {
+      llm: { capability_id: "llm", providers: [{ provider_id: "local.llm" }] },
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+    expect(store.snapshot()).toEqual(before);
+  });
+
+  it("stores visible personalization records and can reset one or all records", () => {
+    const store = new ConfigurationStore({ initial: base() });
+
+    expect(store.update("personalization", personalization())).toMatchObject({ ok: true });
+    expect(store.snapshot().personalization).toEqual(personalization());
+    expect(store.resetPersonalization("tone.concise")).toMatchObject({ ok: true });
+    expect(store.snapshot().personalization).toEqual({ preferences: [] });
+    expect(store.update("personalization", personalization())).toMatchObject({ ok: true });
+    expect(store.resetPersonalization()).toMatchObject({ ok: true });
+    expect(store.snapshot().personalization).toEqual({ preferences: [] });
+  });
+
+  it("rejects hidden or inline personalization secrets", () => {
+    const store = new ConfigurationStore({ initial: base() });
+
+    const result = store.update("personalization", {
+      preferences: [{ ...personalization().preferences[0], value: { api_key: "secret" } }],
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
   });
 
   it("rejects unsupported schema versions", () => {

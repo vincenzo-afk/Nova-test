@@ -1,4 +1,16 @@
-import { InMemoryCommunicationBus, type Result } from "@nova/shared";
+import type {
+  ObservationIndexRequest,
+  ObservationIndexResult,
+  ObservationIndexer,
+} from "@nova/memory";
+import { InMemoryCommunicationBus, err, ok, type Result } from "@nova/shared";
+import {
+  NativeWindowsEventBridge,
+  type NativeWindowsEventBridgeContract,
+  WindowsApplicationObserver,
+  type WindowsObserverState,
+} from "@nova/observers";
+import { WorldModel } from "@nova/state";
 import { LocalApiTokenIssuer, PublicApiServer, type PublicApiServerOptions } from "./rest-api.js";
 import { ConfigurationStore, type NovaConfiguration } from "./configuration-store.js";
 import {
@@ -36,6 +48,8 @@ export interface RuntimeApplicationOptions {
   readonly dispose?: () => Promise<void>;
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
+  readonly windowObserverBridge?: NativeWindowsEventBridgeContract;
+  readonly observationIndexer?: ObservationIndexer;
 }
 
 export class RuntimeApplication {
@@ -49,6 +63,9 @@ export class RuntimeApplication {
   public readonly scheduler: TaskScheduler | undefined;
   public readonly rest: PublicApiServer;
   public readonly websocket: PublicWebSocketServer;
+  public readonly windowsObserver: WindowsApplicationObserver;
+  public readonly worldModel: WorldModel;
+  public readonly observationIndexer: ObservationIndexer | undefined;
   private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
   private readonly dispose: RuntimeApplicationOptions["dispose"];
 
@@ -56,11 +73,19 @@ export class RuntimeApplication {
     const bus = new InMemoryCommunicationBus();
     this.optionsPersistence = options.persistence;
     this.dispose = options.dispose;
+    this.observationIndexer = options.observationIndexer;
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
     this.configuration = new ConfigurationStore({ initial: options.configuration });
     this.events = new CommunicationBusEventJournal(bus);
+    this.worldModel = new WorldModel();
+    this.worldModel.attach(bus);
+    this.windowsObserver = new WindowsApplicationObserver({
+      permissions: this.permissions,
+      bridge: options.windowObserverBridge ?? new NativeWindowsEventBridge(),
+      bus,
+    });
     this.webhook = options.webhookManager ?? new WebhookManager({});
     this.coordinator = new RuntimeTaskCoordinator({
       tasks: this.tasks,
@@ -89,6 +114,7 @@ export class RuntimeApplication {
       if (!recovered.ok) throw new Error(recovered.error.message);
       this.tasks.restore(recovered.value);
     }
+    await this.syncObservers();
     await this.rest.start();
     try {
       await this.websocket.start();
@@ -100,11 +126,37 @@ export class RuntimeApplication {
 
   public async stop(): Promise<void> {
     try {
+      if (this.windowsObserver.state() !== "Disabled") await this.windowsObserver.revoke();
+      this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
     } finally {
       await this.dispose?.();
     }
+  }
+
+  public async adoptObservation(
+    request: ObservationIndexRequest,
+  ): Promise<Result<ObservationIndexResult>> {
+    if (!this.observationIndexer) {
+      return err({
+        code: "NOVA-MEM001",
+        message: "Observation indexing is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.observationIndexer.index(request);
+  }
+
+  public async syncObservers(): Promise<Result<WindowsObserverState>> {
+    const grants = new Map(this.permissions.list().map((grant) => [grant.source, grant.granted]));
+    const permitted = grants.get("applications") === true && grants.get("windows") === true;
+    if (!permitted) {
+      if (this.windowsObserver.state() !== "Disabled") return await this.windowsObserver.revoke();
+      return ok("Disabled");
+    }
+    if (this.windowsObserver.state() === "Disabled") return await this.windowsObserver.enable();
+    return ok(this.windowsObserver.state());
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {

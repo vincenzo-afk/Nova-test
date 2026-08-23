@@ -6,6 +6,12 @@ All notable changes to Nova are documented in this file.
 
 ### Added
 
+- Non-destructive Windows source-checkout bootstrap via `pnpm install:windows`, which installs the frozen workspace, builds the Electron desktop package, creates user-scoped Nova data directories, refuses non-Windows hosts, and deliberately does not register services, install third-party software, delete data, or start observers.
+- Real Windows system inventory collection for hardware, current-user AppX and uninstall-registry applications, running processes, model-storage availability, and counts restricted to explicitly granted filesystem scopes; unavailable AVX signals remain `unknown` rather than being fabricated.
+- Native Windows application/process and window observer using WinEvent hooks, WMI process notifications, monitor/virtual-desktop metadata, bounded title-only payloads, explicit `applications` plus `windows` permissions, and immediate revocation shutdown; the observer feeds a session-only World Model focus hierarchy with bounded recent transitions and causal correlation IDs.
+- Safe workspace-code execution capability `nova.workspace-code`, wired through the existing Executor, PermissionManager, and ResourceManager: registered runtimes only, canonical workspace containment, no shell, bounded stdout/stderr, enforced timeouts, exit-code evidence, mandatory confirmation, non-idempotent retry behavior, and lock cleanup.
+- Explicit task-bound observer adoption into Working Memory through the real desktop-persistent MemoryStore, with no automatic task assignment, normalized application/window metadata, and removal of native handles, window contents, and file paths from persisted payloads.
+- Validated capability/provider configuration records and visible personalization preference records with vault-only credential references, atomic updates, individual or full reset, and real desktop Provider Settings and Settings forms wired through the isolated Electron IPC bridge.
 - TypeScript monorepo foundations for shared contracts, runtime services, memory, observers, state, and Electron desktop surfaces.
 - Planner, executor, verifier, task management, tools, model routing, workflows, plugins, providers, credentials, diagnostics, backup, restore, and operational recovery boundaries.
 - Cross-device pairing, sync, logical clocks, distributed Full Peer task scheduling, voice wake-claim coordination, channels, multi-agent coordination, and incident lifecycle management.

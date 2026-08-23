@@ -30,8 +30,10 @@ document is the orchestration and UX contract across them.
 
 ## Steps
 
+Before the provider-choice steps, the Desktop permission center must collect the user's explicit source grants. The first-run inventory is then performed only for the granted sources: hardware detection runs first, and application discovery plus aggregate counts for explicitly approved filesystem scopes run only after the corresponding `applications` and `filesystem` permissions are granted. Inventory is session-scoped for onboarding; raw file names, contents, and unrestricted filesystem state are not persisted as part of this step.
+
 1. **Hardware detection** — scans the current machine; result feeds
-   every later local-vs-cloud recommendation.
+   every later provider-choice step.
 2. **Core LLM provider** — local model download or cloud API key, per
    `docs/05-ai/model-providers.md`; at least one is required for NOVA to
    reason at all, but the choice between local and cloud is the user's.

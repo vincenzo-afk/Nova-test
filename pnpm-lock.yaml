@@ -97,9 +97,18 @@ importers:
 
   services/runtime:
     dependencies:
+      '@nova/memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@nova/observers':
+        specifier: workspace:*
+        version: link:../observers
       '@nova/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@nova/state':
+        specifier: workspace:*
+        version: link:../state
       ws:
         specifier: ^8.21.3
         version: 8.21.3

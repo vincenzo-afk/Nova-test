@@ -42,6 +42,12 @@ reference (`docs/18-providers/credential-management.md`).
 - `personalization` — adaptive-behavior preferences and opt-outs
   (`docs/23-autonomy/adaptive-personalization.md`)
 
+## Configuration record shapes
+
+Capability entries use the registry model from `docs/18-providers/capability-management.md`: each key maps to `{ capability_id, domain, required, providers, active_policy, manual_override }`, and each provider record contains `{ provider_id, enabled, priority }` with an optional `credential: { vault_reference }`. The `capability_id` must match the configuration key, and a manual override must reference an available provider.
+
+The `personalization` section contains a visible `preferences` array. Each record has `{ id, category, value, enabled, source, updated_at }`, where `category` is one of `tool-default`, `provider-default`, `proactive-timing`, `routing-preference`, or `tone`; `source` is `user` or `feedback`; and `value` is structured preference data rather than a hidden model change. These records are inspectable, editable, individually resettable, and resettable as a collection. No model weights or hidden weighting are changed.
+
 ## Change propagation
 
 A write to any section takes effect immediately for new requests; no

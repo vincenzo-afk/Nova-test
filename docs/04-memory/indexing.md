@@ -49,6 +49,10 @@ flowchart LR
   entity indexes the Retrieval Engine queries.
 - **Store** — persist via the storage engines in `memory-storage.md`.
 
+## Observer adoption boundary
+
+Application and window observer events are not automatically assigned to a task or conversation. The observer envelope contains a correlation identifier, but it is not a task identifier and must not be substituted for one. The runtime exposes an explicit adoption operation that accepts a caller-supplied task context; only then is the normalized metadata written to Working Memory. Events without that context remain in the ephemeral World Model until a task explicitly adopts them. Window handles, window contents, file paths, and other unapproved payload fields are excluded from the persisted normalized record.
+
 ## Immediacy guarantee
 
 Every stage above runs synchronously enough, within the asynchronous event

@@ -14,7 +14,7 @@ const configuration = {
   routing_policies: {},
   permissions: {},
   voice: {},
-  personalization: {},
+  personalization: { preferences: [] },
 };
 
 const applications: RuntimeApplication[] = [];

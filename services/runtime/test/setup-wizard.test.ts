@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConfigurationStore, type NovaConfiguration } from "../src/configuration-store.js";
+import {
+  ConfigurationStore,
+  type ConfiguredCapabilityRecord,
+  type NovaConfiguration,
+} from "../src/configuration-store.js";
 import { HardwareDetector, type HardwareProbe } from "../src/hardware-detection.js";
+import { PermissionGrantStore } from "../src/permission-grant-store.js";
 import { SetupWizard } from "../src/setup-wizard.js";
+import type { SystemInventory } from "../src/system-inventory.js";
 
 const config = (): NovaConfiguration => ({
   schema_version: "1.0.0",
@@ -13,7 +19,7 @@ const config = (): NovaConfiguration => ({
   routing_policies: {},
   permissions: {},
   voice: {},
-  personalization: {},
+  personalization: { preferences: [] },
 });
 const probe = (): HardwareProbe => ({
   cpu_architecture: "x86_64",
@@ -27,6 +33,26 @@ const probe = (): HardwareProbe => ({
   available_disk_gb: 100,
   os: "linux",
   battery_powered: false,
+});
+
+const capability = (): ConfiguredCapabilityRecord => ({
+  capability_id: "llm",
+  domain: "text-generation",
+  required: true,
+  providers: [{ provider_id: "local.llm", enabled: true, priority: 1 }],
+  active_policy: "privacy-first",
+  manual_override: null,
+});
+
+const inventory = (): SystemInventory => ({
+  scanned_at: "2026-08-23T00:00:00.000Z",
+  hardware: probe(),
+  installed_applications: [{ name: "Editor", version: "1.0.0" }],
+  running_applications: [{ name: "Editor", process_id: 42 }],
+  storage: { model_storage_path: "C:\\Nova\\models", available_disk_gb: 100 },
+  granted_filesystem_scopes: [
+    { path: "C:\\Users\\S K\\Documents", file_count: 3, folder_count: 1 },
+  ],
 });
 
 describe("SetupWizard", () => {
@@ -53,7 +79,7 @@ describe("SetupWizard", () => {
     expect(
       wizard.complete("core-llm", {
         section: "capabilities",
-        value: { llm: { provider_id: "local.llm" } },
+        value: { llm: capability() },
       }),
     ).toMatchObject({ ok: true });
     expect(wizard.defer("perception")).toMatchObject({
@@ -70,7 +96,7 @@ describe("SetupWizard", () => {
     expect(
       wizard.complete("core-llm", {
         section: "capabilities",
-        value: { llm: { provider_id: "local.llm" } },
+        value: { llm: capability() },
       }),
     ).toMatchObject({ ok: true });
     expect(wizard.complete("perception")).toMatchObject({ ok: true });
@@ -83,13 +109,99 @@ describe("SetupWizard", () => {
 
     expect(wizard.summary()).toMatchObject({
       current_step: "summary",
-      configuration: { capabilities: { llm: { provider_id: "local.llm" } } },
+      configuration: { capabilities: { llm: capability() } },
     });
+  });
+
+  it("runs inventory only after application and filesystem permissions are granted", async () => {
+    const events: string[] = [];
+    const inventoryCollector = { collect: vi.fn(async () => inventory()) };
+    const permissions = new PermissionGrantStore({
+      initial: [
+        { source: "applications", granted: false },
+        { source: "filesystem", granted: false },
+      ],
+    });
+    const wizard = new SetupWizard(
+      new ConfigurationStore({ initial: config() }),
+      new HardwareDetector(async () => {
+        events.push("hardware");
+        return probe();
+      }),
+      {
+        inventory: inventoryCollector,
+        permissions,
+        grantedFilesystemScopes: () => ["C:\\Users\\S K\\Documents"],
+      },
+    );
+
+    await expect(wizard.start()).rejects.toThrow("applications permission");
+    expect(inventoryCollector.collect).not.toHaveBeenCalled();
+    expect(events).toEqual(["hardware"]);
+
+    permissions.update("applications", true);
+    permissions.update("filesystem", true);
+    const restarted = await wizard.rerun();
+
+    expect(restarted.inventory).toEqual(inventory());
+    expect(inventoryCollector.collect).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects inventory that reports a filesystem scope outside the approved paths", async () => {
+    const permissions = new PermissionGrantStore({
+      initial: [
+        { source: "applications", granted: true },
+        { source: "filesystem", granted: true },
+      ],
+    });
+    const unauthorized = {
+      ...inventory(),
+      granted_filesystem_scopes: [
+        { path: "C:\\Users\\S K\\Desktop", file_count: 9, folder_count: 2 },
+      ],
+    } satisfies SystemInventory;
+    const wizard = new SetupWizard(
+      new ConfigurationStore({ initial: config() }),
+      new HardwareDetector(async () => probe()),
+      {
+        inventory: { collect: async () => unauthorized },
+        permissions,
+        grantedFilesystemScopes: () => ["C:\\Users\\S K\\Documents"],
+      },
+    );
+
+    await expect(wizard.start()).rejects.toThrow("outside approved filesystem scopes");
+  });
+
+  it("keeps initial discovery aggregate-only in the setup snapshot", async () => {
+    const permissions = new PermissionGrantStore({
+      initial: [
+        { source: "applications", granted: true },
+        { source: "filesystem", granted: true },
+      ],
+    });
+    const wizard = new SetupWizard(
+      new ConfigurationStore({ initial: config() }),
+      new HardwareDetector(async () => probe()),
+      {
+        inventory: { collect: async () => inventory() },
+        permissions,
+        grantedFilesystemScopes: () => ["C:\\Users\\S K\\Documents"],
+      },
+    );
+
+    const state = await wizard.start();
+
+    expect(state.inventory?.granted_filesystem_scopes).toEqual([
+      { path: "C:\\Users\\S K\\Documents", file_count: 3, folder_count: 1 },
+    ]);
+    expect(state.inventory).not.toHaveProperty("file_names");
+    expect(state.inventory).not.toHaveProperty("file_contents");
   });
 
   it("reruns without discarding existing configuration", async () => {
     const store = new ConfigurationStore({
-      initial: { ...config(), capabilities: { llm: { provider_id: "local.llm" } } },
+      initial: { ...config(), capabilities: { llm: capability() } },
     });
     const detector = new HardwareDetector(vi.fn(async () => probe()));
     const wizard = new SetupWizard(store, detector);
@@ -99,7 +211,7 @@ describe("SetupWizard", () => {
     const rerun = await wizard.rerun();
 
     expect(rerun.current_step).toBe("core-llm");
-    expect(rerun.configuration.capabilities).toEqual({ llm: { provider_id: "local.llm" } });
+    expect(rerun.configuration.capabilities).toEqual({ llm: capability() });
     expect(detector.lastProfile()).toBeDefined();
   });
 });

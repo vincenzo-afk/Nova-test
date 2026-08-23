@@ -35,7 +35,9 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 ### Core capabilities
 
 - Permission-first Electron desktop onboarding with local/cloud provider choice and a concrete demonstration task.
+- In-app Provider Settings and Settings forms backed by the validated local configuration store for provider/model identifiers, vault references, routing policy, and visible personalization records with individual or full reset.
 - Planner, executor, verifier, task-manager, priority/concurrency task scheduler, tool-registry, deterministic model routing, and resource-locking boundaries.
+- An explicit `nova.workspace-code` CLI tool for approved script execution inside a configured workspace: it uses registered runtimes, canonical path containment, no shell, bounded output, timeouts, exit-code evidence, mandatory confirmation, and workspace locks; it does not execute free-form shell text.
 - Working, recent, and long-term memory persistence with SQLite and Prisma, workspace scoping, checksums, lineage, and schema-version controls.
 - Filesystem observation with explicit permission gates, canonicalized security checks, caller-path-preserving Windows output, batching, hashing, and event delivery.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
@@ -101,6 +103,18 @@ pnpm verify
 
 The `verify` script runs documentation-link validation, formatting checks, ESLint, recursive TypeScript typechecking, and the test command. The test command prepares the SQLite test database, builds shared contracts, and runs Vitest.
 
+### Windows source-checkout bootstrap
+
+For a Windows source checkout, run the repository bootstrap command from the checkout root:
+
+```powershell
+pnpm install:windows
+```
+
+This command is deliberately a **bootstrap**, not a packaged Windows installer. It refuses to run on non-Windows hosts, installs the locked workspace dependencies, builds the Electron desktop package, and creates the user-scoped Nova data directories under `%LOCALAPPDATA%\\Nova`. It does not register a Windows service, install third-party software, delete data, download arbitrary files, or start observers. The packaged Windows installer and service-registration assets described by the deployment documentation are not present in this repository yet.
+
+After the command completes, launch the desktop application from the built package or the development workflow. First launch must present the permission center; Nova must not begin source-specific observation or initial scanning until the user grants the corresponding permission. Initial discovery is limited to the explicitly approved folders and sources.
+
 ### Desktop build
 
 Build the Electron renderer and TypeScript desktop sources with:
@@ -115,11 +129,11 @@ For renderer-only development, the desktop package exposes:
 pnpm --filter @nova/desktop dev
 ```
 
-The current repository does not define a packaged installer or release command. Do not treat the Vite development server as a complete Electron distribution.
+The current repository does not define a packaged installer or release command. Do not treat the Vite development server as a complete Electron distribution, and do not describe `pnpm install:windows` as a packaged installer.
 
 ### Configuration
 
-The current repository has no committed `.env.example` file and no required application environment-variable inventory beyond the Prisma datasource contract. The Groq adapter is intentionally not coupled to a client-visible environment variable: a host or backend must resolve its configured opaque credential reference at call time. Tests use an isolated SQLite file through `scripts/prepare-memory-test.mjs`:
+The current repository has no committed `.env.example` file and no required application environment-variable inventory beyond the Prisma datasource contract. The Groq adapter is intentionally not coupled to a client-visible environment variable: a host or backend must resolve its configured opaque credential reference at call time. Capability/provider selections are stored as validated registry records, and provider credentials contain only opaque `vault_reference` values. Personalization is stored as visible `{ id, category, value, enabled, source, updated_at }` records in a `preferences` array; users can inspect, edit, or reset these records, and no model weights or hidden weighting are changed. Tests use an isolated SQLite file through `scripts/prepare-memory-test.mjs`:
 
 ```text
 DATABASE_URL=file:./test.db
@@ -197,6 +211,8 @@ The preload bridge exposes only the following renderer-safe operations:
 | `window.nova.submitTask(goal)`               | A task goal string                  | Submit a task request through Electron main and the API Gateway |
 | `window.nova.getPermissions()`               | None                                | Read current permission grants                                  |
 | `window.nova.setPermission(source, granted)` | Permission source and boolean grant | Update an explicit permission grant                             |
+| `window.nova.getConfig()`                    | None                                | Read the versioned local configuration snapshot                |
+| `window.nova.updateConfig(section, value)`   | Configuration section and value     | Atomically validate and persist an editable configuration section |
 
 The renderer has no direct Node.js access. The main process uses `contextIsolation`, disables `nodeIntegration`, enables sandboxing, and routes core operations through the API Gateway.
 
@@ -231,7 +247,7 @@ Every CommunicationBus message includes `message_id`, `topic`, `schema_version`,
 │   ├── runtime/              Orchestration and runtime service boundaries
 │   └── state/                State Manager service
 ├── docs/                     Normative architecture, product, security, testing, and operations docs
-├── scripts/                  Documentation link check and memory-test preparation scripts
+├── scripts/                  Documentation checks, test preparation, and Windows bootstrap script
 ├── IMPLEMENTATION_PLAN.md    Milestone plan and acceptance criteria
 ├── NOVA_SCREENS_AND_APP_FLOW.md  Desktop screen and interaction reference
 ├── package.json              Root scripts and workspace toolchain
@@ -261,7 +277,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the current release history.
 
 ### Known limitations and next work
 
-- The repository is currently version `0.1.0` and does not define a packaged Electron installer or release workflow.
+- The repository is currently version `0.1.0`. `pnpm install:windows` is a non-destructive source-checkout bootstrap; a packaged Electron installer, Windows service registration, signing, and release workflow remain separate work.
 - The runtime now exposes a real `RuntimeTaskCoordinator`, local `TaskScheduler`, and `RuntimeApplication` composition root for Planner → Permission Manager → Executor → Verifier execution, priority/concurrency dispatch, correlated task-progress events, configuration, webhook, REST, and WebSocket services. Electron main now instantiates that shared runtime through `createDesktopRuntime`; the renderer refreshes authoritative task status through the isolated preload bridge; and the desktop host creates a stable per-user workspace UUID, applies packaged Prisma migrations to `memory/structured/nova.db`, injects `TaskCheckpointStore`, and restores checkpoints before opening listeners. Full capability registration and a packaged installer/release workflow remain subsequent integration work.
 - The REST server currently implements task submission, task status lookup, cursor-paginated task listing, task cancellation, memory search, memory record lookup with lineage, bounded Knowledge Graph traversal queries, permission listing and updates, configuration listing and section-level updates, cursor-paginated tool listing, plugin-tool registration, and webhook registration through the real WebhookManager boundary. The runtime also provides the authenticated WebSocket event transport at `/v1/events` with live CommunicationBus delivery, topic authorization, bounded replay, and backpressure handling.
 - Hosted sync and third-party channel deployments are represented by documented service boundaries rather than a production hosted service in this repository.
@@ -287,7 +303,7 @@ The repository currently contains 57 test files and 222 passing tests in the mai
 
 ## Deployment
 
-There is no Dockerfile, Kubernetes manifest, installer, or hosted deployment configuration in the current repository. Nova is developed as a local-first desktop application. A deployment or release process should be added only after the target operating systems, packaging format, signing requirements, update channel, and runtime model-distribution strategy are selected.
+There is no Dockerfile, Kubernetes manifest, packaged installer, Windows service-registration asset, or hosted deployment configuration in the current repository. Nova is developed as a local-first desktop application. The Windows source-checkout bootstrap is intended for development and verification only; a production deployment or release process should be added only after the target operating systems, packaging format, signing requirements, update channel, and runtime model-distribution strategy are selected.
 
 For local validation, use the Electron production build command:
 

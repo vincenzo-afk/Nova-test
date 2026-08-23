@@ -13,7 +13,7 @@ const configuration = {
   routing_policies: {},
   permissions: {},
   voice: { enabled: true },
-  personalization: {},
+  personalization: { preferences: [] },
 };
 
 describe("PublicApiServer configuration endpoints", () => {

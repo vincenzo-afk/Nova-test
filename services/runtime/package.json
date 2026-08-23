@@ -6,7 +6,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
+    "@nova/memory": "workspace:*",
+    "@nova/observers": "workspace:*",
     "@nova/shared": "workspace:*",
+    "@nova/state": "workspace:*",
     "ws": "^8.21.3"
   },
   "scripts": {

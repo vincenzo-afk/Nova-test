@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
-import { ApiGateway, type PermissionGrant, type RuntimeApplication } from "@nova/runtime";
+import {
+  ApiGateway,
+  type ConfigurationSectionName,
+  type NovaConfiguration,
+  type PermissionGrant,
+  type RuntimeApplication,
+} from "@nova/runtime";
 import { createMessage, NamedPipeCommunicationBus } from "@nova/shared";
 import { createDesktopRuntime } from "./runtime.js";
 
@@ -81,6 +87,34 @@ ipcMain.handle(
   (_event, payload: { readonly source: string; readonly granted: boolean }) =>
     requestGateway<PermissionGrant[]>("permissions.set", payload),
 );
+const configurationSections: ReadonlySet<string> = new Set([
+  "capabilities",
+  "devices",
+  "channels",
+  "plugins",
+  "mcp_servers",
+  "routing_policies",
+  "permissions",
+  "voice",
+  "personalization",
+]);
+
+ipcMain.handle("nova:config:get", () => requestGateway<NovaConfiguration>("config.get", undefined));
+ipcMain.handle(
+  "nova:config:update",
+  (
+    _event,
+    payload: {
+      readonly section: string;
+      readonly value: NovaConfiguration[ConfigurationSectionName];
+    },
+  ) => {
+    if (!configurationSections.has(payload.section)) {
+      throw new Error("Configuration section is invalid.");
+    }
+    return requestGateway<NovaConfiguration>("config.update", payload);
+  },
+);
 
 const startGateway = async (): Promise<void> => {
   gatewayBus = new NamedPipeCommunicationBus({
@@ -119,7 +153,33 @@ const startGateway = async (): Promise<void> => {
     }
     const result = runtimeApplication.permissions.update(payload.source, payload.granted);
     if (!result.ok) throw new Error(result.error.message);
+    const observerSync = await runtimeApplication.syncObservers();
+    if (!observerSync.ok) throw new Error(observerSync.error.message);
     return runtimeApplication.permissions.list();
+  });
+  gateway.register("config.get", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.configuration.snapshot();
+  });
+  gateway.register("config.update", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly section?: string;
+      readonly value?: NovaConfiguration[ConfigurationSectionName];
+    };
+    if (
+      !payload.section ||
+      !configurationSections.has(payload.section) ||
+      payload.value === undefined
+    ) {
+      throw new Error("Configuration section and value are required.");
+    }
+    const result = runtimeApplication.configuration.update(
+      payload.section as ConfigurationSectionName,
+      payload.value,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return runtimeApplication.configuration.snapshot();
   });
   await gatewayBus.start();
   await gateway.start();
