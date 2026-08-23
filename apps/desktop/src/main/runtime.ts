@@ -25,7 +25,7 @@ const desktopPermissions = [
   { source: "windows", granted: false },
   { source: "screen", granted: false },
   { source: "desktop_control", granted: false },
-  { source: "browser", granted: false },
+  { source: "browser_metadata", granted: false },
   { source: "clipboard_metadata", granted: false },
   { source: "clipboard_content", granted: false },
   { source: "notifications_metadata", granted: false },
@@ -40,7 +40,7 @@ const desktopConfiguration = {
   plugins: [],
   mcp_servers: [],
   routing_policies: {},
-  permissions: {},
+  permissions: { browser_excluded_domains: [] },
   voice: {},
   personalization: { preferences: [] },
 };
@@ -51,6 +51,8 @@ export interface DesktopRuntimeOptions {
   readonly windowObserverBridge?: RuntimeApplicationOptions["windowObserverBridge"];
   readonly clipboardObserverBridge?: RuntimeApplicationOptions["clipboardObserverBridge"];
   readonly notificationObserverBridge?: RuntimeApplicationOptions["notificationObserverBridge"];
+  readonly browserObserverBridge?: RuntimeApplicationOptions["browserObserverBridge"];
+  readonly browserExcludedDomains?: RuntimeApplicationOptions["browserExcludedDomains"];
   readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
   readonly desktopAgent?: () => DesktopAgentController | undefined;
 }
@@ -99,6 +101,12 @@ export async function createDesktopRuntime(
     ...(options.notificationObserverBridge === undefined
       ? {}
       : { notificationObserverBridge: options.notificationObserverBridge }),
+    ...(options.browserObserverBridge === undefined
+      ? {}
+      : { browserObserverBridge: options.browserObserverBridge }),
+    ...(options.browserExcludedDomains === undefined
+      ? {}
+      : { browserExcludedDomains: options.browserExcludedDomains }),
     observationIndexer:
       options.observationIndexer ?? new ObservationIndexer(persistence.memoryStore),
     registeredTools: [

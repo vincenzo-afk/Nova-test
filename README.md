@@ -44,6 +44,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - Filesystem observation with explicit permission gates, canonicalized security checks, caller-path-preserving Windows output, batching, hashing, and event delivery.
 - A real event-based Windows clipboard observer using separate off-by-default `clipboard_metadata` and `clipboard_content` permissions, metadata-only downgrade behavior, sensitive-source exclusion, latest-state coalescing, task correlation, and task-bound normalized memory indexing without raw-content leakage.
 - A real event-based Windows notifications observer using separate off-by-default `notifications_metadata` and `notifications_content` permissions, metadata-only downgrade behavior, sensitive messaging/authentication-source exclusion, task correlation, event coalescing, immediate revocation shutdown, and task-bound normalized Recent Memory indexing without unapproved body leakage. Live Windows validation remains deferred while no Windows host is connected.
+- A real browser metadata observer using the off-by-default `browser_metadata` permission and a visible Manifest V3 extension. It observes tab open/close/activation/navigation metadata through Chrome Native Messaging and the local named-pipe API Gateway, accepts only normalized HTTP(S) domain/path URLs and bounded titles, applies persisted `permissions.browser_excluded_domains` before publication, coalesces per-tab state, and never captures page content, forms, passwords, payments, DOM state, screenshots, or browser automation. Chrome/Windows installation and live validation remain deferred while no Windows host is connected.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
 - A real Groq OpenAI-compatible LLM provider adapter with vault-reference credential resolution, authenticated model health checks, chat-completion translation, strict response validation, and compatibility with the deterministic provider router.
 - Multi-agent coordination, authenticated network discovery, paired-device synchronization, distributed Full Peer task scheduling, and logical clocks.
@@ -118,6 +119,17 @@ pnpm install:windows
 This command is deliberately a **bootstrap**, not a packaged Windows installer. It refuses to run on non-Windows hosts, installs the locked workspace dependencies, builds the Electron desktop package, and creates the user-scoped Nova data directories under `%LOCALAPPDATA%\\Nova`. It does not register a Windows service, install third-party software, delete data, download arbitrary files, or start observers. The packaged Windows installer and service-registration assets described by the deployment documentation are not present in this repository yet.
 
 After the command completes, launch the desktop application from the built package or the development workflow. First launch must present the permission center; Nova must not begin source-specific observation or initial scanning until the user grants the corresponding permission. Initial discovery is limited to the explicitly approved folders and sources.
+
+### Browser metadata extension
+
+Build the visible extension artifacts with:
+
+```bash
+pnpm --filter @nova/browser-extension typecheck
+pnpm --filter @nova/browser-extension build
+```
+
+The output is written to `apps/browser-extension/dist`. Install the extension through the browser’s unpacked-extension workflow, then install the Native Messaging host manifest from `dist/native-host/com.nova.browser.json` using an explicit Windows installation step. Replace `__NOVA_EXTENSION_ID__` with the installed extension ID and `__NOVA_NATIVE_HOST_PATH__` with the absolute host executable path; the repository’s source-checkout bootstrap intentionally does not claim to perform this registration. The extension requests only the Chrome `tabs` permission and has no content scripts. Page content, DOM automation, screenshots, and vision fallback are separate future slices, not hidden behavior of this surface. No live browser or Windows validation is claimed in the current sandbox.
 
 ### Desktop build
 
@@ -227,11 +239,12 @@ The renderer has no direct Node.js access. The main process uses `contextIsolati
 
 The API Gateway consumes `api.internal.request` envelopes and publishes correlated replies to the request’s `reply_to` topic.
 
-| Operation         | Current behavior                                                      |
-| ----------------- | --------------------------------------------------------------------- |
-| `task.submit`     | Returns a task snapshot with an ID, goal, and `Created` state         |
-| `permissions.get` | Returns the current permission-grant snapshot                         |
-| `permissions.set` | Updates a known permission source and returns the permission snapshot |
+| Operation                  | Current behavior                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| `task.submit`              | Returns a task snapshot with an ID, goal, and `Created` state                                 |
+| `permissions.get`          | Returns the current permission-grant snapshot                                                 |
+| `permissions.set`          | Updates a known permission source and returns the permission snapshot                         |
+| `browser.activity.capture` | Validates and routes one bounded browser tab-metadata event through the permissioned observer |
 
 Unknown operations return a typed `NOVA-TL004` error. Malformed routing fields return `NOVA-TL003`. Operation failures return retryable `NOVA-TL002` errors.
 
@@ -244,6 +257,7 @@ Every CommunicationBus message includes `message_id`, `topic`, `schema_version`,
 ```text
 .
 ├── apps/
+│   ├── browser-extension/    Visible Manifest V3 tab-metadata extension and Native Messaging host
 │   ├── cli/                  CLI application workspace
 │   └── desktop/              Electron main, preload, React renderer, and shell tests
 ├── packages/

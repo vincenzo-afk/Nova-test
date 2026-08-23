@@ -139,6 +139,15 @@ scope: User
 description: Whether clipboard content (not just type/metadata) is captured.
 source: docs/07-observers/clipboard.md
 
+key: permissions.browser_excluded_domains
+type: string[]
+default: []
+hot_reload: true
+required: false
+scope: User
+description: Hostnames or *.hostname wildcards excluded before browser metadata reaches the event bus or memory.
+source: docs/07-observers/browser.md, docs/10-security/permissions.md
+
 key: ai.cost_budget_daily
 type: string (currency amount) | null
 default: null (no budget enforced)

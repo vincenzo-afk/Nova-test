@@ -45,7 +45,9 @@ export interface NovaConfiguration {
   readonly plugins: readonly unknown[];
   readonly mcp_servers: readonly unknown[];
   readonly routing_policies: Readonly<Record<string, unknown>>;
-  readonly permissions: Readonly<Record<string, unknown>>;
+  readonly permissions: Readonly<Record<string, unknown>> & {
+    readonly browser_excluded_domains?: readonly string[];
+  };
   readonly voice: Readonly<Record<string, unknown>>;
   readonly personalization: PersonalizationConfiguration;
 }
@@ -189,6 +191,7 @@ export class ConfigurationStore {
       );
     if (section === "capabilities") return this.validateCapabilities(value);
     if (section === "personalization") return this.validatePersonalization(value);
+    if (section === "permissions") return this.validatePermissions(value);
     if (section === "routing_policies") {
       if (!isRecord(value))
         return err(this.configError("Routing policies must be an object.", section));
@@ -235,6 +238,30 @@ export class ConfigurationStore {
         return err(this.configError(`${section} must be an array.`, section));
     } else if (!isRecord(value)) {
       return err(this.configError(`${section} must be an object.`, section));
+    }
+    return ok(undefined);
+  }
+
+  private validatePermissions(value: unknown): Result<void> {
+    if (!isRecord(value))
+      return err(this.configError("Permissions must be an object.", "permissions"));
+    const domains = value.browser_excluded_domains;
+    if (domains === undefined) return ok(undefined);
+    if (!Array.isArray(domains))
+      return err(
+        this.configError(
+          "Browser excluded domains must be an array.",
+          "permissions.browser_excluded_domains",
+        ),
+      );
+    for (const [index, rawDomain] of domains.entries()) {
+      if (typeof rawDomain !== "string" || !isValidBrowserDomainRule(rawDomain))
+        return err(
+          this.configError(
+            "Browser excluded domain must be a hostname or *.hostname wildcard.",
+            `permissions.browser_excluded_domains.${index}`,
+          ),
+        );
     }
     return ok(undefined);
   }
@@ -425,6 +452,16 @@ function containsInlineCredential(value: unknown): boolean {
     if (containsInlineCredential(nested)) return true;
   }
   return false;
+}
+
+function isValidBrowserDomainRule(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  const hostname = normalized.startsWith("*.") ? normalized.slice(2) : normalized;
+  if (!hostname || hostname.length > 253 || hostname.includes("..")) return false;
+  if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(hostname)) return false;
+  return hostname
+    .split(".")
+    .every((label) => label.length <= 63 && !label.startsWith("-") && !label.endsWith("-"));
 }
 
 function isRoutingPolicy(value: unknown): value is ConfiguredRoutingPolicy {

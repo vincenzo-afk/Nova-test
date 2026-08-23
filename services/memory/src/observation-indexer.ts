@@ -8,7 +8,10 @@ export type SupportedObservationTopic =
   | "observer.window.focused"
   | "observer.window.title_changed"
   | "observer.clipboard.changed"
-  | "observer.notification.received";
+  | "observer.notification.received"
+  | "observer.browser.tab_opened"
+  | "observer.browser.tab_closed"
+  | "observer.browser.navigation";
 
 export interface SupportedObservationEvent extends Omit<MessageEnvelope, "topic"> {
   readonly topic: SupportedObservationTopic;
@@ -88,6 +91,9 @@ function normalizeEvent(
   if (event.topic === "observer.notification.received") {
     return normalizeNotificationEvent(event, payload);
   }
+  if (event.topic.startsWith("observer.browser.")) {
+    return normalizeBrowserEvent(event, payload);
+  }
 
   if (event.topic.startsWith("observer.application.")) {
     const application = asRecord(payload.application);
@@ -156,6 +162,15 @@ interface NormalizedObservation {
   readonly timestamp: string;
   readonly correlation_id: string;
   readonly source_service: string;
+  readonly browser?: {
+    readonly browser: string;
+    readonly tab_id: number;
+    readonly window_id: number;
+    readonly url?: string;
+    readonly title: string;
+    readonly active: boolean;
+    readonly event_type: "tab_opened" | "tab_closed" | "tab_updated" | "tab_activated";
+  };
   readonly application?: { readonly process_id: number; readonly application_name: string };
   readonly clipboard?: {
     readonly content_type: "text" | "image" | "file_reference" | "unknown";
@@ -192,6 +207,9 @@ const supportedTopics = new Set<SupportedObservationTopic>([
   "observer.window.title_changed",
   "observer.clipboard.changed",
   "observer.notification.received",
+  "observer.browser.tab_opened",
+  "observer.browser.tab_closed",
+  "observer.browser.navigation",
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -209,6 +227,69 @@ function boundedString(value: unknown, maxLength: number): string | null {
     .join("")
     .trim();
   return normalized.length <= maxLength ? normalized : normalized.slice(0, maxLength);
+}
+
+function normalizeBrowserEvent(
+  event: SupportedObservationEvent,
+  payload: Record<string, unknown>,
+): Result<NormalizedObservation> {
+  const browser = boundedString(payload.browser, 64);
+  const tabId = payload.tab_id;
+  const windowId = payload.window_id;
+  const rawUrl = payload.url;
+  const title = boundedString(payload.title, 512);
+  const active = payload.active;
+  const eventType = payload.event_type;
+  if (
+    !browser ||
+    typeof tabId !== "number" ||
+    !Number.isInteger(tabId) ||
+    tabId < 0 ||
+    typeof windowId !== "number" ||
+    !Number.isInteger(windowId) ||
+    windowId < 0 ||
+    (rawUrl !== undefined && typeof rawUrl !== "string") ||
+    title === null ||
+    typeof active !== "boolean" ||
+    (eventType !== "tab_opened" &&
+      eventType !== "tab_closed" &&
+      eventType !== "tab_updated" &&
+      eventType !== "tab_activated")
+  ) {
+    return invalidPayload();
+  }
+
+  let url: string | undefined;
+  if (typeof rawUrl === "string") {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return invalidPayload();
+      parsed.username = "";
+      parsed.password = "";
+      parsed.search = "";
+      parsed.hash = "";
+      url = `${parsed.origin}${parsed.pathname === "/" ? "" : parsed.pathname}`;
+    } catch {
+      return invalidPayload();
+    }
+  }
+
+  return ok({
+    topic: event.topic,
+    schema_version: event.schema_version,
+    timestamp: event.timestamp,
+    correlation_id: event.correlation_id,
+    source_service: event.source_service,
+    browser: {
+      browser,
+      tab_id: tabId,
+      window_id: windowId,
+      ...(url === undefined ? {} : { url }),
+      title,
+      active,
+      event_type: eventType,
+    },
+  });
 }
 
 function normalizeClipboardEvent(

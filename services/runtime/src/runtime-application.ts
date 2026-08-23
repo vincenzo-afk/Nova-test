@@ -5,6 +5,11 @@ import type {
 } from "@nova/memory";
 import { InMemoryCommunicationBus, err, ok, type Result } from "@nova/shared";
 import {
+  BrowserObserver,
+  NativeBrowserEventBridge,
+  type NativeBrowserEvent,
+  type NativeBrowserEventBridgeContract,
+  type BrowserObserverState,
   ClipboardObserver,
   NativeClipboardEventBridge,
   type NativeClipboardEventBridgeContract,
@@ -67,6 +72,8 @@ export interface RuntimeApplicationOptions {
   readonly windowObserverBridge?: NativeWindowsEventBridgeContract;
   readonly clipboardObserverBridge?: NativeClipboardEventBridgeContract;
   readonly notificationObserverBridge?: NativeNotificationEventBridgeContract;
+  readonly browserObserverBridge?: NativeBrowserEventBridgeContract;
+  readonly browserExcludedDomains?: readonly string[];
   readonly observationIndexer?: ObservationIndexer;
   readonly registeredTools?: readonly RegisteredTool[];
 }
@@ -85,6 +92,7 @@ export class RuntimeApplication {
   public readonly windowsObserver: WindowsApplicationObserver;
   public readonly clipboardObserver: ClipboardObserver;
   public readonly notificationObserver: NotificationObserver;
+  public readonly browserObserver: BrowserObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -108,7 +116,17 @@ export class RuntimeApplication {
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
-    this.configuration = new ConfigurationStore({ initial: options.configuration });
+    const initialConfiguration =
+      options.browserExcludedDomains === undefined
+        ? options.configuration
+        : {
+            ...options.configuration,
+            permissions: {
+              ...options.configuration.permissions,
+              browser_excluded_domains: options.browserExcludedDomains,
+            },
+          };
+    this.configuration = new ConfigurationStore({ initial: initialConfiguration });
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel();
     this.worldModel.attach(bus);
@@ -126,6 +144,17 @@ export class RuntimeApplication {
       permissions: this.permissions,
       bridge: options.notificationObserverBridge ?? new NativeNotificationEventBridge(),
       bus,
+    });
+    this.browserObserver = new BrowserObserver({
+      permissions: this.permissions,
+      bridge: options.browserObserverBridge ?? new NativeBrowserEventBridge(),
+      bus,
+      excludedDomains: this.configuration.snapshot().permissions.browser_excluded_domains ?? [],
+    });
+    this.configuration.subscribe((configuration) => {
+      this.browserObserver.setExcludedDomains(
+        configuration.permissions.browser_excluded_domains ?? [],
+      );
     });
     this.webhook = options.webhookManager ?? new WebhookManager({});
     this.coordinator = new RuntimeTaskCoordinator({
@@ -172,6 +201,7 @@ export class RuntimeApplication {
       if (this.clipboardObserver.state() !== "Disabled") await this.clipboardObserver.revoke();
       if (this.notificationObserver.state() !== "Disabled")
         await this.notificationObserver.revoke();
+      if (this.browserObserver.state() !== "Disabled") await this.browserObserver.revoke();
       this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
@@ -206,6 +236,8 @@ export class RuntimeApplication {
   }
 
   public async syncObservers(): Promise<Result<WindowsObserverState>> {
+    const browser = await this.syncBrowserObserver();
+    if (!browser.ok) return err(browser.error);
     const clipboard = await this.syncClipboardObserver();
     if (!clipboard.ok) return err(clipboard.error);
     const notifications = await this.syncNotificationObserver();
@@ -245,6 +277,22 @@ export class RuntimeApplication {
     if (this.notificationObserver.state() === "Disabled")
       return await this.notificationObserver.enable();
     return ok(this.notificationObserver.state());
+  }
+
+  public async syncBrowserObserver(): Promise<Result<BrowserObserverState>> {
+    const metadataGranted = this.permissions
+      .list()
+      .some((grant) => grant.source === "browser_metadata" && grant.granted);
+    if (!metadataGranted) {
+      if (this.browserObserver.state() !== "Disabled") return await this.browserObserver.revoke();
+      return ok("Disabled");
+    }
+    if (this.browserObserver.state() === "Disabled") return await this.browserObserver.enable();
+    return ok(this.browserObserver.state());
+  }
+
+  public async captureBrowserEvent(event: NativeBrowserEvent): Promise<Result<void>> {
+    return await this.browserObserver.captureAndPublish(event);
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {

@@ -8,8 +8,8 @@
   "scripts": {
     "build": "pnpm prepare:memory-client && pnpm -r --if-present build",
     "check:links": "python3 scripts/check-links.py",
-    "format": "prettier --write \"package.json\" \"pnpm-workspace.yaml\" \"tsconfig*.json\" \"vitest.config.ts\" \"eslint.config.mjs\" \"IMPLEMENTATION_PLAN.md\" \"packages/**/*.{ts,json}\" \"services/**/*.{ts,json}\" \"apps/**/*.{ts,tsx,json}\" \"scripts/**/*.{js,mjs}\"",
-    "format:check": "prettier --check \"package.json\" \"pnpm-workspace.yaml\" \"tsconfig*.json\" \"vitest.config.ts\" \"eslint.config.mjs\" \"IMPLEMENTATION_PLAN.md\" \"packages/**/*.{ts,json}\" \"services/**/*.{ts,json}\" \"apps/**/*.{ts,tsx,json}\" \"scripts/**/*.{js,mjs}\"",
+    "format": "prettier --write \"package.json\" \"pnpm-workspace.yaml\" \"tsconfig*.json\" \"vitest.config.ts\" \"eslint.config.mjs\" \"IMPLEMENTATION_PLAN.md\" \"packages/**/*.{ts,json}\" \"services/**/*.{ts,json}\" \"apps/**/*.{ts,tsx,js,mjs,json}\" \"scripts/**/*.{js,mjs}\"",
+    "format:check": "prettier --check \"package.json\" \"pnpm-workspace.yaml\" \"tsconfig*.json\" \"vitest.config.ts\" \"eslint.config.mjs\" \"IMPLEMENTATION_PLAN.md\" \"packages/**/*.{ts,json}\" \"services/**/*.{ts,json}\" \"apps/**/*.{ts,tsx,js,mjs,json}\" \"scripts/**/*.{js,mjs}\"",
     "lint": "eslint .",
     "prepare:memory-client": "pnpm --filter @nova/memory prisma:generate",
     "prepare:memory-test": "node scripts/prepare-memory-test.mjs",

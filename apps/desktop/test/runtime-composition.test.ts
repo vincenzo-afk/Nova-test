@@ -124,6 +124,62 @@ describe("desktop runtime composition", () => {
     });
   });
 
+  it("starts browser metadata observation only after permission and stops on revocation", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-browser-"));
+    temporaryDirectories.push(userDataPath);
+    const bridge = {
+      start: vi.fn(async () => undefined),
+      stop: vi.fn(async () => undefined),
+    };
+    const runtime = await createDesktopRuntime({ userDataPath, browserObserverBridge: bridge });
+    runtimes.push(runtime);
+    await runtime.start();
+
+    expect(runtime.browserObserver.state()).toBe("Disabled");
+    runtime.permissions.update("browser_metadata", true);
+    await runtime.syncObservers();
+    expect(runtime.browserObserver.state()).toBe("Active");
+    expect(bridge.start).toHaveBeenCalledOnce();
+
+    runtime.permissions.update("browser_metadata", false);
+    await runtime.syncObservers();
+    expect(runtime.browserObserver.state()).toBe("Disabled");
+    expect(bridge.stop).toHaveBeenCalledOnce();
+  });
+
+  it("hot-reloads browser excluded domains before event-journal publication", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-browser-config-"));
+    temporaryDirectories.push(userDataPath);
+    const bridge = { start: vi.fn(async () => undefined), stop: vi.fn(async () => undefined) };
+    const runtime = await createDesktopRuntime({
+      userDataPath,
+      browserObserverBridge: bridge,
+    });
+    runtimes.push(runtime);
+    await runtime.start();
+    runtime.permissions.update("browser_metadata", true);
+    await runtime.syncObservers();
+    const received: unknown[] = [];
+    const unsubscribe = runtime.events.subscribe("observer.browser.navigation", async (message) => {
+      received.push(message);
+    });
+    expect(
+      runtime.configuration.update("permissions", { browser_excluded_domains: ["example.com"] }),
+    ).toMatchObject({ ok: true });
+    await runtime.browserObserver.capture({
+      type: "tab_updated",
+      browser: "chromium",
+      tab_id: 42,
+      window_id: 7,
+      url: "https://example.com/private",
+      title: "Private",
+      active: true,
+    });
+    await runtime.browserObserver.flush();
+    unsubscribe();
+    expect(received).toHaveLength(0);
+  });
+
   it("starts notification observation only after metadata permission and stops on revocation", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-notifications-"));
     temporaryDirectories.push(userDataPath);
@@ -291,7 +347,7 @@ describe("desktop runtime composition", () => {
       { source: "windows", granted: false },
       { source: "screen", granted: false },
       { source: "desktop_control", granted: false },
-      { source: "browser", granted: false },
+      { source: "browser_metadata", granted: false },
       { source: "clipboard_metadata", granted: false },
       { source: "clipboard_content", granted: false },
       { source: "notifications_metadata", granted: false },

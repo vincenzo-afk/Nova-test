@@ -42,6 +42,15 @@ content; content permission never overrides sensitive-source exclusion.
 Notifications use `notifications_metadata` for source/title/timestamp metadata
 and `notifications_content` for eligible body text; the latter never replaces
 the former and cannot override messaging/authentication-source exclusion.
+Browser metadata uses the separate off-by-default `browser_metadata` grant and
+is limited to visible extension-reported tab open/close/activation/navigation
+metadata, normalized HTTP(S) domain/path URLs, and bounded titles. It never
+captures page content, form fields, entered text, passwords, payments, DOM
+state, or browser automation. `permissions.browser_excluded_domains` is a
+validated local hostname/wildcard list applied before browser events are
+published or indexed; revocation stops the bridge and purges pending browser
+metadata.
+
 Screen capture and structured desktop control are separate, explicit source categories defined
 by `docs/06-tools/desktop-agent.md`: `screen` permits only one-shot,
 task-bound screenshots, while `desktop_control` permits only focus-checked

@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "NOVA Browser Metadata",
+  "version": "0.1.0",
+  "description": "Sends explicit browser tab metadata to a local NOVA runtime.",
+  "permissions": ["tabs"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  }
+}

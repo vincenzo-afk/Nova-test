@@ -222,6 +222,87 @@ describe("ObservationIndexer", () => {
     expect(memory.writeWorking).not.toHaveBeenCalled();
   });
 
+  it("keeps browser metadata ephemeral without an explicit task", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      event: event("observer.browser.navigation" as SupportedObservationEvent["topic"], {
+        browser: "Chrome",
+        tab_id: 7,
+        window_id: 3,
+        url: "https://example.test/private/report",
+        title: "Private report",
+        active: true,
+        event_type: "tab_updated",
+      }),
+    });
+
+    expect(result).toEqual({ ok: true, value: { persisted: false, reason: "no_task_context" } });
+    expect(memory.writeWorking).not.toHaveBeenCalled();
+  });
+
+  it("persists only normalized browser metadata for an explicit task", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      task_id: "task-1",
+      event: event("observer.browser.navigation" as SupportedObservationEvent["topic"], {
+        browser: "Chrome",
+        tab_id: 7,
+        window_id: 3,
+        url: "https://example.test/private/report?token=SECRET#fragment",
+        title: "Private report",
+        active: true,
+        event_type: "tab_updated",
+        body: "PAGE BODY MUST NOT PERSIST",
+        form_fields: { email: "user@example.test" },
+      }),
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { persisted: true, memory_id: "working-1" } });
+    const input = memory.writeWorking.mock.calls[0]?.[0] as { readonly contentRef: string };
+    const normalized = JSON.parse(input.contentRef) as Record<string, unknown>;
+    expect(normalized).toMatchObject({
+      topic: "observer.browser.navigation",
+      browser: {
+        browser: "Chrome",
+        tab_id: 7,
+        window_id: 3,
+        url: "https://example.test/private/report",
+        title: "Private report",
+        active: true,
+        event_type: "tab_updated",
+      },
+    });
+    expect(input.contentRef).not.toContain("SECRET");
+    expect(input.contentRef).not.toContain("fragment");
+    expect(input.contentRef).not.toContain("PAGE BODY MUST NOT PERSIST");
+    expect(input.contentRef).not.toContain("form_fields");
+  });
+
+  it("rejects browser metadata with a non-normalized URL", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      task_id: "task-1",
+      event: event("observer.browser.navigation" as SupportedObservationEvent["topic"], {
+        browser: "Chrome",
+        tab_id: 7,
+        window_id: 3,
+        url: "javascript:alert(1)",
+        title: "Unsafe",
+        active: false,
+        event_type: "tab_updated",
+      }),
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(memory.writeWorking).not.toHaveBeenCalled();
+  });
+
   it("returns storage failures without pretending indexing succeeded", async () => {
     const memory: ObservationMemoryWriter = {
       writeWorking: async () =>

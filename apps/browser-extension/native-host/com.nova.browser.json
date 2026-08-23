@@ -1,0 +1,7 @@
+{
+  "name": "com.nova.browser",
+  "description": "NOVA local browser metadata bridge",
+  "path": "__NOVA_NATIVE_HOST_PATH__",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://__NOVA_EXTENSION_ID__/"]
+}

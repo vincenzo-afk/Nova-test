@@ -50,7 +50,9 @@ const permissionLabel = (source: string): string =>
             ? "Notification metadata"
             : source === "notifications_content"
               ? "Notification content"
-              : source;
+              : source === "browser_metadata"
+                ? "Browser metadata"
+                : source;
 const permissionDescription = (source: string): string => {
   if (source === "filesystem") return "Scoped folders only";
   if (source === "screen") return "One-shot task-bound screenshots; not continuously recorded";
@@ -63,6 +65,8 @@ const permissionDescription = (source: string): string => {
   if (source === "notifications_metadata") return "Source, timestamp, and title only; no body text";
   if (source === "notifications_content")
     return "Eligible notification bodies; messaging and authentication sources are always excluded";
+  if (source === "browser_metadata")
+    return "Tab open/close/navigation metadata only; no page content, forms, passwords, or automation";
   return "Metadata only until expanded";
 };
 
@@ -819,7 +823,14 @@ const SettingsView = ({
   const [valueText, setValueText] = useState(
     JSON.stringify(preferences[0]?.value ?? { style: "concise" }, null, 2),
   );
+  const [excludedDomainsText, setExcludedDomainsText] = useState(
+    (configuration?.permissions.browser_excluded_domains ?? []).join("\n"),
+  );
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setExcludedDomainsText((configuration?.permissions.browser_excluded_domains ?? []).join("\n"));
+  }, [configuration?.permissions.browser_excluded_domains]);
 
   const savePreference = async () => {
     let value: unknown;
@@ -847,6 +858,26 @@ const SettingsView = ({
       setStatus("Personalization preference saved.");
     } catch (saveError: unknown) {
       setStatus(saveError instanceof Error ? saveError.message : "Preference could not be saved.");
+    }
+  };
+
+  const saveBrowserPrivacy = async () => {
+    const domains = excludedDomainsText
+      .split(/\r?\n/)
+      .map((domain) => domain.trim())
+      .filter((domain) => domain.length > 0);
+    try {
+      await onUpdate("permissions", {
+        ...(configuration?.permissions ?? {}),
+        browser_excluded_domains: domains,
+      });
+      setStatus("Browser privacy exclusions saved.");
+    } catch (saveError: unknown) {
+      setStatus(
+        saveError instanceof Error
+          ? saveError.message
+          : "Browser privacy exclusions could not be saved.",
+      );
     }
   };
 
@@ -912,6 +943,24 @@ const SettingsView = ({
               {status}
             </p>
           ) : null}
+        </article>
+        <article className="surface-card">
+          <strong>Browser privacy boundary</strong>
+          <p className="muted">
+            One hostname per line. Prefix a hostname with <code>*.</code> to exclude the host and
+            its subdomains before metadata reaches the event bus or memory.
+          </p>
+          <label htmlFor="browser-excluded-domains">Excluded browser domains</label>
+          <textarea
+            id="browser-excluded-domains"
+            rows={7}
+            value={excludedDomainsText}
+            onChange={(event) => setExcludedDomainsText(event.target.value)}
+            placeholder="bank.example.com\n*.private.example"
+          />
+          <button type="button" onClick={() => void saveBrowserPrivacy()}>
+            Save browser privacy
+          </button>
         </article>
         <article className="surface-card">
           <strong>Stored preferences</strong>

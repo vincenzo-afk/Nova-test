@@ -19,6 +19,7 @@ import {
   type UiActionRequest,
 } from "./desktop-agent.js";
 import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
+import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
@@ -26,7 +27,6 @@ interface TaskSnapshot {
   readonly state: string;
   readonly retry_count?: number;
 }
-
 let gatewayBus: NamedPipeCommunicationBus | undefined;
 let runtimeApplication: RuntimeApplication | undefined;
 let desktopAgent: DesktopAgentController | undefined;
@@ -273,6 +273,14 @@ const startGateway = async (): Promise<void> => {
       timeout_ms: 15_000,
       confirmation_status: destructive || payload.confirmed === true ? "approved" : "not_required",
     });
+  });
+  gateway.register("browser.activity.capture", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const parsed = parseBrowserMetadataEvent(data);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const result = await runtimeApplication.captureBrowserEvent(parsed.value);
+    if (!result.ok) throw new Error(result.error.message);
+    return { accepted: true };
   });
   gateway.register("task.cancel", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -75,6 +75,33 @@ describe("ConfigurationStore", () => {
     expect(store.snapshot()).toEqual(before);
   });
 
+  it("persists validated browser excluded-domain rules", () => {
+    const store = new ConfigurationStore({ initial: base() });
+
+    const result = store.update("permissions", {
+      browser_excluded_domains: ["example.com", "*.private.test", "localhost"],
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(store.snapshot().permissions).toEqual({
+      browser_excluded_domains: ["example.com", "*.private.test", "localhost"],
+    });
+  });
+
+  it("rejects malformed browser excluded-domain rules without mutation", () => {
+    const store = new ConfigurationStore({
+      initial: { ...base(), permissions: { browser_excluded_domains: ["example.com"] } },
+    });
+    const before = store.snapshot();
+
+    const result = store.update("permissions", {
+      browser_excluded_domains: ["https://example.com/path", "*.", "bad domain"],
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+    expect(store.snapshot()).toEqual(before);
+  });
+
   it("accepts credential vault references but rejects inline credential values", () => {
     const store = new ConfigurationStore({ initial: base() });
 
