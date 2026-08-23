@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createServer, createConnection, type Server, type Socket } from "node:net";
 import { unlink } from "node:fs/promises";
 import {
@@ -16,6 +17,17 @@ export interface NamedPipeBusOptions {
   readonly role: "server" | "client";
 }
 
+const READY_FRAME = "__nova_bus_ready__";
+
+export const namedPipeTransportPath = (
+  path: string,
+  platform: NodeJS.Platform = process.platform,
+): string => {
+  if (platform !== "win32") return path;
+  const suffix = createHash("sha256").update(path).digest("hex").slice(0, 24);
+  return `\\\\.\\pipe\\nova-${suffix}`;
+};
+
 interface Subscription {
   readonly handler: MessageHandler;
   readonly processedMessageIds: Set<string>;
@@ -28,6 +40,7 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
   private server: Server | undefined;
   private socket: Socket | undefined;
   private started = false;
+  private clientReadyResolver: (() => void) | undefined;
 
   public constructor(private readonly options: NamedPipeBusOptions) {}
 
@@ -82,26 +95,33 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
     if (this.server) {
       await new Promise<void>((resolve) => this.server?.close(() => resolve()));
       this.server = undefined;
-      await unlink(this.options.path).catch(() => undefined);
+      if (process.platform !== "win32") {
+        await unlink(namedPipeTransportPath(this.options.path)).catch(() => undefined);
+      }
     }
     this.started = false;
   }
 
   private async startServer(): Promise<void> {
-    await unlink(this.options.path).catch(() => undefined);
+    const transportPath = namedPipeTransportPath(this.options.path);
+    if (process.platform !== "win32") await unlink(transportPath).catch(() => undefined);
     this.server = createServer((socket) => {
       this.sockets.add(socket);
       this.attachSocket(socket, (message) => this.dispatch(message));
+      socket.write(`${READY_FRAME}\n`);
       socket.once("close", () => this.sockets.delete(socket));
     });
     await new Promise<void>((resolve, reject) => {
       this.server?.once("error", reject);
-      this.server?.listen(this.options.path, () => resolve());
+      this.server?.listen(transportPath, () => resolve());
     });
   }
 
   private async startClient(): Promise<void> {
-    this.socket = createConnection(this.options.path);
+    const ready = new Promise<void>((resolve) => {
+      this.clientReadyResolver = resolve;
+    });
+    this.socket = createConnection(namedPipeTransportPath(this.options.path));
     this.attachSocket(this.socket, async (message) => {
       await this.dispatch(message);
     });
@@ -109,6 +129,7 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
       this.socket?.once("connect", () => resolve());
       this.socket?.once("error", reject);
     });
+    await ready;
   }
 
   private attachSocket(socket: Socket, handler: (message: MessageEnvelope) => Promise<void>): void {
@@ -120,7 +141,12 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
         const frame = incoming.slice(0, separator);
         incoming = incoming.slice(separator + 1);
         separator = incoming.indexOf("\n");
-        void this.readFrame(frame, handler);
+        if (frame === READY_FRAME) {
+          this.clientReadyResolver?.();
+          this.clientReadyResolver = undefined;
+        } else {
+          void this.readFrame(frame, handler);
+        }
       }
     });
   }

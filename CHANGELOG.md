@@ -13,6 +13,7 @@ All notable changes to Nova are documented in this file.
 - Production repository documentation, contribution infrastructure, security policy, issue forms, pull-request guidance, and CI workflow.
 - Electron desktop host persistence bootstrap with a stable per-user workspace UUID, canonical `memory/structured/nova.db` path, forward migration application, Prisma `TaskCheckpointStore` injection, durable gateway submission, and orderly Prisma shutdown.
 - Real Groq OpenAI-compatible LLM provider adapter with vault-reference credential resolution, authenticated model health checks, chat-completion translation, strict response validation, and deterministic-router compatibility; no provider key is stored inline or exposed to the renderer.
+- Cross-platform IPC hardening with deterministic Windows named-pipe mapping and explicit readiness handshaking, plus Windows filesystem-observer path identity preservation while retaining canonical security checks.
 
 ### Verification
 

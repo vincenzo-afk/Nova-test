@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMessage } from "../src/communication-bus.js";
-import { NamedPipeCommunicationBus } from "../src/named-pipe-bus.js";
+import { NamedPipeCommunicationBus, namedPipeTransportPath } from "../src/named-pipe-bus.js";
 
 const resources: Array<{
   server: NamedPipeCommunicationBus;
@@ -22,6 +22,13 @@ afterEach(async () => {
 });
 
 describe("NamedPipeCommunicationBus", () => {
+  it("maps Windows paths to named-pipe namespace without using filesystem sockets", () => {
+    expect(
+      namedPipeTransportPath("C:\\Users\\S K\\AppData\\Local\\Temp\\bus.sock", "win32"),
+    ).toMatch(/^\\\\\.\\pipe\\nova-[a-f0-9]{24}$/);
+    expect(namedPipeTransportPath("/tmp/bus.sock", "linux")).toBe("/tmp/bus.sock");
+  });
+
   it("delivers an envelope from a client to server and server subscribers", async () => {
     const directory = await mkdtemp(join(tmpdir(), "nova-bus-"));
     const path = join(directory, "bus.sock");

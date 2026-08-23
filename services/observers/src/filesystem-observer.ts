@@ -107,20 +107,28 @@ export class FilesystemObserver {
       return err(this.permissionError("Filesystem event size is invalid."));
     }
 
-    const canonicalPath = await this.canonicalize(event.path);
-    if (!this.isWithinGrantedScope(canonicalPath) || this.isHiddenPath(canonicalPath)) {
+    const observedPath = this.normalizePath(event.path);
+    const targetPath = await this.canonicalize(event.path);
+    if (!(await this.isWithinGrantedScope(targetPath)) || this.isHiddenPath(observedPath)) {
       return err(
         this.permissionError("Filesystem event is outside the granted observation scope."),
       );
     }
 
     const payload: Record<string, string | number> = {
-      entity_ref: canonicalPath,
-      file_type: extname(canonicalPath),
+      entity_ref: observedPath,
+      file_type: extname(observedPath),
       size_bytes: event.sizeBytes,
     };
     if (event.oldPath) {
-      payload.old_path = await this.canonicalize(event.oldPath);
+      const oldPath = this.normalizePath(event.oldPath);
+      const oldTargetPath = await this.canonicalize(event.oldPath);
+      if (!(await this.isWithinGrantedScope(oldTargetPath)) || this.isHiddenPath(oldPath)) {
+        return err(
+          this.permissionError("Filesystem event is outside the granted observation scope."),
+        );
+      }
+      payload.old_path = oldPath;
     }
     if (event.content !== undefined && event.sizeBytes <= this.options.hashThresholdBytes) {
       payload.content_hash = createHash("sha256").update(event.content).digest("hex");
@@ -136,7 +144,7 @@ export class FilesystemObserver {
       }),
       timestamp: this.now(),
     };
-    this.pending.set(`${canonicalPath}:${event.type}`, message);
+    this.pending.set(`${observedPath}:${event.type}`, message);
     return ok(undefined);
   }
 
@@ -171,6 +179,10 @@ export class FilesystemObserver {
     return ok(undefined);
   }
 
+  private normalizePath(path: string): string {
+    return resolve(path);
+  }
+
   private async canonicalize(path: string): Promise<string> {
     const absolute = isAbsolute(path) ? path : resolve(path);
     try {
@@ -180,15 +192,19 @@ export class FilesystemObserver {
     }
   }
 
-  private isWithinGrantedScope(path: string): boolean {
-    return this.scopes.some((scope) => {
-      const relativePath = relative(scope, path);
-      return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
-    });
+  private async isWithinGrantedScope(path: string): Promise<boolean> {
+    for (const scope of this.scopes) {
+      const canonicalScope = await this.canonicalize(scope);
+      const relativePath = relative(canonicalScope, path);
+      if (relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private isHiddenPath(path: string): boolean {
-    return path.split("/").some((segment) => segment.startsWith(".") && segment.length > 1);
+    return path.split(/[\\\\/]/).some((segment) => segment.startsWith(".") && segment.length > 1);
   }
 
   private permissionError(message: string): ErrorInfo {
