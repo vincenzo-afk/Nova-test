@@ -16,16 +16,18 @@ its own dedicated page in this folder.
 
 ## Observer source index
 
-| Source | Captures | Explicitly does not capture | Detail |
-|---|---|---|---|
-| Filesystem | Create/modify/delete/move/rename, within granted folders | Content of files outside granted scope; system/hidden files by default | `filesystem.md` |
-| Applications | Install/remove/launch/close, version where observable | Application internal state or data | `applications.md` |
-| Windows | Open/close/focus/title | Window contents (that is Vision's domain, gated separately) | `windows.md` |
-| Browser | Tab/URL changes, page title | Form field contents, passwords, payment data | `browser.md` |
-| Clipboard | Content type and, if permitted, text content | Content from applications flagged as sensitive (password managers) | `clipboard.md` |
-| Notifications | OS/app notification metadata (source, title) | Notification body content by default | `notifications.md` |
-| Keyboard | Activity/idle signal, registered hotkey triggers only | Keystroke content — never a keylogger | `keyboard.md` |
-| Mouse | Activity/idle signal, current position for World Model | Continuous movement trail/history | `mouse.md` |
+| Source        | Captures                                                 | Explicitly does not capture                                            | Detail             |
+| ------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------ |
+| Filesystem    | Create/modify/delete/move/rename, within granted folders | Content of files outside granted scope; system/hidden files by default | `filesystem.md`    |
+| Applications  | Install/remove/launch/close, version where observable    | Application internal state or data                                     | `applications.md`  |
+| Windows       | Open/close/focus/title                                   | Window contents (that is Vision's domain, gated separately)            | `windows.md`       |
+| Browser       | Tab/URL changes, page title                              | Form field contents, passwords, payment data                           | `browser.md`       |
+| Clipboard     | Content type and, if permitted, text content             | Content from applications flagged as sensitive (password managers)     | `clipboard.md`     |
+| Notifications | OS/app notification metadata (source, title)             | Notification body content by default                                   | `notifications.md` |
+| Keyboard      | Activity/idle signal, registered hotkey triggers only    | Keystroke content — never a keylogger                                  | `keyboard.md`      |
+| Mouse         | Activity/idle signal, current position for World Model   | Continuous movement trail/history                                      | `mouse.md`         |
+
+Screen contents are deliberately not an observer row: on-demand capture is the separate `screen` permission and `nova.screen-capture` tool defined in `docs/06-tools/desktop-agent.md`. Structured desktop control is the separate `desktop_control` permission and accessibility-tier `nova.desktop-accessibility` tool; neither starts continuous capture.
 
 ## Shared convention: minimum necessary capture
 
@@ -45,20 +47,20 @@ indistinguishable from a keylogger, regardless of stated intent — this is
 addressed directly, not left implicit: NOVA's keyboard and mouse
 observers capture only activity/idle state and explicit registered
 hotkey triggers, never keystroke content or movement trails. Where mouse
-*position* is needed (for GUI automation targeting in
+_position_ is needed (for GUI automation targeting in
 `docs/06-tools/automation.md`), that is read on-demand at the moment of
 an Executor action via the World Model, not continuously logged.
 
 ## Observer scheduling model
 
-| Source | Mechanism | Sampling/backoff |
-|---|---|---|
-| Filesystem | Event-based (OS file-watch API) | Debounced per `docs/02-architecture/event-driven-architecture.md`; falls back to periodic reconciliation polling (low frequency) only to catch watch-API gaps after sleep/wake, per `docs/02-architecture/lifecycle.md` |
-| Applications | Event-based (OS process notification) | No polling under normal operation |
-| Windows | Event-based (OS window-event hooks) | No polling under normal operation |
-| Browser | Event-based (extension API callbacks) | No polling; if the extension connection drops, reconnection uses exponential backoff |
-| Clipboard | Event-based (OS clipboard-change notification) | No polling |
-| Notifications | Event-based (OS notification API) | No polling |
+| Source           | Mechanism                                                 | Sampling/backoff                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Filesystem       | Event-based (OS file-watch API)                           | Debounced per `docs/02-architecture/event-driven-architecture.md`; falls back to periodic reconciliation polling (low frequency) only to catch watch-API gaps after sleep/wake, per `docs/02-architecture/lifecycle.md`                                                                                                                                                                                                  |
+| Applications     | Event-based (OS process notification)                     | No polling under normal operation                                                                                                                                                                                                                                                                                                                                                                                        |
+| Windows          | Event-based (OS window-event hooks)                       | No polling under normal operation                                                                                                                                                                                                                                                                                                                                                                                        |
+| Browser          | Event-based (extension API callbacks)                     | No polling; if the extension connection drops, reconnection uses exponential backoff                                                                                                                                                                                                                                                                                                                                     |
+| Clipboard        | Event-based (OS clipboard-change notification)            | No polling                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Notifications    | Event-based (OS notification API)                         | No polling                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Keyboard / Mouse | Event-based (activity-only signal, per the scoping above) | Sampled every 5 seconds for idle-detection purposes only; a user is considered idle after 120 seconds with no keyboard/mouse activity signal — this is the one source using sampling rather than pure event-driven capture, since "idle" is inherently a duration-based judgment, not a discrete event. Both values are configurable overrides (`docs/14-development/configuration-schema.md`), not hardcoded constants. |
 
 NOVA prefers event-based observation over polling everywhere the OS

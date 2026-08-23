@@ -20,7 +20,15 @@ import {
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore } from "./permission-grant-store.js";
 import type { TaskScheduler } from "./task-scheduler.js";
-import type { Executor, Planner, Verifier } from "./orchestration.js";
+import type {
+  ExecutionResult,
+  ExecutionStep,
+  Executor,
+  Planner,
+  Verifier,
+  VerificationVerdict,
+} from "./orchestration.js";
+import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
 import { WebhookManager } from "./webhook-manager.js";
 import {
@@ -50,6 +58,7 @@ export interface RuntimeApplicationOptions {
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
   readonly windowObserverBridge?: NativeWindowsEventBridgeContract;
   readonly observationIndexer?: ObservationIndexer;
+  readonly registeredTools?: readonly RegisteredTool[];
 }
 
 export class RuntimeApplication {
@@ -66,6 +75,9 @@ export class RuntimeApplication {
   public readonly windowsObserver: WindowsApplicationObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
+  public readonly toolRegistry: ToolRegistry;
+  private readonly executor: Executor;
+  private readonly verifier: Verifier;
   private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
   private readonly dispose: RuntimeApplicationOptions["dispose"];
 
@@ -73,6 +85,13 @@ export class RuntimeApplication {
     const bus = new InMemoryCommunicationBus();
     this.optionsPersistence = options.persistence;
     this.dispose = options.dispose;
+    this.executor = options.executor;
+    this.verifier = options.verifier;
+    this.toolRegistry = new ToolRegistry();
+    for (const tool of options.registeredTools ?? []) {
+      const registration = this.toolRegistry.register(tool);
+      if (!registration.ok) throw new Error(registration.error.message);
+    }
     this.observationIndexer = options.observationIndexer;
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
@@ -133,6 +152,18 @@ export class RuntimeApplication {
     } finally {
       await this.dispose?.();
     }
+  }
+
+  public async executeToolStep(
+    input: ExecutionStep,
+  ): Promise<
+    Result<{ readonly execution: ExecutionResult; readonly verification: VerificationVerdict }>
+  > {
+    const execution = await this.executor.execute(input);
+    if (!execution.ok) return execution;
+    const verification = this.verifier.verify(input, execution.value);
+    if (!verification.ok) return verification;
+    return ok({ execution: execution.value, verification: verification.value });
   }
 
   public async adoptObservation(

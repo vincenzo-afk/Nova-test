@@ -16,11 +16,11 @@ permissions. Runtime enforcement mechanics are
 
 ## Execution risk tiers and confirmation policy
 
-| Risk tier | Definition | Default confirmation requirement |
-|---|---|---|
-| Read-only | No state change | None — executes immediately |
-| Reversible-write | Changes state, but an undo path exists | Configurable; off by default for low-consequence actions, but always logged with undo information |
-| Destructive/irreversible | Changes state with no reliable undo path | Mandatory, explicit confirmation — no exceptions, no user-configurable override to disable |
+| Risk tier                | Definition                               | Default confirmation requirement                                                                  |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Read-only                | No state change                          | None — executes immediately                                                                       |
+| Reversible-write         | Changes state, but an undo path exists   | Configurable; off by default for low-consequence actions, but always logged with undo information |
+| Destructive/irreversible | Changes state with no reliable undo path | Mandatory, explicit confirmation — no exceptions, no user-configurable override to disable        |
 
 The destructive/irreversible tier's mandatory confirmation cannot be
 disabled by user configuration, even for a user who wants maximum
@@ -35,7 +35,12 @@ and — for Clipboard and Notifications specifically — at two separate
 granularity levels (metadata-only vs. content capture, per
 `docs/07-observers/clipboard.md` and `docs/07-observers/notifications.md`).
 Filesystem observation is additionally scoped per folder, not
-filesystem-wide (`docs/07-observers/filesystem.md`).
+filesystem-wide (`docs/07-observers/filesystem.md`). Screen capture and
+structured desktop control are separate, explicit source categories defined
+by `docs/06-tools/desktop-agent.md`: `screen` permits only one-shot,
+task-bound screenshots, while `desktop_control` permits only focus-checked
+Windows UI Automation actions. Both are off by default, revocable immediately,
+and do not start background observation.
 
 ## Path containment enforcement
 
@@ -84,5 +89,5 @@ settings, which defeats its purpose as a guarantee at all.
   policy
 - `docs/05-ai/hallucination-prevention.md` — the AI-specific extension of
   this tiering
-- `docs/07-observers/` — the per-source observation permissions
-  referenced above
+- `docs/07-observers/` — the per-source observer permissions referenced above
+- `docs/06-tools/desktop-agent.md` — task-bound screen and desktop-control permissions

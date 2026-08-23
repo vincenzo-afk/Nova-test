@@ -1,15 +1,22 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import {
   ApiGateway,
   type ConfigurationSectionName,
   type NovaConfiguration,
+  type ExecutionStep,
   type PermissionGrant,
   type RuntimeApplication,
 } from "@nova/runtime";
 import { createMessage, NamedPipeCommunicationBus } from "@nova/shared";
 import { createDesktopRuntime } from "./runtime.js";
+import {
+  DesktopAgentController,
+  NativeDesktopAgentBridge,
+  type ScreenshotRequest,
+  type UiActionRequest,
+} from "./desktop-agent.js";
 import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
 
 interface TaskSnapshot {
@@ -21,6 +28,7 @@ interface TaskSnapshot {
 
 let gatewayBus: NamedPipeCommunicationBus | undefined;
 let runtimeApplication: RuntimeApplication | undefined;
+let desktopAgent: DesktopAgentController | undefined;
 
 const createWindow = async (): Promise<void> => {
   const window = new BrowserWindow({
@@ -78,6 +86,26 @@ const requestGateway = async <TValue>(operation: string, data: unknown): Promise
   });
 };
 
+const executeDesktopStep = async (
+  input: Omit<
+    ExecutionStep,
+    "step_id" | "correlation_id" | "capability_id" | "task_id" | "confirmation_status"
+  > & {
+    readonly task_id: string;
+    readonly confirmation_status: ExecutionStep["confirmation_status"];
+  },
+): Promise<unknown> => {
+  if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+  const result = await runtimeApplication.executeToolStep({
+    ...input,
+    step_id: randomUUID(),
+    correlation_id: randomUUID(),
+    capability_id: "desktop-agent",
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  return result.value.execution.evidence.value;
+};
+
 ipcMain.handle("nova:task:submit", (_event, payload: { readonly goal: string }) =>
   requestGateway<TaskSnapshot>("task.submit", { goal: payload.goal }),
 );
@@ -98,6 +126,12 @@ ipcMain.handle(
 );
 ipcMain.handle("nova:task:cancel", (_event, payload: { readonly task_id: string }) =>
   requestGateway<TaskSnapshot>("task.cancel", { task_id: payload.task_id }),
+);
+ipcMain.handle("nova:desktop:screenshot", (_event, payload: ScreenshotRequest) =>
+  requestGateway("desktop.screenshot", payload),
+);
+ipcMain.handle("nova:desktop:ui-action", (_event, payload: UiActionRequest) =>
+  requestGateway("desktop.ui-action", payload),
 );
 ipcMain.handle("nova:permissions:get", () =>
   requestGateway<PermissionGrant[]>("permissions.get", undefined),
@@ -145,6 +179,25 @@ const startGateway = async (): Promise<void> => {
   runtimeApplication = await createDesktopRuntime({
     userDataPath: app.getPath("userData"),
     migrationsPath: join(app.getAppPath(), "dist", "migrations"),
+    desktopAgent: () => desktopAgent,
+  });
+  desktopAgent = new DesktopAgentController({
+    permissions: runtimeApplication.permissions,
+    focus: () => runtimeApplication?.worldModel.focus() ?? null,
+    bridge: new NativeDesktopAgentBridge(),
+    confirm: async (request) => {
+      const confirmation = await dialog.showMessageBox({
+        type: "warning",
+        title: "Nova confirmation required",
+        message: `Confirm ${request.action_id} in ${request.expected_window_id}?`,
+        detail: "This desktop action may cause an irreversible change.",
+        buttons: ["Cancel", "Confirm"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      return confirmation.response === 1;
+    },
   });
   await runtimeApplication.start();
   gateway.register("task.submit", async (data) => {
@@ -167,6 +220,41 @@ const startGateway = async (): Promise<void> => {
     const page = listDesktopTasks(runtimeApplication.tasks.list(), payload);
     if (!page.ok) throw new Error(page.error.message);
     return page.value;
+  });
+  gateway.register("desktop.screenshot", async (data) => {
+    const payload = data as ScreenshotRequest;
+    return await executeDesktopStep({
+      task_id: payload.task_id,
+      resolved_tool_id: "nova.screen-capture",
+      action_id: "screenshot",
+      parameters: payload as unknown as Readonly<Record<string, unknown>>,
+      risk_tier: "read_only",
+      execution_tier: "vision",
+      required_locks: ["desktop.screen"],
+      timeout_ms: 15_000,
+      confirmation_status: "not_required",
+    });
+  });
+  gateway.register("desktop.ui-action", async (data) => {
+    const payload = data as UiActionRequest;
+    const destructive = payload.risk_tier === "destructive_irreversible";
+    if (destructive) {
+      if (!desktopAgent) throw new Error("Desktop agent is not ready.");
+      const confirmed = await desktopAgent.confirmDestructiveUiAction(payload);
+      if (!confirmed) throw new Error("Destructive UI action was not confirmed.");
+    }
+    const approvedPayload = destructive ? { ...payload, confirmed: true } : payload;
+    return await executeDesktopStep({
+      task_id: payload.task_id,
+      resolved_tool_id: "nova.desktop-accessibility",
+      action_id: destructive ? "ui_action_destructive" : "ui_action",
+      parameters: approvedPayload as unknown as Readonly<Record<string, unknown>>,
+      risk_tier: payload.risk_tier,
+      execution_tier: "accessibility",
+      required_locks: ["desktop.focus", "desktop.accessibility"],
+      timeout_ms: 15_000,
+      confirmation_status: destructive || payload.confirmed === true ? "approved" : "not_required",
+    });
   });
   gateway.register("task.cancel", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -178,7 +178,7 @@ export class PermissionManager {
       });
     }
 
-    if (action.risk_tier === "read_only") {
+    if (action.risk_tier === "read_only" && action.verification_signal !== "none") {
       return ok("allowed");
     }
 

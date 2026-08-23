@@ -118,6 +118,8 @@ describe("desktop runtime composition", () => {
       { source: "filesystem", granted: false },
       { source: "applications", granted: false },
       { source: "windows", granted: false },
+      { source: "screen", granted: false },
+      { source: "desktop_control", granted: false },
       { source: "browser", granted: false },
       { source: "clipboard", granted: false },
       { source: "notifications", granted: false },

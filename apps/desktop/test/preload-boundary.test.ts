@@ -26,6 +26,8 @@ describe("Electron preload boundary", () => {
       "getTask",
       "listTasks",
       "cancelTask",
+      "captureScreenshot",
+      "executeUiAction",
       "getPermissions",
       "setPermission",
       "getConfig",
@@ -42,6 +44,8 @@ describe("Electron preload boundary", () => {
         getTask: (taskId: string) => unknown;
         listTasks: (limit?: number, cursor?: string) => unknown;
         cancelTask: (taskId: string) => unknown;
+        captureScreenshot: (request: unknown) => unknown;
+        executeUiAction: (request: unknown) => unknown;
         getPermissions: () => unknown;
         setPermission: (source: string, granted: boolean) => unknown;
         getConfig: () => unknown;
@@ -53,6 +57,15 @@ describe("Electron preload boundary", () => {
     api.getTask("task-1");
     api.listTasks(25, "cursor-1");
     api.cancelTask("task-1");
+    api.captureScreenshot({ task_id: "task-1", target: "focused-window", max_bytes: 1048576 });
+    api.executeUiAction({
+      task_id: "task-1",
+      action_id: "save-note",
+      action: "invoke",
+      risk_tier: "reversible_write",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save", control_type: "button" },
+    });
     api.getPermissions();
     api.setPermission("filesystem", true);
     api.getConfig();
@@ -62,13 +75,26 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
     expect(invoke).toHaveBeenNthCalledWith(3, "nova:task:list", { limit: 25, cursor: "cursor-1" });
     expect(invoke).toHaveBeenNthCalledWith(4, "nova:task:cancel", { task_id: "task-1" });
-    expect(invoke).toHaveBeenNthCalledWith(5, "nova:permissions:get");
-    expect(invoke).toHaveBeenNthCalledWith(6, "nova:permissions:set", {
+    expect(invoke).toHaveBeenNthCalledWith(5, "nova:desktop:screenshot", {
+      task_id: "task-1",
+      target: "focused-window",
+      max_bytes: 1048576,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(6, "nova:desktop:ui-action", {
+      task_id: "task-1",
+      action_id: "save-note",
+      action: "invoke",
+      risk_tier: "reversible_write",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save", control_type: "button" },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(7, "nova:permissions:get");
+    expect(invoke).toHaveBeenNthCalledWith(8, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(7, "nova:config:get");
-    expect(invoke).toHaveBeenNthCalledWith(8, "nova:config:update", {
+    expect(invoke).toHaveBeenNthCalledWith(9, "nova:config:get");
+    expect(invoke).toHaveBeenNthCalledWith(10, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
     });

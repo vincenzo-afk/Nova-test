@@ -7,7 +7,7 @@ credential storage, diagnostic-log exclusion, and the user-facing
 privacy inventory. This is deliberately **not** an encryption-tiering
 scheme: `docs/10-security/encryption.md` is explicit that memory is
 encrypted uniformly with no "less sensitive" category exempted, and
-nothing here overrides that. Classification here governs *other*
+nothing here overrides that. Classification here governs _other_
 handling differences — what gets vaulted separately, what's excluded
 from diagnostic logs, and what must appear in the privacy inventory —
 not encryption strength.
@@ -21,13 +21,13 @@ logging.md`.
 
 ## Categories
 
-| Category | Examples | Handling | Governing document |
-|---|---|---|---|
-| **Credentials** | AI provider API keys, MCP server credentials, integration tokens | OS-native credential vault, never in the structured store or diagnostic logs, referenced only by vault-entry pointer | `secrets.md` |
-| **Observed content (raw)** | Clipboard content, keystroke/mouse content, screen content | Never captured at all (keyboard/mouse) or gated by observation permission level (clipboard); never in diagnostic logs regardless | `docs/07-observers/clipboard.md`, `keyboard.md`, `mouse.md`; exclusions in `docs/13-devops/logging.md` |
-| **Memory content** | Working/Recent/Long-term Memory entries, Knowledge Graph nodes/edges | Encrypted uniformly at rest (`encryption.md`); every category collected here must appear in the user-facing data inventory (`docs/29-product/privacy.md`) | `encryption.md`, `docs/29-product/privacy.md` |
-| **Audit/diagnostic records** | Audit log entries, diagnostic logs | Audit is append-only and user-facing (`docs/10-security/audit.md`); diagnostic logs are shorter-retention and never transmitted by default (`docs/13-devops/logging.md`) | `docs/10-security/audit.md`, `docs/13-devops/logging.md` |
-| **Configuration values** | Provider routing preferences, cost budgets, feature flag state | Not secret, but validated against `docs/14-development/configuration-schema.md`; a config value is never itself a place to store a credential (those always resolve to the vault, per `secrets.md`) | `docs/14-development/configuration-schema.md` |
+| Category                     | Examples                                                             | Handling                                                                                                                                                                                                                                                       | Governing document                                                                                                                       |
+| ---------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Credentials**              | AI provider API keys, MCP server credentials, integration tokens     | OS-native credential vault, never in the structured store or diagnostic logs, referenced only by vault-entry pointer                                                                                                                                           | `secrets.md`                                                                                                                             |
+| **Observed content (raw)**   | Clipboard content, keystroke/mouse content, screen content           | Keyboard/mouse content is never captured; clipboard and screen content are separately permission-gated. Task-bound screen frames are session-ephemeral, never persisted or placed in diagnostic logs, and only approved derived observations may enter memory. | `docs/07-observers/clipboard.md`, `keyboard.md`, `mouse.md`, `docs/06-tools/desktop-agent.md`; exclusions in `docs/13-devops/logging.md` |
+| **Memory content**           | Working/Recent/Long-term Memory entries, Knowledge Graph nodes/edges | Encrypted uniformly at rest (`encryption.md`); every category collected here must appear in the user-facing data inventory (`docs/29-product/privacy.md`)                                                                                                      | `encryption.md`, `docs/29-product/privacy.md`                                                                                            |
+| **Audit/diagnostic records** | Audit log entries, diagnostic logs                                   | Audit is append-only and user-facing (`docs/10-security/audit.md`); diagnostic logs are shorter-retention and never transmitted by default (`docs/13-devops/logging.md`)                                                                                       | `docs/10-security/audit.md`, `docs/13-devops/logging.md`                                                                                 |
+| **Configuration values**     | Provider routing preferences, cost budgets, feature flag state       | Not secret, but validated against `docs/14-development/configuration-schema.md`; a config value is never itself a place to store a credential (those always resolve to the vault, per `secrets.md`)                                                            | `docs/14-development/configuration-schema.md`                                                                                            |
 
 ## The rule this file exists to enforce
 

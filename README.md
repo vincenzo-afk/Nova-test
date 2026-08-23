@@ -39,6 +39,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - Planner, executor, verifier, task-manager, priority/concurrency task scheduler, tool-registry, deterministic model routing, and resource-locking boundaries.
 - An explicit `nova.workspace-code` CLI tool for approved script execution inside a configured workspace: it uses registered runtimes, canonical path containment, no shell, bounded output, timeouts, exit-code evidence, mandatory confirmation, and workspace locks; it does not execute free-form shell text.
 - A real desktop Task Monitor backed by the authoritative TaskManager, with paginated task history, retry/waiting metadata, isolated IPC, and cancellation controls that distinguish cancellable queued states from unsupported running-process interruption.
+- Task-bound Windows desktop-agent boundaries for one-shot screenshots and structured UI Automation `invoke`/`set_value` actions, with off-by-default `screen` and `desktop_control` permissions, immediate focus revalidation, resource locks, bounded native execution, explicit destructive confirmation, and structured evidence. Live Windows validation remains deferred when no Windows host is connected; raw input, OCR, browser control, and continuous screen streaming are not included in this slice.
 - Working, recent, and long-term memory persistence with SQLite and Prisma, workspace scoping, checksums, lineage, and schema-version controls.
 - Filesystem observation with explicit permission gates, canonicalized security checks, caller-path-preserving Windows output, batching, hashing, and event delivery.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
@@ -207,15 +208,17 @@ The server uses the documented opaque cursor scheme with a default limit of 50 a
 
 The preload bridge exposes only the following renderer-safe operations:
 
-| Operation                                    | Input                               | Purpose                                                         |
-| -------------------------------------------- | ----------------------------------- | --------------------------------------------------------------- |
-| `window.nova.submitTask(goal)`               | A task goal string                  | Submit a task request through Electron main and the API Gateway |
-| `window.nova.getPermissions()`               | None                                | Read current permission grants                                  |
-| `window.nova.setPermission(source, granted)` | Permission source and boolean grant | Update an explicit permission grant                             |
-| `window.nova.getConfig()`                    | None                                | Read the versioned local configuration snapshot                |
-| `window.nova.updateConfig(section, value)`   | Configuration section and value     | Atomically validate and persist an editable configuration section |
+| Operation                                    | Input                               | Purpose                                                                       |
+| -------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| `window.nova.submitTask(goal)`               | A task goal string                  | Submit a task request through Electron main and the API Gateway               |
+| `window.nova.getPermissions()`               | None                                | Read current permission grants                                                |
+| `window.nova.setPermission(source, granted)` | Permission source and boolean grant | Update an explicit permission grant                                           |
+| `window.nova.getConfig()`                    | None                                | Read the versioned local configuration snapshot                               |
+| `window.nova.updateConfig(section, value)`   | Configuration section and value     | Atomically validate and persist an editable configuration section             |
+| `window.nova.captureScreenshot(request)`     | Task-bound target and byte bound    | Request one permission-gated PNG frame; raw data is not persisted             |
+| `window.nova.executeUiAction(request)`       | Task-bound structured UIA request   | Execute a focus-checked Windows UI Automation action through Runtime Executor |
 
-The renderer has no direct Node.js access. The main process uses `contextIsolation`, disables `nodeIntegration`, enables sandboxing, and routes core operations through the API Gateway.
+The renderer has no direct Node.js access. The main process uses `contextIsolation`, disables `nodeIntegration`, enables sandboxing, and routes core operations through the API Gateway. Desktop-agent requests are converted into `ExecutionStep` records and pass through ToolRegistry, PermissionManager, ResourceManager, Executor, and Verifier; the native PowerShell/C# bridge is never exposed to the renderer.
 
 ### Internal API Gateway operations
 

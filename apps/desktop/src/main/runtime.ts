@@ -11,11 +11,20 @@ import {
   type RuntimeApplicationOptions,
 } from "@nova/runtime";
 import { openDesktopPersistence } from "./persistence.js";
+import {
+  createDesktopAccessibilityDefinition,
+  createDesktopAccessibilityTool,
+  createDesktopScreenCaptureDefinition,
+  createDesktopScreenCaptureTool,
+  type DesktopAgentController,
+} from "./desktop-agent.js";
 
 const desktopPermissions = [
   { source: "filesystem", granted: false },
   { source: "applications", granted: false },
   { source: "windows", granted: false },
+  { source: "screen", granted: false },
+  { source: "desktop_control", granted: false },
   { source: "browser", granted: false },
   { source: "clipboard", granted: false },
   { source: "notifications", granted: false },
@@ -39,6 +48,7 @@ export interface DesktopRuntimeOptions {
   readonly migrationsPath?: string;
   readonly windowObserverBridge?: RuntimeApplicationOptions["windowObserverBridge"];
   readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
+  readonly desktopAgent?: () => DesktopAgentController | undefined;
 }
 
 const defaultMigrationsPath = resolve(
@@ -58,8 +68,20 @@ export async function createDesktopRuntime(
     permissionStore: new PermissionGrantStore({ initial: desktopPermissions }),
     planner: new Planner({ deterministic: new Map() }),
     executor: new Executor(
-      new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
-      new Map(),
+      new PermissionManager({
+        allowedToolIds: new Set(["nova.screen-capture", "nova.desktop-accessibility"]),
+        confirmationTimeoutMs: 30_000,
+      }),
+      new Map([
+        [
+          "nova.screen-capture",
+          createDesktopScreenCaptureTool(options.desktopAgent ?? (() => undefined)),
+        ],
+        [
+          "nova.desktop-accessibility",
+          createDesktopAccessibilityTool(options.desktopAgent ?? (() => undefined)),
+        ],
+      ]),
     ),
     verifier: new Verifier(),
     persistence: persistence.checkpointStore,
@@ -69,5 +91,9 @@ export async function createDesktopRuntime(
       : { windowObserverBridge: options.windowObserverBridge }),
     observationIndexer:
       options.observationIndexer ?? new ObservationIndexer(persistence.memoryStore),
+    registeredTools: [
+      createDesktopScreenCaptureDefinition(),
+      createDesktopAccessibilityDefinition(),
+    ],
   });
 }

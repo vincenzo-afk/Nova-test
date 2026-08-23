@@ -46,10 +46,14 @@ Archive and, eventually, is deleted per the user's retention choices
 
 ## What is deliberately excluded from the audit trail
 
-Credential values are never recorded, even though credential *use* is
+Credential values are never recorded, even though credential _use_ is
 (`secrets.md`). Raw keystroke or mouse-movement content is never recorded
 since it is never captured in the first place
-(`docs/07-observers/keyboard.md`, `docs/07-observers/mouse.md`).
+(`docs/07-observers/keyboard.md`, `docs/07-observers/mouse.md`). Raw screen
+frames are also never recorded: desktop-agent audit entries retain only the
+permission decision, task/correlation identifiers, tool/action metadata,
+focus-check result, bounded structured evidence, and verification outcome;
+they never include PNG bytes or base64 payloads (`docs/06-tools/desktop-agent.md`).
 
 ## Access to the audit trail
 

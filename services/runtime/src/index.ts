@@ -16,3 +16,4 @@ export * from "./groq-provider.js";
 export * from "./system-inventory.js";
 export * from "./configuration-store.js";
 export * from "./workspace-code-executor.js";
+export * from "./tool-registry.js";

@@ -35,6 +35,22 @@ interface TaskListPage {
 
 type SurfaceView = Exclude<DesktopView, "permissions" | "chat" | "tasks">;
 
+const actionPermissionSources = new Set(["screen", "desktop_control"]);
+const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
+const permissionLabel = (source: string): string =>
+  source === "screen"
+    ? "Screen capture"
+    : source === "desktop_control"
+      ? "Desktop control"
+      : source;
+const permissionDescription = (source: string): string => {
+  if (source === "filesystem") return "Scoped folders only";
+  if (source === "screen") return "One-shot task-bound screenshots; not continuously recorded";
+  if (source === "desktop_control")
+    return "Windows UI Automation only; focus and confirmation gated";
+  return "Metadata only until expanded";
+};
+
 const surfaceMeta: Readonly<
   Record<
     SurfaceView,
@@ -129,7 +145,10 @@ export const App = () => {
   }, []);
 
   const observerGranted = useMemo(
-    () => permissions.some((permission) => permission.granted),
+    () =>
+      permissions.some(
+        (permission) => permission.granted && isObserverPermission(permission.source),
+      ),
     [permissions],
   );
   const firstRun = useMemo(
@@ -383,23 +402,21 @@ const OnboardingView = ({
               Observers are disabled by default and remain scoped and auditable.
             </p>
             <div className="permission-grid compact-grid">
-              {permissions.map((permission) => (
-                <label className="permission-card" key={permission.source}>
-                  <div>
-                    <strong>{permission.source}</strong>
-                    <span>
-                      {permission.source === "filesystem"
-                        ? "Scoped folders only"
-                        : "Metadata only until expanded"}
-                    </span>
-                  </div>
-                  <input
-                    checked={permission.granted}
-                    onChange={(event) => void onToggle(permission.source, event.target.checked)}
-                    type="checkbox"
-                  />
-                </label>
-              ))}
+              {permissions
+                .filter((permission) => isObserverPermission(permission.source))
+                .map((permission) => (
+                  <label className="permission-card" key={permission.source}>
+                    <div>
+                      <strong>{permissionLabel(permission.source)}</strong>
+                      <span>{permissionDescription(permission.source)}</span>
+                    </div>
+                    <input
+                      checked={permission.granted}
+                      onChange={(event) => void onToggle(permission.source, event.target.checked)}
+                      type="checkbox"
+                    />
+                  </label>
+                ))}
             </div>
             <span className="step-status">
               {observerGranted ? "Observer scope selected" : "Select at least one observer"}
@@ -459,21 +476,18 @@ const PermissionCenter = ({
 }) => (
   <section className="content-column" aria-labelledby="permissions-title">
     <div className="section-kicker">First launch / Safety boundary</div>
-    <h1 id="permissions-title">Choose what NOVA can observe.</h1>
+    <h1 id="permissions-title">Choose what NOVA can observe and control.</h1>
     <p className="lede">
-      Every observer is off by default. Grant only the sources and folders that are useful for your
-      workspace; you can revoke access at any time.
+      Every observer and desktop action capability is off by default. Grant only the sources and
+      controls useful for your task; screen capture is one-shot and raw frames are not retained. You
+      can revoke access at any time.
     </p>
     <div className="permission-grid">
       {permissions.map((permission) => (
         <label className="permission-card" key={permission.source}>
           <div>
-            <strong>{permission.source}</strong>
-            <span>
-              {permission.source === "filesystem"
-                ? "Scoped folders only"
-                : "Metadata only until expanded"}
-            </span>
+            <strong>{permissionLabel(permission.source)}</strong>
+            <span>{permissionDescription(permission.source)}</span>
           </div>
           <input
             checked={permission.granted}
