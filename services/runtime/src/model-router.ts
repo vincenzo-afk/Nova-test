@@ -23,10 +23,17 @@ export interface LlmProvider {
   readonly invoke: (request: ModelRequest) => Promise<unknown>;
 }
 
+export interface ModelMessage {
+  readonly role: "system" | "user" | "assistant";
+  readonly content: string;
+}
+
 export interface ModelRequest {
-  readonly task_type: string;
-  readonly privacy: PrivacyRequirement;
-  readonly required_capabilities: readonly ModelCapability[];
+  readonly task_type?: string;
+  readonly privacy?: PrivacyRequirement;
+  readonly required_capabilities?: readonly ModelCapability[];
+  readonly messages?: readonly ModelMessage[];
+  readonly temperature?: number;
   readonly max_cost_per_1k_tokens?: number;
   readonly required_schema_version?: string;
 }
@@ -139,7 +146,9 @@ export class ModelRouter {
       ) {
         continue;
       }
-      if (!this.supportsCapabilities(descriptor.capabilities, request.required_capabilities)) {
+      if (
+        !this.supportsCapabilities(descriptor.capabilities, request.required_capabilities ?? [])
+      ) {
         continue;
       }
       if (

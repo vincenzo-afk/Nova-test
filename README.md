@@ -39,6 +39,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - Working, recent, and long-term memory persistence with SQLite and Prisma, workspace scoping, checksums, lineage, and schema-version controls.
 - Filesystem observation with explicit permission gates, canonicalized paths, batching, hashing, and event delivery.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
+- A real Groq OpenAI-compatible LLM provider adapter with vault-reference credential resolution, authenticated model health checks, chat-completion translation, strict response validation, and compatibility with the deterministic provider router.
 - Multi-agent coordination, authenticated network discovery, paired-device synchronization, distributed Full Peer task scheduling, and logical clocks.
 - Streaming-aware voice pipeline contracts, barge-in cancellation, and 150 ms multi-device wake-claim coordination.
 - Local IPC over named pipes, a UI-facing API Gateway, authenticated REST task and memory-search boundaries, signed webhook delivery with retry/health handling, context-isolated Electron IPC, stable error codes, dead-letter recording, and release-blocking performance-budget evaluation.
@@ -82,7 +83,7 @@ Install the following before working on Nova:
 - Git.
 - A desktop environment capable of running Electron for desktop-shell development.
 
-No API key or hosted service is required by the current repository setup. The Prisma schema defines `DATABASE_URL` for the memory datasource; the test preparation script supplies `file:./test.db` automatically for test runs.
+No API key or hosted service is required by the default repository test setup. The optional Groq provider requires an application-supplied credential resolver and an opaque vault reference; credentials are never accepted inline by the provider configuration. The Prisma schema defines `DATABASE_URL` for the memory datasource; the test preparation script supplies `file:./test.db` automatically for test runs.
 
 ### Installation
 
@@ -118,7 +119,7 @@ The current repository does not define a packaged installer or release command. 
 
 ### Configuration
 
-The current repository has no committed `.env.example` file and no required application environment-variable inventory beyond the Prisma datasource contract. Tests use an isolated SQLite file through `scripts/prepare-memory-test.mjs`:
+The current repository has no committed `.env.example` file and no required application environment-variable inventory beyond the Prisma datasource contract. The Groq adapter is intentionally not coupled to a client-visible environment variable: a host or backend must resolve its configured opaque credential reference at call time. Tests use an isolated SQLite file through `scripts/prepare-memory-test.mjs`:
 
 ```text
 DATABASE_URL=file:./test.db
@@ -150,6 +151,8 @@ pnpm --filter @nova/desktop build
 The renderer exposes the task submission boundary through the preload API. A desktop task request is routed from the renderer to Electron main, through the API Gateway, and onto the named-pipe CommunicationBus. The current task handler creates a task snapshot in the `Created` state; full planner/executor execution remains represented by the runtime service boundaries and their tests.
 
 ### Work with the runtime services
+
+The runtime exports `GroqProvider` for the documented first cloud-provider path. Register it through `CapabilityRegistry` and `ProviderRouter` with a vault-backed `authReference` and resolver; do not place a Groq key in source, configuration, or renderer code. The adapter calls Groq's OpenAI-compatible `/models` health endpoint and `/chat/completions` endpoint only after resolving the credential at invocation time.
 
 Runtime services are exported from their workspace package where a public package entry exists. Direct service tests are the authoritative executable examples for service contracts. The local `TaskScheduler` requires explicit concurrency and starvation-aging configuration, dispatches interactive/default/background work with FIFO tie-breaking, and delegates execution to the real runtime coordinator boundary. The distributed placement scheduler is exercised by:
 
