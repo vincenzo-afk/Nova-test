@@ -7,7 +7,8 @@ export type SupportedObservationTopic =
   | "observer.window.closed"
   | "observer.window.focused"
   | "observer.window.title_changed"
-  | "observer.clipboard.changed";
+  | "observer.clipboard.changed"
+  | "observer.notification.received";
 
 export interface SupportedObservationEvent extends Omit<MessageEnvelope, "topic"> {
   readonly topic: SupportedObservationTopic;
@@ -83,6 +84,9 @@ function normalizeEvent(
 
   if (event.topic === "observer.clipboard.changed") {
     return normalizeClipboardEvent(event, payload);
+  }
+  if (event.topic === "observer.notification.received") {
+    return normalizeNotificationEvent(event, payload);
   }
 
   if (event.topic.startsWith("observer.application.")) {
@@ -161,6 +165,14 @@ interface NormalizedObservation {
     readonly content?: string;
     readonly excluded_reason?: string;
   };
+  readonly notification?: {
+    readonly source_application: string;
+    readonly title: string;
+    readonly capture_level: "metadata" | "content";
+    readonly body_bytes: number;
+    readonly body?: string;
+    readonly excluded_reason?: string;
+  };
   readonly window?: {
     readonly process_id: number;
     readonly application_name: string;
@@ -179,6 +191,7 @@ const supportedTopics = new Set<SupportedObservationTopic>([
   "observer.window.focused",
   "observer.window.title_changed",
   "observer.clipboard.changed",
+  "observer.notification.received",
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -256,6 +269,61 @@ function normalizeClipboardEvent(
     correlation_id: event.correlation_id,
     source_service: event.source_service,
     clipboard,
+  });
+}
+
+function normalizeNotificationEvent(
+  event: SupportedObservationEvent,
+  payload: Record<string, unknown>,
+): Result<NormalizedObservation> {
+  const sourceApplication = boundedString(payload.source_application, 160);
+  const title = boundedString(payload.title, 512);
+  const captureLevel = payload.capture_level;
+  const bodyBytes = payload.body_bytes;
+  const excludedReason = payload.excluded_reason;
+  if (
+    !sourceApplication ||
+    !title ||
+    (captureLevel !== "metadata" && captureLevel !== "content") ||
+    typeof bodyBytes !== "number" ||
+    !Number.isInteger(bodyBytes) ||
+    bodyBytes < 0 ||
+    bodyBytes > 1_048_576 ||
+    (excludedReason !== undefined && typeof excludedReason !== "string")
+  ) {
+    return invalidPayload();
+  }
+
+  const baseNotification = {
+    source_application: sourceApplication,
+    title,
+    capture_level: captureLevel as "metadata" | "content",
+    body_bytes: bodyBytes,
+    ...(typeof excludedReason === "string" ? { excluded_reason: excludedReason } : {}),
+  };
+  const notification =
+    captureLevel === "content"
+      ? (() => {
+          if (
+            typeof payload.body !== "string" ||
+            Buffer.byteLength(payload.body, "utf8") !== bodyBytes ||
+            bodyBytes > 1_048_576 ||
+            excludedReason === "sensitive_source"
+          ) {
+            return null;
+          }
+          return { ...baseNotification, body: payload.body };
+        })()
+      : baseNotification;
+  if (notification === null) return invalidPayload();
+
+  return ok({
+    topic: event.topic,
+    schema_version: event.schema_version,
+    timestamp: event.timestamp,
+    correlation_id: event.correlation_id,
+    source_service: event.source_service,
+    notification,
   });
 }
 

@@ -147,6 +147,81 @@ describe("ObservationIndexer", () => {
     expect(input.contentRef).toContain("private copied text");
   });
 
+  it("indexes task-bound notification metadata without persisting an unapproved body", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      task_id: "task-1",
+      event: event("observer.notification.received" as SupportedObservationEvent["topic"], {
+        entity_ref: "notification",
+        source_application: "Build Runner",
+        title: "Build complete",
+        capture_level: "metadata",
+        body_bytes: 12,
+        body: "PRIVATE BODY MUST NOT PERSIST",
+        excluded_reason: "content_permission_missing",
+      }),
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { persisted: true, memory_id: "working-1" } });
+    const input = memory.writeWorking.mock.calls[0]?.[0] as { readonly contentRef: string };
+    const normalized = JSON.parse(input.contentRef) as Record<string, unknown>;
+    expect(normalized).toMatchObject({
+      topic: "observer.notification.received",
+      notification: {
+        source_application: "Build Runner",
+        title: "Build complete",
+        capture_level: "metadata",
+        body_bytes: 12,
+        excluded_reason: "content_permission_missing",
+      },
+    });
+    expect(input.contentRef).not.toContain("PRIVATE BODY MUST NOT PERSIST");
+  });
+
+  it("indexes explicitly captured ordinary notification bodies for an explicit task", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      task_id: "task-1",
+      event: event("observer.notification.received" as SupportedObservationEvent["topic"], {
+        entity_ref: "notification",
+        source_application: "Build Runner",
+        title: "Build complete",
+        capture_level: "content",
+        body_bytes: 12,
+        body: "Tests passed",
+      }),
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { persisted: true, memory_id: "working-1" } });
+    const input = memory.writeWorking.mock.calls[0]?.[0] as { readonly contentRef: string };
+    expect(input.contentRef).toContain("Tests passed");
+  });
+
+  it("rejects a notification body marked as sensitive when content capture is claimed", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      task_id: "task-1",
+      event: event("observer.notification.received" as SupportedObservationEvent["topic"], {
+        entity_ref: "notification",
+        source_application: "Authenticator",
+        title: "Verification code",
+        capture_level: "content",
+        body_bytes: 6,
+        body: "123456",
+        excluded_reason: "sensitive_source",
+      }),
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(memory.writeWorking).not.toHaveBeenCalled();
+  });
+
   it("returns storage failures without pretending indexing succeeded", async () => {
     const memory: ObservationMemoryWriter = {
       writeWorking: async () =>

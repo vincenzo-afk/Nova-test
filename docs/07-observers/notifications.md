@@ -4,7 +4,7 @@
 
 Observes OS-level and application notification events (e.g., a build
 finishing, a message arriving) as a signal source for context — distinct
-from NOVA's own notifications *to* the user, which are a UI Layer concern
+from NOVA's own notifications _to_ the user, which are a UI Layer concern
 (`docs/09-ui/`, not this document).
 
 ## Scope
@@ -20,6 +20,19 @@ explicit permission grant beyond metadata, following the same two-level
 pattern as the Clipboard Observer (`clipboard.md`), since notification
 bodies frequently contain message previews, codes, or other
 sensitive content.
+
+Nova uses two canonical, off-by-default grants:
+
+| Permission               | Scope                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `notifications_metadata` | Starts event observation and records source application, timestamp, title, and body byte count only.          |
+| `notifications_content`  | Allows eligible notification body text in addition to metadata; it does not replace `notifications_metadata`. |
+
+The Windows implementation uses UI Automation `NotificationEvent` callbacks
+registered with `AddAutomationEventHandler` on the root automation element.
+It does not poll for notifications. Revoking `notifications_metadata` stops
+the native listener and purges pending events immediately; revoking
+`notifications_content` downgrades later events to metadata-only.
 
 ## Use cases enabled
 
@@ -45,7 +58,9 @@ Notification events are ingested by the standard indexing pipeline
 project/task context was active (via the World Model,
 `docs/03-runtime/world-model.md`) at the time the notification arrived —
 this is what allows a later query like "did anything happen while I was
-away" to be answered from actual observed data.
+away" to be answered from actual observed data. Nova's task-bound
+ObservationIndexer persists normalized notification metadata, or explicitly
+captured eligible bodies, and strips body text from metadata-only events.
 
 ## Related documents
 

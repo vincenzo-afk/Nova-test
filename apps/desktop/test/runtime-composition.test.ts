@@ -124,6 +124,37 @@ describe("desktop runtime composition", () => {
     });
   });
 
+  it("starts notification observation only after metadata permission and stops on revocation", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-notifications-"));
+    temporaryDirectories.push(userDataPath);
+    const bridge = {
+      start: vi.fn(async () => undefined),
+      stop: vi.fn(async () => undefined),
+    };
+    const runtime = await createDesktopRuntime({
+      userDataPath,
+      notificationObserverBridge: bridge,
+    });
+    runtimes.push(runtime);
+    await runtime.start();
+
+    expect(runtime.notificationObserver.state()).toBe("Disabled");
+    runtime.permissions.update("notifications_content", true);
+    await runtime.syncObservers();
+    expect(runtime.notificationObserver.state()).toBe("Disabled");
+    expect(bridge.start).not.toHaveBeenCalled();
+
+    runtime.permissions.update("notifications_metadata", true);
+    await runtime.syncObservers();
+    expect(runtime.notificationObserver.state()).toBe("Active");
+    expect(bridge.start).toHaveBeenCalledOnce();
+
+    runtime.permissions.update("notifications_metadata", false);
+    await runtime.syncObservers();
+    expect(runtime.notificationObserver.state()).toBe("Disabled");
+    expect(bridge.stop).toHaveBeenCalledOnce();
+  });
+
   it("starts clipboard observation only after metadata permission and stops on revocation", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-clipboard-"));
     temporaryDirectories.push(userDataPath);
@@ -263,7 +294,8 @@ describe("desktop runtime composition", () => {
       { source: "browser", granted: false },
       { source: "clipboard_metadata", granted: false },
       { source: "clipboard_content", granted: false },
-      { source: "notifications", granted: false },
+      { source: "notifications_metadata", granted: false },
+      { source: "notifications_content", granted: false },
     ]);
   });
 });

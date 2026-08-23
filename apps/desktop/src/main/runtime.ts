@@ -28,7 +28,8 @@ const desktopPermissions = [
   { source: "browser", granted: false },
   { source: "clipboard_metadata", granted: false },
   { source: "clipboard_content", granted: false },
-  { source: "notifications", granted: false },
+  { source: "notifications_metadata", granted: false },
+  { source: "notifications_content", granted: false },
 ] as const;
 
 const desktopConfiguration = {
@@ -49,6 +50,7 @@ export interface DesktopRuntimeOptions {
   readonly migrationsPath?: string;
   readonly windowObserverBridge?: RuntimeApplicationOptions["windowObserverBridge"];
   readonly clipboardObserverBridge?: RuntimeApplicationOptions["clipboardObserverBridge"];
+  readonly notificationObserverBridge?: RuntimeApplicationOptions["notificationObserverBridge"];
   readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
   readonly desktopAgent?: () => DesktopAgentController | undefined;
 }
@@ -94,6 +96,9 @@ export async function createDesktopRuntime(
     ...(options.clipboardObserverBridge === undefined
       ? {}
       : { clipboardObserverBridge: options.clipboardObserverBridge }),
+    ...(options.notificationObserverBridge === undefined
+      ? {}
+      : { notificationObserverBridge: options.notificationObserverBridge }),
     observationIndexer:
       options.observationIndexer ?? new ObservationIndexer(persistence.memoryStore),
     registeredTools: [

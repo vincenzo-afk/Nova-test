@@ -46,7 +46,11 @@ const permissionLabel = (source: string): string =>
         ? "Clipboard metadata"
         : source === "clipboard_content"
           ? "Clipboard content"
-          : source;
+          : source === "notifications_metadata"
+            ? "Notification metadata"
+            : source === "notifications_content"
+              ? "Notification content"
+              : source;
 const permissionDescription = (source: string): string => {
   if (source === "filesystem") return "Scoped folders only";
   if (source === "screen") return "One-shot task-bound screenshots; not continuously recorded";
@@ -56,7 +60,26 @@ const permissionDescription = (source: string): string => {
     return "Copy occurrence and type only; no clipboard contents";
   if (source === "clipboard_content")
     return "Explicit text capture; sensitive password sources are always excluded";
+  if (source === "notifications_metadata") return "Source, timestamp, and title only; no body text";
+  if (source === "notifications_content")
+    return "Eligible notification bodies; messaging and authentication sources are always excluded";
   return "Metadata only until expanded";
+};
+
+const contentPermissionRequiresMetadata = new Map([
+  ["clipboard_content", "clipboard_metadata"],
+  ["notifications_content", "notifications_metadata"],
+]);
+const isSufficientObserverGrant = (
+  permission: PermissionGrant,
+  permissions: readonly PermissionGrant[],
+): boolean => {
+  if (!isObserverPermission(permission.source) || !permission.granted) return false;
+  const metadataSource = contentPermissionRequiresMetadata.get(permission.source);
+  return (
+    metadataSource === undefined ||
+    permissions.some((candidate) => candidate.source === metadataSource && candidate.granted)
+  );
 };
 
 const surfaceMeta: Readonly<
@@ -366,14 +389,8 @@ const OnboardingView = ({
   demonstrationTaskCompleted: boolean;
   onDemoTask: (goal: string) => Promise<void>;
 }) => {
-  const metadataClipboardGranted = permissions.some(
-    (permission) => permission.source === "clipboard_metadata" && permission.granted,
-  );
-  const observerGranted = permissions.some(
-    (permission) =>
-      isObserverPermission(permission.source) &&
-      permission.granted &&
-      (permission.source !== "clipboard_content" || metadataClipboardGranted),
+  const observerGranted = permissions.some((permission) =>
+    isSufficientObserverGrant(permission, permissions),
   );
   return (
     <section className="content-column" aria-labelledby="onboarding-title">

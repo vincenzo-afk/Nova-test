@@ -8,11 +8,15 @@ import {
   ClipboardObserver,
   NativeClipboardEventBridge,
   type NativeClipboardEventBridgeContract,
+  NativeNotificationEventBridge,
+  NotificationObserver,
+  type NativeNotificationEventBridgeContract,
   NativeWindowsEventBridge,
   type NativeWindowsEventBridgeContract,
   WindowsApplicationObserver,
   type WindowsObserverState,
   type ClipboardObserverState,
+  type NotificationObserverState,
 } from "@nova/observers";
 import { WorldModel } from "@nova/state";
 import { LocalApiTokenIssuer, PublicApiServer, type PublicApiServerOptions } from "./rest-api.js";
@@ -62,6 +66,7 @@ export interface RuntimeApplicationOptions {
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
   readonly windowObserverBridge?: NativeWindowsEventBridgeContract;
   readonly clipboardObserverBridge?: NativeClipboardEventBridgeContract;
+  readonly notificationObserverBridge?: NativeNotificationEventBridgeContract;
   readonly observationIndexer?: ObservationIndexer;
   readonly registeredTools?: readonly RegisteredTool[];
 }
@@ -79,6 +84,7 @@ export class RuntimeApplication {
   public readonly websocket: PublicWebSocketServer;
   public readonly windowsObserver: WindowsApplicationObserver;
   public readonly clipboardObserver: ClipboardObserver;
+  public readonly notificationObserver: NotificationObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -114,6 +120,11 @@ export class RuntimeApplication {
     this.clipboardObserver = new ClipboardObserver({
       permissions: this.permissions,
       bridge: options.clipboardObserverBridge ?? new NativeClipboardEventBridge(),
+      bus,
+    });
+    this.notificationObserver = new NotificationObserver({
+      permissions: this.permissions,
+      bridge: options.notificationObserverBridge ?? new NativeNotificationEventBridge(),
       bus,
     });
     this.webhook = options.webhookManager ?? new WebhookManager({});
@@ -159,6 +170,8 @@ export class RuntimeApplication {
     try {
       if (this.windowsObserver.state() !== "Disabled") await this.windowsObserver.revoke();
       if (this.clipboardObserver.state() !== "Disabled") await this.clipboardObserver.revoke();
+      if (this.notificationObserver.state() !== "Disabled")
+        await this.notificationObserver.revoke();
       this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
@@ -195,6 +208,8 @@ export class RuntimeApplication {
   public async syncObservers(): Promise<Result<WindowsObserverState>> {
     const clipboard = await this.syncClipboardObserver();
     if (!clipboard.ok) return err(clipboard.error);
+    const notifications = await this.syncNotificationObserver();
+    if (!notifications.ok) return err(notifications.error);
     const grants = new Map(this.permissions.list().map((grant) => [grant.source, grant.granted]));
     const permitted = grants.get("applications") === true && grants.get("windows") === true;
     if (!permitted) {
@@ -216,6 +231,20 @@ export class RuntimeApplication {
     }
     if (this.clipboardObserver.state() === "Disabled") return await this.clipboardObserver.enable();
     return ok(this.clipboardObserver.state());
+  }
+
+  public async syncNotificationObserver(): Promise<Result<NotificationObserverState>> {
+    const metadataGranted = this.permissions
+      .list()
+      .some((grant) => grant.source === "notifications_metadata" && grant.granted);
+    if (!metadataGranted) {
+      if (this.notificationObserver.state() !== "Disabled")
+        return await this.notificationObserver.revoke();
+      return ok("Disabled");
+    }
+    if (this.notificationObserver.state() === "Disabled")
+      return await this.notificationObserver.enable();
+    return ok(this.notificationObserver.state());
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {
