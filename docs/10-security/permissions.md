@@ -35,12 +35,18 @@ and — for Clipboard and Notifications specifically — at two separate
 granularity levels (metadata-only vs. content capture, per
 `docs/07-observers/clipboard.md` and `docs/07-observers/notifications.md`).
 Filesystem observation is additionally scoped per folder, not
-filesystem-wide (`docs/07-observers/filesystem.md`). Screen capture and
-structured desktop control are separate, explicit source categories defined
+filesystem-wide (`docs/07-observers/filesystem.md`). Clipboard observation
+uses two separate source grants: `clipboard_metadata` starts only metadata
+observation, while `clipboard_content` independently permits eligible text
+content; content permission never overrides sensitive-source exclusion.
+Screen capture and structured desktop control are separate, explicit source categories defined
 by `docs/06-tools/desktop-agent.md`: `screen` permits only one-shot,
 task-bound screenshots, while `desktop_control` permits only focus-checked
 Windows UI Automation actions. Both are off by default, revocable immediately,
-and do not start background observation.
+and do not start background observation. Clipboard metadata is also off by
+default; revoking it stops the event listener and purges pending clipboard
+events, while revoking clipboard content immediately downgrades subsequent
+events to metadata-only.
 
 ## Path containment enforcement
 

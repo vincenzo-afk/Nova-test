@@ -26,7 +26,8 @@ const desktopPermissions = [
   { source: "screen", granted: false },
   { source: "desktop_control", granted: false },
   { source: "browser", granted: false },
-  { source: "clipboard", granted: false },
+  { source: "clipboard_metadata", granted: false },
+  { source: "clipboard_content", granted: false },
   { source: "notifications", granted: false },
 ] as const;
 
@@ -47,6 +48,7 @@ export interface DesktopRuntimeOptions {
   readonly userDataPath: string;
   readonly migrationsPath?: string;
   readonly windowObserverBridge?: RuntimeApplicationOptions["windowObserverBridge"];
+  readonly clipboardObserverBridge?: RuntimeApplicationOptions["clipboardObserverBridge"];
   readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
   readonly desktopAgent?: () => DesktopAgentController | undefined;
 }
@@ -89,6 +91,9 @@ export async function createDesktopRuntime(
     ...(options.windowObserverBridge === undefined
       ? {}
       : { windowObserverBridge: options.windowObserverBridge }),
+    ...(options.clipboardObserverBridge === undefined
+      ? {}
+      : { clipboardObserverBridge: options.clipboardObserverBridge }),
     observationIndexer:
       options.observationIndexer ?? new ObservationIndexer(persistence.memoryStore),
     registeredTools: [

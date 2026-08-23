@@ -42,12 +42,20 @@ const permissionLabel = (source: string): string =>
     ? "Screen capture"
     : source === "desktop_control"
       ? "Desktop control"
-      : source;
+      : source === "clipboard_metadata"
+        ? "Clipboard metadata"
+        : source === "clipboard_content"
+          ? "Clipboard content"
+          : source;
 const permissionDescription = (source: string): string => {
   if (source === "filesystem") return "Scoped folders only";
   if (source === "screen") return "One-shot task-bound screenshots; not continuously recorded";
   if (source === "desktop_control")
     return "Windows UI Automation only; focus and confirmation gated";
+  if (source === "clipboard_metadata")
+    return "Copy occurrence and type only; no clipboard contents";
+  if (source === "clipboard_content")
+    return "Explicit text capture; sensitive password sources are always excluded";
   return "Metadata only until expanded";
 };
 
@@ -358,7 +366,15 @@ const OnboardingView = ({
   demonstrationTaskCompleted: boolean;
   onDemoTask: (goal: string) => Promise<void>;
 }) => {
-  const observerGranted = permissions.some((permission) => permission.granted);
+  const metadataClipboardGranted = permissions.some(
+    (permission) => permission.source === "clipboard_metadata" && permission.granted,
+  );
+  const observerGranted = permissions.some(
+    (permission) =>
+      isObserverPermission(permission.source) &&
+      permission.granted &&
+      (permission.source !== "clipboard_content" || metadataClipboardGranted),
+  );
   return (
     <section className="content-column" aria-labelledby="onboarding-title">
       <div className="section-kicker">First launch / Guided setup</div>
@@ -479,8 +495,9 @@ const PermissionCenter = ({
     <h1 id="permissions-title">Choose what NOVA can observe and control.</h1>
     <p className="lede">
       Every observer and desktop action capability is off by default. Grant only the sources and
-      controls useful for your task; screen capture is one-shot and raw frames are not retained. You
-      can revoke access at any time.
+      controls useful for your task; screen capture is one-shot and raw frames are not retained.
+      Clipboard metadata and content capture are separate grants, and sensitive password sources are
+      always excluded. You can revoke access at any time.
     </p>
     <div className="permission-grid">
       {permissions.map((permission) => (

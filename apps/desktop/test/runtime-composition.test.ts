@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDesktopRuntime } from "../src/main/runtime.js";
 import {
   DesktopAgentController,
@@ -124,6 +124,34 @@ describe("desktop runtime composition", () => {
     });
   });
 
+  it("starts clipboard observation only after metadata permission and stops on revocation", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-clipboard-"));
+    temporaryDirectories.push(userDataPath);
+    const bridge = {
+      start: vi.fn(async () => undefined),
+      stop: vi.fn(async () => undefined),
+    };
+    const runtime = await createDesktopRuntime({ userDataPath, clipboardObserverBridge: bridge });
+    runtimes.push(runtime);
+    await runtime.start();
+
+    expect(runtime.clipboardObserver.state()).toBe("Disabled");
+    runtime.permissions.update("clipboard_content", true);
+    await runtime.syncObservers();
+    expect(runtime.clipboardObserver.state()).toBe("Disabled");
+    expect(bridge.start).not.toHaveBeenCalled();
+
+    runtime.permissions.update("clipboard_metadata", true);
+    await runtime.syncObservers();
+    expect(runtime.clipboardObserver.state()).toBe("Active");
+    expect(bridge.start).toHaveBeenCalledOnce();
+
+    runtime.permissions.update("clipboard_metadata", false);
+    await runtime.syncObservers();
+    expect(runtime.clipboardObserver.state()).toBe("Disabled");
+    expect(bridge.stop).toHaveBeenCalledOnce();
+  });
+
   it("executes an accessibility read through the runtime authorization and verification path", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-execution-"));
     temporaryDirectories.push(userDataPath);
@@ -233,7 +261,8 @@ describe("desktop runtime composition", () => {
       { source: "screen", granted: false },
       { source: "desktop_control", granted: false },
       { source: "browser", granted: false },
-      { source: "clipboard", granted: false },
+      { source: "clipboard_metadata", granted: false },
+      { source: "clipboard_content", granted: false },
       { source: "notifications", granted: false },
     ]);
   });

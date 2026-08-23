@@ -16,16 +16,16 @@ its own dedicated page in this folder.
 
 ## Observer source index
 
-| Source        | Captures                                                 | Explicitly does not capture                                            | Detail             |
-| ------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------ |
-| Filesystem    | Create/modify/delete/move/rename, within granted folders | Content of files outside granted scope; system/hidden files by default | `filesystem.md`    |
-| Applications  | Install/remove/launch/close, version where observable    | Application internal state or data                                     | `applications.md`  |
-| Windows       | Open/close/focus/title                                   | Window contents (that is Vision's domain, gated separately)            | `windows.md`       |
-| Browser       | Tab/URL changes, page title                              | Form field contents, passwords, payment data                           | `browser.md`       |
-| Clipboard     | Content type and, if permitted, text content             | Content from applications flagged as sensitive (password managers)     | `clipboard.md`     |
-| Notifications | OS/app notification metadata (source, title)             | Notification body content by default                                   | `notifications.md` |
-| Keyboard      | Activity/idle signal, registered hotkey triggers only    | Keystroke content — never a keylogger                                  | `keyboard.md`      |
-| Mouse         | Activity/idle signal, current position for World Model   | Continuous movement trail/history                                      | `mouse.md`         |
+| Source        | Captures                                                                                                      | Explicitly does not capture                                                                              | Detail             |
+| ------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------ |
+| Filesystem    | Create/modify/delete/move/rename, within granted folders                                                      | Content of files outside granted scope; system/hidden files by default                                   | `filesystem.md`    |
+| Applications  | Install/remove/launch/close, version where observable                                                         | Application internal state or data                                                                       | `applications.md`  |
+| Windows       | Open/close/focus/title                                                                                        | Window contents (that is Vision's domain, gated separately)                                              | `windows.md`       |
+| Browser       | Tab/URL changes, page title                                                                                   | Form field contents, passwords, payment data                                                             | `browser.md`       |
+| Clipboard     | Copy metadata under `clipboard_metadata`; eligible text content only when `clipboard_content` is also granted | Content from applications flagged as sensitive (password managers), plus all content without both grants | `clipboard.md`     |
+| Notifications | OS/app notification metadata (source, title)                                                                  | Notification body content by default                                                                     | `notifications.md` |
+| Keyboard      | Activity/idle signal, registered hotkey triggers only                                                         | Keystroke content — never a keylogger                                                                    | `keyboard.md`      |
+| Mouse         | Activity/idle signal, current position for World Model                                                        | Continuous movement trail/history                                                                        | `mouse.md`         |
 
 Screen contents are deliberately not an observer row: on-demand capture is the separate `screen` permission and `nova.screen-capture` tool defined in `docs/06-tools/desktop-agent.md`. Structured desktop control is the separate `desktop_control` permission and accessibility-tier `nova.desktop-accessibility` tool; neither starts continuous capture.
 

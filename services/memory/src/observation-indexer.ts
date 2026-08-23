@@ -6,7 +6,8 @@ export type SupportedObservationTopic =
   | "observer.window.opened"
   | "observer.window.closed"
   | "observer.window.focused"
-  | "observer.window.title_changed";
+  | "observer.window.title_changed"
+  | "observer.clipboard.changed";
 
 export interface SupportedObservationEvent extends Omit<MessageEnvelope, "topic"> {
   readonly topic: SupportedObservationTopic;
@@ -80,6 +81,10 @@ function normalizeEvent(
   const payload = asRecord(event.payload);
   if (!payload) return invalidPayload();
 
+  if (event.topic === "observer.clipboard.changed") {
+    return normalizeClipboardEvent(event, payload);
+  }
+
   if (event.topic.startsWith("observer.application.")) {
     const application = asRecord(payload.application);
     if (!application) return invalidPayload();
@@ -148,6 +153,14 @@ interface NormalizedObservation {
   readonly correlation_id: string;
   readonly source_service: string;
   readonly application?: { readonly process_id: number; readonly application_name: string };
+  readonly clipboard?: {
+    readonly content_type: "text" | "image" | "file_reference" | "unknown";
+    readonly source_application: string;
+    readonly capture_level: "metadata" | "content";
+    readonly content_bytes: number;
+    readonly content?: string;
+    readonly excluded_reason?: string;
+  };
   readonly window?: {
     readonly process_id: number;
     readonly application_name: string;
@@ -165,6 +178,7 @@ const supportedTopics = new Set<SupportedObservationTopic>([
   "observer.window.closed",
   "observer.window.focused",
   "observer.window.title_changed",
+  "observer.clipboard.changed",
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -182,6 +196,67 @@ function boundedString(value: unknown, maxLength: number): string | null {
     .join("")
     .trim();
   return normalized.length <= maxLength ? normalized : normalized.slice(0, maxLength);
+}
+
+function normalizeClipboardEvent(
+  event: SupportedObservationEvent,
+  payload: Record<string, unknown>,
+): Result<NormalizedObservation> {
+  const contentType = payload.content_type;
+  const sourceApplication = boundedString(payload.source_application, 160);
+  const captureLevel = payload.capture_level;
+  const contentBytes = payload.content_bytes;
+  const excludedReason = payload.excluded_reason;
+  if (
+    (contentType !== "text" &&
+      contentType !== "image" &&
+      contentType !== "file_reference" &&
+      contentType !== "unknown") ||
+    !sourceApplication ||
+    (captureLevel !== "metadata" && captureLevel !== "content") ||
+    typeof contentBytes !== "number" ||
+    !Number.isInteger(contentBytes) ||
+    contentBytes < 0 ||
+    contentBytes > 1_048_576 ||
+    (excludedReason !== undefined && typeof excludedReason !== "string")
+  ) {
+    return invalidPayload();
+  }
+
+  const normalizedContentType = contentType as "text" | "image" | "file_reference" | "unknown";
+  const normalizedCaptureLevel = captureLevel as "metadata" | "content";
+  const baseClipboard = {
+    content_type: normalizedContentType,
+    source_application: sourceApplication,
+    capture_level: normalizedCaptureLevel,
+    content_bytes: contentBytes,
+    ...(typeof excludedReason === "string" ? { excluded_reason: excludedReason } : {}),
+  };
+  const clipboard =
+    captureLevel === "content"
+      ? (() => {
+          if (
+            normalizedContentType !== "text" ||
+            typeof payload.content !== "string" ||
+            Buffer.byteLength(payload.content, "utf8") !== contentBytes ||
+            contentBytes > 1_048_576 ||
+            excludedReason === "sensitive_source"
+          ) {
+            return null;
+          }
+          return { ...baseClipboard, content: payload.content };
+        })()
+      : baseClipboard;
+  if (clipboard === null) return invalidPayload();
+
+  return ok({
+    topic: event.topic,
+    schema_version: event.schema_version,
+    timestamp: event.timestamp,
+    correlation_id: event.correlation_id,
+    source_service: event.source_service,
+    clipboard,
+  });
 }
 
 function invalidPayload(): Result<never> {

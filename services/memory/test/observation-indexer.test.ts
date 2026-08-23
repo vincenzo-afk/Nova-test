@@ -93,19 +93,58 @@ describe("ObservationIndexer", () => {
     expect(input.contentRef).not.toContain("window_id");
   });
 
-  it("rejects unsupported events before touching memory", async () => {
+  it("indexes task-bound clipboard metadata without persisting unapproved content", async () => {
     const memory = writer();
     const indexer = new ObservationIndexer(memory);
 
     const result = await indexer.index({
       task_id: "task-1",
       event: event("observer.clipboard.changed" as SupportedObservationEvent["topic"], {
-        text: "secret",
+        entity_ref: "clipboard",
+        content_type: "text",
+        source_application: "Notepad",
+        capture_level: "metadata",
+        content_bytes: 19,
+        content: "PRIVATE CONTENT MUST NOT PERSIST",
+        excluded_reason: "content_permission_missing",
       }),
     });
 
-    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
-    expect(memory.writeWorking).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: true, value: { persisted: true, memory_id: "working-1" } });
+    const input = memory.writeWorking.mock.calls[0]?.[0] as { readonly contentRef: string };
+    const normalized = JSON.parse(input.contentRef) as Record<string, unknown>;
+    expect(normalized).toMatchObject({
+      topic: "observer.clipboard.changed",
+      clipboard: {
+        content_type: "text",
+        source_application: "Notepad",
+        capture_level: "metadata",
+        content_bytes: 19,
+        excluded_reason: "content_permission_missing",
+      },
+    });
+    expect(input.contentRef).not.toContain("PRIVATE CONTENT MUST NOT PERSIST");
+  });
+
+  it("indexes explicitly captured ordinary clipboard content for an explicit task", async () => {
+    const memory = writer();
+    const indexer = new ObservationIndexer(memory);
+
+    const result = await indexer.index({
+      task_id: "task-1",
+      event: event("observer.clipboard.changed" as SupportedObservationEvent["topic"], {
+        entity_ref: "clipboard",
+        content_type: "text",
+        source_application: "Notepad",
+        capture_level: "content",
+        content_bytes: 19,
+        content: "private copied text",
+      }),
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { persisted: true, memory_id: "working-1" } });
+    const input = memory.writeWorking.mock.calls[0]?.[0] as { readonly contentRef: string };
+    expect(input.contentRef).toContain("private copied text");
   });
 
   it("returns storage failures without pretending indexing succeeded", async () => {
