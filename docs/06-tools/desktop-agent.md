@@ -11,7 +11,7 @@ The desktop permission model defines these explicit, revocable, off-by-default g
 | Identifier        | Scope                         | Capture or action allowed                                                                                                                  |
 | ----------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `screen`          | Screen observation            | A task-bound screenshot of the full virtual screen or current focused window, requested on demand. Raw frames are not persisted or logged. |
-| `desktop_control` | Desktop accessibility control | A structured Windows UI Automation `invoke` or `set_value` action against the currently focused, expected window.                          |
+| `desktop_control` | Desktop accessibility control | A task-bound structured Windows UI Automation state read or `invoke`/`set_value` action against the currently focused, expected window.    |
 
 These identifiers are distinct from the existing `applications` and `windows` observer grants. `applications` and `windows` maintain the World Model's application/focus context; `screen` and `desktop_control` do not start background observers.
 
@@ -25,24 +25,26 @@ A screenshot request must include a non-empty `task_id`, a target of `screen` or
 
 Raw frame data is session/task ephemeral. It is not written to SQLite, Working Memory, audit records, diagnostic logs, or the renderer outside the explicit one-shot response. Only an approved, derived structured observation may be adopted through the existing observation-indexing boundary.
 
-## UI Automation action contract
+## UI Automation read and action contract
+
+An accessibility-state read must include a non-empty `task_id`, `expected_window_id`, and structured target metadata (`name` and/or `automation_id`, with optional `control_type`). It revalidates World Model focus immediately before the native call and returns the matched element's name, automation ID, control type, enabled state, offscreen state, and value when exposed. A missing target, focus mismatch, revoked permission, malformed native result, or native failure is rejected with structured evidence rather than guessed.
 
 A UI action must include a non-empty `task_id`, action identifier, `invoke` or `set_value` operation, structured target metadata (`name` and/or `automation_id`, with optional `control_type`), and `expected_window_id`. Nova re-reads World Model focus immediately before calling the native bridge and pauses with a typed validation error when the expected window no longer has focus. The native host re-checks foreground focus again before resolving the UI Automation root.
 
-`invoke` uses `InvokePattern`. `set_value` uses `ValuePattern` and reads the resulting value as `accessibility_state` evidence. The native host uses bounded PowerShell/C# execution with `shell: false`, a 15-second timeout, structured JSON input/output, and no arbitrary shell or raw input path.
+`invoke` uses `InvokePattern`; `set_value` uses `ValuePattern`. Both actions read the post-action element state and return it as `accessibility_state` evidence. A completed action is not accepted unless its action identifier and task/window-bound state match the request. The native host uses bounded PowerShell/C# execution with `shell: false`, a 15-second timeout, structured JSON input/output, and no arbitrary shell or raw input path.
 
 Destructive or irreversible UI actions require explicit confirmation. Permission revocation is checked at the controller boundary on every request, so revocation rejects new capture/control operations immediately. Accessibility actions use the `desktop.focus` and `desktop.accessibility` resource locks; screenshots use the `desktop.screen` lock.
 
 ## Runtime and IPC boundaries
 
-The Electron renderer calls only typed preload methods. Preload forwards `nova:desktop:screenshot` and `nova:desktop:ui-action` to Electron main. Electron main converts each request into an `ExecutionStep` and routes it through RuntimeApplication's ToolRegistry, PermissionManager, Executor, ResourceManager, and Verifier. The native bridge is owned by Electron main and is never exposed to the renderer.
+The Electron renderer calls only typed preload methods. Preload forwards `nova:desktop:screenshot`, `nova:desktop:ui-read`, and `nova:desktop:ui-action` to Electron main. Electron main converts each request into an `ExecutionStep` and routes it through RuntimeApplication's ToolRegistry, PermissionManager, Executor, ResourceManager, and Verifier. The native bridge is owned by Electron main and is never exposed to the renderer.
 
 Registered tools are:
 
-| Tool                         | Tier            | Actions                              | Verification          |
-| ---------------------------- | --------------- | ------------------------------------ | --------------------- |
-| `nova.screen-capture`        | `vision`        | `screenshot`                         | `api_response`        |
-| `nova.desktop-accessibility` | `accessibility` | `ui_action`, `ui_action_destructive` | `accessibility_state` |
+| Tool                         | Tier            | Actions                                            | Verification          |
+| ---------------------------- | --------------- | -------------------------------------------------- | --------------------- |
+| `nova.screen-capture`        | `vision`        | `screenshot`                                       | `api_response`        |
+| `nova.desktop-accessibility` | `accessibility` | `read_state`, `ui_action`, `ui_action_destructive` | `accessibility_state` |
 
 ## Validation boundary
 

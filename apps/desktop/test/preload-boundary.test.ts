@@ -28,6 +28,7 @@ describe("Electron preload boundary", () => {
       "cancelTask",
       "captureScreenshot",
       "executeUiAction",
+      "readAccessibilityState",
       "getPermissions",
       "setPermission",
       "getConfig",
@@ -46,6 +47,7 @@ describe("Electron preload boundary", () => {
         cancelTask: (taskId: string) => unknown;
         captureScreenshot: (request: unknown) => unknown;
         executeUiAction: (request: unknown) => unknown;
+        readAccessibilityState: (request: unknown) => unknown;
         getPermissions: () => unknown;
         setPermission: (source: string, granted: boolean) => unknown;
         getConfig: () => unknown;
@@ -63,6 +65,11 @@ describe("Electron preload boundary", () => {
       action_id: "save-note",
       action: "invoke",
       risk_tier: "reversible_write",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save", control_type: "button" },
+    });
+    api.readAccessibilityState({
+      task_id: "task-1",
       expected_window_id: "hwnd:2A",
       target: { name: "Save", control_type: "button" },
     });
@@ -88,13 +95,18 @@ describe("Electron preload boundary", () => {
       expected_window_id: "hwnd:2A",
       target: { name: "Save", control_type: "button" },
     });
-    expect(invoke).toHaveBeenNthCalledWith(7, "nova:permissions:get");
-    expect(invoke).toHaveBeenNthCalledWith(8, "nova:permissions:set", {
+    expect(invoke).toHaveBeenNthCalledWith(7, "nova:desktop:ui-read", {
+      task_id: "task-1",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save", control_type: "button" },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(8, "nova:permissions:get");
+    expect(invoke).toHaveBeenNthCalledWith(9, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(9, "nova:config:get");
-    expect(invoke).toHaveBeenNthCalledWith(10, "nova:config:update", {
+    expect(invoke).toHaveBeenNthCalledWith(10, "nova:config:get");
+    expect(invoke).toHaveBeenNthCalledWith(11, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
     });

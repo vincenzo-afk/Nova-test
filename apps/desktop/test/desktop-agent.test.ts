@@ -5,6 +5,7 @@ import {
   type NativeDesktopAgentBridgeContract,
   type NativeScreenshot,
   type NativeUiActionResult,
+  type UiActionRequest,
 } from "../src/main/desktop-agent.js";
 
 const focus = (windowId = "hwnd:2A"): DesktopFocusState => ({
@@ -35,11 +36,29 @@ const screenshot: NativeScreenshot = {
 const bridge = (overrides: Partial<NativeDesktopAgentBridgeContract> = {}) =>
   ({
     captureScreenshot: vi.fn(async () => screenshot),
-    executeUiAction: vi.fn(async (): Promise<NativeUiActionResult> => ({
-      action_id: "action-1",
+    readAccessibilityState: vi.fn(async () => ({
+      task_id: "task-1",
+      window_id: "hwnd:2A",
+      name: "Save",
+      automation_id: "saveButton",
+      control_type: "button",
+      enabled: true,
+      offscreen: false,
+    })),
+    executeUiAction: vi.fn(async (request: UiActionRequest): Promise<NativeUiActionResult> => ({
+      action_id: request.action_id,
       outcome: "completed",
       verification: "accessibility_state",
       detail: "Invoked control.",
+      accessibility_state: {
+        task_id: "task-1",
+        window_id: "hwnd:2A",
+        name: "Save",
+        automation_id: "saveButton",
+        control_type: "button",
+        enabled: true,
+        offscreen: false,
+      },
     })),
     ...overrides,
   }) satisfies NativeDesktopAgentBridgeContract;
@@ -52,6 +71,70 @@ const permissions = (screen = true, desktopControl = true) => ({
 });
 
 describe("DesktopAgentController", () => {
+  it("reads structured accessibility state only with desktop-control permission", async () => {
+    const native = bridge({
+      readAccessibilityState: vi.fn(async () => ({
+        task_id: "task-1",
+        window_id: "hwnd:2A",
+        name: "Save",
+        automation_id: "saveButton",
+        control_type: "button",
+        enabled: true,
+        offscreen: false,
+        value: undefined,
+      })),
+    });
+    const controller = new DesktopAgentController({
+      permissions: permissions(false, true),
+      focus: () => focus(),
+      bridge: native,
+    });
+
+    const result = await controller.readAccessibilityState({
+      task_id: "task-1",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save", automation_id: "saveButton", control_type: "button" },
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: { task_id: "task-1", window_id: "hwnd:2A", control_type: "button", enabled: true },
+    });
+    expect(native.readAccessibilityState).toHaveBeenCalledWith({
+      task_id: "task-1",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save", automation_id: "saveButton", control_type: "button" },
+    });
+  });
+
+  it("pauses accessibility reads when focus changes and rejects revoked control permission", async () => {
+    const native = bridge({ readAccessibilityState: vi.fn(async () => ({}) as never) });
+    const focusMismatch = new DesktopAgentController({
+      permissions: permissions(false, true),
+      focus: () => focus("hwnd:99"),
+      bridge: native,
+    });
+    const mismatch = await focusMismatch.readAccessibilityState({
+      task_id: "task-1",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save" },
+    });
+    expect(mismatch).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(native.readAccessibilityState).not.toHaveBeenCalled();
+
+    const revoked = new DesktopAgentController({
+      permissions: permissions(false, false),
+      focus: () => focus(),
+      bridge: native,
+    });
+    const denied = await revoked.readAccessibilityState({
+      task_id: "task-1",
+      expected_window_id: "hwnd:2A",
+      target: { name: "Save" },
+    });
+    expect(denied).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+  });
+
   it("captures a bounded screenshot only with explicit screen permission", async () => {
     const native = bridge();
     const controller = new DesktopAgentController({
@@ -225,5 +308,7 @@ describe("DesktopAgentController", () => {
     expect(native.executeUiAction).not.toHaveBeenCalled();
     expect(DesktopAgentController.nativePowerShellScript()).toContain("AutomationElement");
     expect(DesktopAgentController.nativePowerShellScript()).toContain("CopyFromScreen");
+    expect(DesktopAgentController.nativePowerShellScript()).toContain("read_ui");
+    expect(DesktopAgentController.nativePowerShellScript()).toContain("ControlTypeProperty");
   });
 });

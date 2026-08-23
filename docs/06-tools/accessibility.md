@@ -30,9 +30,11 @@ Reads (finding an element, checking its current state) and writes
 (invoking a button's action, setting a text field's value) both go
 through UI Automation's programmatic interface rather than simulated
 mouse coordinates — this means an accessibility-tier action targets "the
-Save button" as a named element, not "the pixel at position (x, y)",
+Save button" as a named element, not "the pixel at position (x, y),"
 which remains correct even if the application's layout shifts slightly
-between runs.
+between runs. Nova's desktop accessibility adapter exposes the read as a
+separate `read_state` action and requires a task identifier, expected focused
+window, and structured target metadata before it calls the native host.
 
 ## Verification signal
 
@@ -41,7 +43,11 @@ property actually changed, or a dialog's presence/absence) is read
 directly from the accessibility tree and used as the ground-truth
 verification signal (`docs/03-runtime/verifier.md`) — this is
 structurally independent of the input mechanism itself, unlike vision
-verification, which shares failure modes with vision-based action.
+verification, which shares failure modes with vision-based action. The
+implemented Windows adapter returns the matched element's name, automation
+ID, control type, enabled/offscreen state, and exposed value. UI actions are
+accepted as completed only when the task/window-bound state evidence is
+present and valid.
 
 ## Application coverage limits
 

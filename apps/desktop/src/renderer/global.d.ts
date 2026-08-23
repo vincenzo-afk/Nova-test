@@ -42,6 +42,30 @@ declare global {
         verification: "accessibility_state";
         detail: string;
         resulting_value?: string;
+        accessibility_state?: {
+          task_id: string;
+          window_id: string;
+          name: string;
+          automation_id: string;
+          control_type: string;
+          enabled: boolean;
+          offscreen: boolean;
+          value?: string;
+        };
+      }>;
+      readAccessibilityState: (request: {
+        task_id: string;
+        expected_window_id: string;
+        target: { name?: string; automation_id?: string; control_type?: string };
+      }) => Promise<{
+        task_id: string;
+        window_id: string;
+        name: string;
+        automation_id: string;
+        control_type: string;
+        enabled: boolean;
+        offscreen: boolean;
+        value?: string;
       }>;
       getPermissions: () => Promise<PermissionGrant[]>;
       setPermission: (source: string, granted: boolean) => Promise<PermissionGrant[]>;

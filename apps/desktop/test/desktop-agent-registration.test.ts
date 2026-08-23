@@ -28,9 +28,17 @@ describe("desktop-agent tool registration", () => {
 
     expect(result).toEqual({ ok: true, value: tool });
     expect(tool.execution_tier).toBe("accessibility");
-    expect(tool.supported_actions).toHaveLength(2);
+    expect(tool.supported_actions).toHaveLength(3);
     expect(tool.supported_actions).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          action_id: "read_state",
+          risk_tier: "read_only",
+          verification_signal: "accessibility_state",
+          permission_scope: "desktop_control",
+          lockable_resources: ["desktop.focus", "desktop.accessibility"],
+          idempotent: true,
+        }),
         expect.objectContaining({
           action_id: "ui_action",
           risk_tier: "reversible_write",

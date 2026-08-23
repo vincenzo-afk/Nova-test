@@ -8,6 +8,7 @@ const novaApi = {
   cancelTask: (taskId: string) => ipcRenderer.invoke("nova:task:cancel", { task_id: taskId }),
   captureScreenshot: (request: unknown) => ipcRenderer.invoke("nova:desktop:screenshot", request),
   executeUiAction: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-action", request),
+  readAccessibilityState: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-read", request),
   getPermissions: () => ipcRenderer.invoke("nova:permissions:get"),
   setPermission: (source: string, granted: boolean) =>
     ipcRenderer.invoke("nova:permissions:set", { source, granted }),

@@ -15,6 +15,7 @@ import {
   DesktopAgentController,
   NativeDesktopAgentBridge,
   type ScreenshotRequest,
+  type AccessibilityReadRequest,
   type UiActionRequest,
 } from "./desktop-agent.js";
 import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
@@ -133,6 +134,9 @@ ipcMain.handle("nova:desktop:screenshot", (_event, payload: ScreenshotRequest) =
 ipcMain.handle("nova:desktop:ui-action", (_event, payload: UiActionRequest) =>
   requestGateway("desktop.ui-action", payload),
 );
+ipcMain.handle("nova:desktop:ui-read", (_event, payload: AccessibilityReadRequest) =>
+  requestGateway("desktop.ui-read", payload),
+);
 ipcMain.handle("nova:permissions:get", () =>
   requestGateway<PermissionGrant[]>("permissions.get", undefined),
 );
@@ -231,6 +235,20 @@ const startGateway = async (): Promise<void> => {
       risk_tier: "read_only",
       execution_tier: "vision",
       required_locks: ["desktop.screen"],
+      timeout_ms: 15_000,
+      confirmation_status: "not_required",
+    });
+  });
+  gateway.register("desktop.ui-read", async (data) => {
+    const payload = data as AccessibilityReadRequest;
+    return await executeDesktopStep({
+      task_id: payload.task_id,
+      resolved_tool_id: "nova.desktop-accessibility",
+      action_id: "read_state",
+      parameters: payload as unknown as Readonly<Record<string, unknown>>,
+      risk_tier: "read_only",
+      execution_tier: "accessibility",
+      required_locks: ["desktop.focus", "desktop.accessibility"],
       timeout_ms: 15_000,
       confirmation_status: "not_required",
     });
