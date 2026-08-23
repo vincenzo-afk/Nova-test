@@ -10,11 +10,13 @@ import {
 } from "@nova/runtime";
 import { createMessage, NamedPipeCommunicationBus } from "@nova/shared";
 import { createDesktopRuntime } from "./runtime.js";
+import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
   readonly goal: string;
   readonly state: string;
+  readonly retry_count?: number;
 }
 
 let gatewayBus: NamedPipeCommunicationBus | undefined;
@@ -79,6 +81,24 @@ const requestGateway = async <TValue>(operation: string, data: unknown): Promise
 ipcMain.handle("nova:task:submit", (_event, payload: { readonly goal: string }) =>
   requestGateway<TaskSnapshot>("task.submit", { goal: payload.goal }),
 );
+ipcMain.handle(
+  "nova:task:list",
+  (_event, payload: { readonly limit?: number; readonly cursor?: string } = {}) => {
+    if (
+      payload.limit !== undefined &&
+      (!Number.isInteger(payload.limit) || payload.limit <= 0 || payload.limit > 200)
+    ) {
+      throw new Error("Task list limit must be an integer from 1 to 200.");
+    }
+    if (payload.cursor !== undefined && typeof payload.cursor !== "string") {
+      throw new Error("Task list cursor must be opaque text.");
+    }
+    return requestGateway<DesktopTaskListPage>("task.list", payload);
+  },
+);
+ipcMain.handle("nova:task:cancel", (_event, payload: { readonly task_id: string }) =>
+  requestGateway<TaskSnapshot>("task.cancel", { task_id: payload.task_id }),
+);
 ipcMain.handle("nova:permissions:get", () =>
   requestGateway<PermissionGrant[]>("permissions.get", undefined),
 );
@@ -140,6 +160,25 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication?.tasks.get(payload.task_id);
     if (!result?.ok) throw new Error(result?.error.message ?? "Task lookup failed.");
     return result.value;
+  });
+  gateway.register("task.list", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly limit?: number; readonly cursor?: string };
+    const page = listDesktopTasks(runtimeApplication.tasks.list(), payload);
+    if (!page.ok) throw new Error(page.error.message);
+    return page.value;
+  });
+  gateway.register("task.cancel", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly task_id?: string };
+    if (!payload.task_id) throw new Error("Task ID is required.");
+    const cancelled = cancelDesktopTask(
+      runtimeApplication.tasks,
+      runtimeApplication.scheduler,
+      payload.task_id,
+    );
+    if (!cancelled.ok) throw new Error(cancelled.error.message);
+    return cancelled.value;
   });
   gateway.register("permissions.get", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -24,6 +24,8 @@ describe("Electron preload boundary", () => {
     expect(Object.keys(api)).toEqual([
       "submitTask",
       "getTask",
+      "listTasks",
+      "cancelTask",
       "getPermissions",
       "setPermission",
       "getConfig",
@@ -38,6 +40,8 @@ describe("Electron preload boundary", () => {
       {
         submitTask: (goal: string) => unknown;
         getTask: (taskId: string) => unknown;
+        listTasks: (limit?: number, cursor?: string) => unknown;
+        cancelTask: (taskId: string) => unknown;
         getPermissions: () => unknown;
         setPermission: (source: string, granted: boolean) => unknown;
         getConfig: () => unknown;
@@ -47,6 +51,8 @@ describe("Electron preload boundary", () => {
 
     api.submitTask("read README");
     api.getTask("task-1");
+    api.listTasks(25, "cursor-1");
+    api.cancelTask("task-1");
     api.getPermissions();
     api.setPermission("filesystem", true);
     api.getConfig();
@@ -54,13 +60,15 @@ describe("Electron preload boundary", () => {
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
-    expect(invoke).toHaveBeenNthCalledWith(3, "nova:permissions:get");
-    expect(invoke).toHaveBeenNthCalledWith(4, "nova:permissions:set", {
+    expect(invoke).toHaveBeenNthCalledWith(3, "nova:task:list", { limit: 25, cursor: "cursor-1" });
+    expect(invoke).toHaveBeenNthCalledWith(4, "nova:task:cancel", { task_id: "task-1" });
+    expect(invoke).toHaveBeenNthCalledWith(5, "nova:permissions:get");
+    expect(invoke).toHaveBeenNthCalledWith(6, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(5, "nova:config:get");
-    expect(invoke).toHaveBeenNthCalledWith(6, "nova:config:update", {
+    expect(invoke).toHaveBeenNthCalledWith(7, "nova:config:get");
+    expect(invoke).toHaveBeenNthCalledWith(8, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
     });

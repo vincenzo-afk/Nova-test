@@ -39,6 +39,10 @@ mechanism described in `docs/08-api/internal-api.md`.
   task's resource lock (`docs/03-runtime/resource-manager.md`), so the
   user understands why an otherwise-ready task has not started executing.
 
+## Desktop integration boundary
+
+The Electron desktop consumes the authoritative TaskManager through isolated preload IPC. It requests a bounded paginated task list, refreshes it from the runtime, displays retry and waiting-user metadata, and exposes cancellation for every non-terminal task. Cancellation removes queued work and transitions cancellable task states to `Cancelled`; the current scheduler does not interrupt an already-running executor process, so the desktop reports that limitation instead of pretending a running process was stopped.
+
 ## Cancellation control
 
 A visible, always-available cancel control per in-flight task, invoking

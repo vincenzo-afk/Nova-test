@@ -38,6 +38,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - In-app Provider Settings and Settings forms backed by the validated local configuration store for provider/model identifiers, vault references, routing policy, and visible personalization records with individual or full reset.
 - Planner, executor, verifier, task-manager, priority/concurrency task scheduler, tool-registry, deterministic model routing, and resource-locking boundaries.
 - An explicit `nova.workspace-code` CLI tool for approved script execution inside a configured workspace: it uses registered runtimes, canonical path containment, no shell, bounded output, timeouts, exit-code evidence, mandatory confirmation, and workspace locks; it does not execute free-form shell text.
+- A real desktop Task Monitor backed by the authoritative TaskManager, with paginated task history, retry/waiting metadata, isolated IPC, and cancellation controls that distinguish cancellable queued states from unsupported running-process interruption.
 - Working, recent, and long-term memory persistence with SQLite and Prisma, workspace scoping, checksums, lineage, and schema-version controls.
 - Filesystem observation with explicit permission gates, canonicalized security checks, caller-path-preserving Windows output, batching, hashing, and event delivery.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.

@@ -21,6 +21,16 @@ interface TaskSnapshot {
   readonly task_id: string;
   readonly goal: string;
   readonly state: string;
+  readonly retry_count?: number;
+  readonly step_history?: readonly unknown[];
+  readonly waiting_user_reason?: string;
+  readonly reason?: string;
+}
+
+interface TaskListPage {
+  readonly items: readonly TaskSnapshot[];
+  readonly next_cursor: string | null;
+  readonly has_more: boolean;
 }
 
 type SurfaceView = Exclude<DesktopView, "permissions" | "chat" | "tasks">;
@@ -99,6 +109,8 @@ export const App = () => {
   const [view, setView] = useState<DesktopView>(initialView(true));
   const [goal, setGoal] = useState("");
   const [lastTask, setLastTask] = useState<TaskSnapshot | null>(null);
+  const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
+  const [taskListError, setTaskListError] = useState<string | null>(null);
   const [providerMode, setProviderMode] = useState<ProviderMode | null>(null);
   const [demonstrationTaskCompleted, setDemonstrationTaskCompleted] = useState(false);
   const [configuration, setConfiguration] = useState<NovaConfiguration | null>(null);
@@ -128,6 +140,29 @@ export const App = () => {
   useEffect(() => {
     if (firstRun) setView(initialView(true));
   }, [firstRun]);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const page = (await window.nova.listTasks(50)) as TaskListPage;
+        if (active) {
+          setTasks(page.items);
+          setTaskListError(null);
+        }
+      } catch (error: unknown) {
+        if (active) {
+          setTaskListError(error instanceof Error ? error.message : "Task history unavailable.");
+        }
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 1_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (!lastTask) return;
@@ -160,6 +195,18 @@ export const App = () => {
   const togglePermission = async (source: string, granted: boolean) => {
     const updated = await window.nova.setPermission(source, granted);
     setPermissions(updated);
+  };
+
+  const cancelTask = async (taskId: string) => {
+    try {
+      const cancelled = await window.nova.cancelTask(taskId);
+      setLastTask(cancelled);
+      const page = (await window.nova.listTasks(50)) as TaskListPage;
+      setTasks(page.items);
+      setTaskListError(null);
+    } catch (error: unknown) {
+      setTaskListError(error instanceof Error ? error.message : "Task cancellation failed.");
+    }
   };
 
   const updateConfiguration = async (
@@ -248,7 +295,12 @@ export const App = () => {
               firstRun={firstRun}
             />
           ) : view === "tasks" ? (
-            <TaskMonitor task={lastTask} />
+            <TaskMonitor
+              error={taskListError}
+              onCancel={cancelTask}
+              task={lastTask}
+              tasks={tasks}
+            />
           ) : view === "home" ? (
             <HomeView permissions={permissions} task={lastTask} />
           ) : view === "provider" ? (
@@ -492,31 +544,55 @@ const ChatView = ({
   </section>
 );
 
-const TaskMonitor = ({ task }: { task: TaskSnapshot | null }) => (
+const TaskMonitor = ({
+  task,
+  tasks,
+  error,
+  onCancel,
+}: {
+  task: TaskSnapshot | null;
+  tasks: readonly TaskSnapshot[];
+  error: string | null;
+  onCancel: (taskId: string) => Promise<void>;
+}) => (
   <section className="content-column" aria-labelledby="tasks-title">
     <div className="section-kicker">Task Monitor / Live state</div>
     <h1 id="tasks-title">Execution trace</h1>
     <p className="lede">
       Task state is shared across every NOVA surface and never reports unverified work as completed.
     </p>
+    {error ? <p className="error-text">{error}</p> : null}
     <div className="task-card">
-      {task ? (
-        <>
-          <div className="task-header">
-            <span className="task-status">{task.state}</span>
-            <code>{task.task_id}</code>
-          </div>
-          <h2>{task.goal}</h2>
-          <div className="progress-rail">
-            <span className="progress-fill" />
-          </div>
-          <p className="muted">
-            Runtime state is refreshed from the authoritative TaskManager through the Electron IPC
-            boundary.
-          </p>
-        </>
+      {tasks.length > 0 ? (
+        tasks.map((entry) => {
+          const terminal = ["Completed", "Unverified", "Failed", "Cancelled"].includes(entry.state);
+          return (
+            <article className="task-row" key={entry.task_id}>
+              <div className="task-header">
+                <span className="task-status">{entry.state}</span>
+                <code>{entry.task_id}</code>
+              </div>
+              <h2>{entry.goal}</h2>
+              <div className="task-meta">
+                <span>{entry.retry_count ?? 0} retries</span>
+                {entry.waiting_user_reason ? (
+                  <span>Waiting: {entry.waiting_user_reason}</span>
+                ) : null}
+                {entry.reason ? <span>{entry.reason}</span> : null}
+              </div>
+              {!terminal ? (
+                <button onClick={() => void onCancel(entry.task_id)} type="button">
+                  Cancel task
+                </button>
+              ) : null}
+              {entry.task_id === task?.task_id ? (
+                <p className="muted">Latest task · refreshed from the authoritative TaskManager.</p>
+              ) : null}
+            </article>
+          );
+        })
       ) : (
-        <p className="muted">No task is currently active. Start from Chat to create one.</p>
+        <p className="muted">No task history is available. Start from Chat to create one.</p>
       )}
     </div>
   </section>
