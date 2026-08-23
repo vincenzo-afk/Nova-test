@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { InMemoryCommunicationBus, createMessage } from "@nova/shared";
+import {
+  InMemoryCommunicationBus,
+  createMessage,
+  MemoryLogSink,
+  StructuredLogger,
+} from "@nova/shared";
 import { ApiGateway } from "../src/api-gateway.js";
 
 describe("ApiGateway", () => {
@@ -38,6 +43,44 @@ describe("ApiGateway", () => {
       payload: { request_id: "req-1", ok: true, data: { accepted: { goal: "status" } } },
     });
     await gateway.stop();
+  });
+
+  it("logs gateway lifecycle and rejected requests with correlation metadata", async () => {
+    const bus = new InMemoryCommunicationBus();
+    const sink = new MemoryLogSink();
+    const logger = new StructuredLogger({ service: "api.gateway", sink, minimumLevel: "debug" });
+    const gateway = new ApiGateway(bus, logger);
+    await gateway.start();
+    await bus.publish(
+      createMessage({
+        topic: "api.internal.request",
+        schema_version: "1.0.0",
+        correlation_id: "00000000-0000-4000-8000-000000000012",
+        source_service: "test",
+        payload: {
+          operation: "unknown",
+          request_id: "req-logging",
+          reply_to: "api.internal.response",
+          data: { token: "must-not-log" },
+        },
+      }),
+    );
+    await gateway.stop();
+
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "gateway.started",
+      "gateway.request.received",
+      "gateway.request.rejected",
+      "gateway.response.published",
+      "gateway.stopped",
+    ]);
+    expect(
+      sink
+        .records()
+        .filter((record) => record.correlation_id !== undefined)
+        .every((record) => record.correlation_id === "00000000-0000-4000-8000-000000000012"),
+    ).toBe(true);
+    expect(JSON.stringify(sink.records())).not.toContain("must-not-log");
   });
 
   it("rejects an unknown operation with a stable typed error reply", async () => {

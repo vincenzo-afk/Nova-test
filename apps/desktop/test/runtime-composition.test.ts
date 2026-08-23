@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDesktopRuntime } from "../src/main/runtime.js";
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import {
   DesktopAgentController,
   type DesktopFocusState,
@@ -20,6 +21,31 @@ afterEach(async () => {
 });
 
 describe("desktop runtime composition", () => {
+  it("records runtime lifecycle evidence through the injected structured logger", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-logging-"));
+    temporaryDirectories.push(userDataPath);
+    const sink = new MemoryLogSink();
+    const runtime = await createDesktopRuntime({
+      userDataPath,
+      logger: new StructuredLogger({ service: "desktop.runtime.test", sink }),
+    });
+    runtimes.push(runtime);
+
+    await runtime.start();
+    await runtime.stop();
+
+    const events = sink.records().map((record) => record.event);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        "runtime.start.begin",
+        "runtime.started",
+        "runtime.stop.begin",
+        "runtime.stopped",
+      ]),
+    );
+    expect(JSON.stringify(sink.records())).not.toContain(userDataPath);
+  });
+
   it("starts the native observer only after both grants and feeds ephemeral World Model focus state", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-observer-"));
     temporaryDirectories.push(userDataPath);

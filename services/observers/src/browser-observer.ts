@@ -7,6 +7,7 @@ import {
   type ErrorInfo,
   type MessageEnvelope,
   type Result,
+  type StructuredLogger,
 } from "@nova/shared";
 
 export type BrowserEventType = "tab_opened" | "tab_closed" | "tab_updated" | "tab_activated";
@@ -37,6 +38,7 @@ export interface BrowserObserverOptions {
   readonly excludedDomains: readonly string[];
   readonly now?: () => string;
   readonly maxTitleLength?: number;
+  readonly logger?: StructuredLogger;
 }
 
 const BROWSER_PERMISSION = "browser_metadata";
@@ -52,12 +54,14 @@ export class BrowserObserver {
   private currentState: BrowserObserverState = "Disabled";
   private readonly now: () => string;
   private readonly maxTitleLength: number;
+  private readonly logger: StructuredLogger | undefined;
   private excludedDomains: readonly string[];
   private readonly pending = new Map<string, MessageEnvelope>();
 
   public constructor(private readonly options: BrowserObserverOptions) {
     this.now = options.now ?? (() => new Date().toISOString());
     this.maxTitleLength = options.maxTitleLength ?? DEFAULT_MAX_TITLE_LENGTH;
+    this.logger = options.logger;
     this.excludedDomains = options.excludedDomains
       .map(normalizeDomainRule)
       .filter((domain): domain is string => domain !== null);
@@ -71,15 +75,29 @@ export class BrowserObserver {
     this.excludedDomains = domains
       .map(normalizeDomainRule)
       .filter((domain): domain is string => domain !== null);
+    let purgedPendingCount = 0;
     for (const [key, message] of this.pending) {
       const payload = message.payload as Record<string, unknown>;
       const url = payload.url;
-      if (typeof url === "string" && this.isExcludedDomain(url)) this.pending.delete(key);
+      if (typeof url === "string" && this.isExcludedDomain(url)) {
+        this.pending.delete(key);
+        purgedPendingCount += 1;
+      }
     }
+    this.logger?.info("browser.policy.updated", {
+      excluded_domain_count: this.excludedDomains.length,
+      purged_pending_count: purgedPendingCount,
+    });
   }
 
   public async enable(): Promise<Result<BrowserObserverState>> {
-    if (!this.hasPermission()) return err(this.permissionError());
+    if (!this.hasPermission()) {
+      this.logger?.warning("browser.observer.enable_rejected", {
+        error_code: "NOVA-SEC001",
+        reason: "permission_missing",
+      });
+      return err(this.permissionError());
+    }
     if (this.currentState !== "Disabled") {
       return err(this.transitionError(this.currentState, "Enabling"));
     }
@@ -89,9 +107,13 @@ export class BrowserObserver {
         await this.captureAndPublish(event);
       });
       this.currentState = "Active";
+      this.logger?.info("browser.observer.enabled", { permission: BROWSER_PERMISSION });
       return ok(this.currentState);
     } catch (cause) {
       this.currentState = "Failed";
+      this.logger?.error("browser.observer.enable_failed", {
+        error_code: "NOVA-EVT001",
+      });
       return err(
         this.observerError(
           cause instanceof Error ? cause.message : "Browser extension bridge failed.",
@@ -102,14 +124,46 @@ export class BrowserObserver {
 
   public async capture(event: NativeBrowserEvent): Promise<Result<void>> {
     const permission = await this.ensureActiveAndPermitted();
-    if (!permission.ok) return permission;
-    if (!validEvent(event)) return err(this.invalidEvent());
+    if (!permission.ok) {
+      this.logger?.warning(
+        "browser.event.rejected",
+        { error_code: permission.error.code, reason: "observer_not_permitted" },
+        event.correlation_id,
+      );
+      return permission;
+    }
+    if (!validEvent(event)) {
+      this.logger?.warning(
+        "browser.event.rejected",
+        { error_code: "NOVA-TL002", reason: "invalid_metadata_shape" },
+        event.correlation_id,
+      );
+      return err(this.invalidEvent());
+    }
 
     let normalizedUrl: string | undefined;
     if (event.url !== undefined) {
       const candidateUrl = normalizeUrl(event.url);
-      if (candidateUrl === null) return err(this.invalidEvent());
-      if (this.isExcludedDomain(candidateUrl)) return ok(undefined);
+      if (candidateUrl === null) {
+        this.logger?.warning(
+          "browser.event.rejected",
+          { error_code: "NOVA-TL002", reason: "unsupported_url" },
+          event.correlation_id,
+        );
+        return err(this.invalidEvent());
+      }
+      if (this.isExcludedDomain(candidateUrl)) {
+        this.logger?.info(
+          "browser.event.excluded",
+          {
+            event_type: event.type,
+            domain: new URL(candidateUrl).hostname,
+            reason: "domain_policy",
+          },
+          event.correlation_id,
+        );
+        return ok(undefined);
+      }
       normalizedUrl = candidateUrl;
     }
 
@@ -140,6 +194,17 @@ export class BrowserObserver {
       timestamp: this.now(),
     };
     this.pending.set(`${event.window_id}:${event.tab_id}`, message);
+    this.logger?.debug(
+      "browser.event.queued",
+      {
+        event_type: event.type,
+        tab_id: event.tab_id,
+        window_id: event.window_id,
+        has_url: normalizedUrl !== undefined,
+        title_length: (event.title ?? "").length,
+      },
+      event.correlation_id,
+    );
     return ok(undefined);
   }
 
@@ -158,7 +223,17 @@ export class BrowserObserver {
     this.pending.clear();
     for (const message of messages) {
       const published = await this.options.bus.publish(message);
-      if (!published.ok) return published;
+      if (!published.ok) {
+        this.logger?.error(
+          "browser.event.publish_failed",
+          { error_code: published.error.code },
+          message.correlation_id,
+        );
+        return published;
+      }
+    }
+    if (messages.length > 0) {
+      this.logger?.info("browser.event.published", { event_count: messages.length });
     }
     return ok(undefined);
   }
@@ -168,8 +243,10 @@ export class BrowserObserver {
       return err(this.transitionError(this.currentState, "Disabled"));
     }
     await this.options.bridge.stop();
+    const purgedPendingCount = this.pending.size;
     this.pending.clear();
     this.currentState = "Disabled";
+    this.logger?.info("browser.observer.revoked", { purged_pending_count: purgedPendingCount });
     return ok(this.currentState);
   }
 
@@ -177,8 +254,13 @@ export class BrowserObserver {
     if (!this.hasPermission()) {
       if (this.currentState !== "Disabled") {
         await this.options.bridge.stop();
+        const purgedPendingCount = this.pending.size;
         this.pending.clear();
         this.currentState = "Disabled";
+        this.logger?.warning("browser.observer.revoked", {
+          purged_pending_count: purgedPendingCount,
+          reason: "permission_revoked",
+        });
       }
       return err(this.permissionError());
     }

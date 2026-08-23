@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { ObservationIndexer } from "@nova/memory";
+import { FileJsonlLogSink, StructuredLogger } from "@nova/shared";
 import {
   Executor,
   PermissionGrantStore,
@@ -55,6 +56,7 @@ export interface DesktopRuntimeOptions {
   readonly browserExcludedDomains?: RuntimeApplicationOptions["browserExcludedDomains"];
   readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
   readonly desktopAgent?: () => DesktopAgentController | undefined;
+  readonly logger?: StructuredLogger;
 }
 
 const defaultMigrationsPath = resolve(
@@ -69,15 +71,24 @@ export async function createDesktopRuntime(
     userDataPath: options.userDataPath,
     migrationsPath: options.migrationsPath ?? defaultMigrationsPath,
   });
+  const logger =
+    options.logger ??
+    new StructuredLogger({
+      service: "desktop.runtime",
+      sink: new FileJsonlLogSink(join(options.userDataPath, "logs", "nova.jsonl")),
+    });
   return new RuntimeApplication({
     configuration: desktopConfiguration,
-    permissionStore: new PermissionGrantStore({ initial: desktopPermissions }),
+    permissionStore: new PermissionGrantStore({ initial: desktopPermissions }, logger),
     planner: new Planner({ deterministic: new Map() }),
     executor: new Executor(
-      new PermissionManager({
-        allowedToolIds: new Set(["nova.screen-capture", "nova.desktop-accessibility"]),
-        confirmationTimeoutMs: 30_000,
-      }),
+      new PermissionManager(
+        {
+          allowedToolIds: new Set(["nova.screen-capture", "nova.desktop-accessibility"]),
+          confirmationTimeoutMs: 30_000,
+        },
+        logger,
+      ),
       new Map([
         [
           "nova.screen-capture",
@@ -88,10 +99,13 @@ export async function createDesktopRuntime(
           createDesktopAccessibilityTool(options.desktopAgent ?? (() => undefined)),
         ],
       ]),
+      undefined,
+      logger,
     ),
-    verifier: new Verifier(),
+    verifier: new Verifier(logger),
     persistence: persistence.checkpointStore,
     dispose: persistence.close,
+    logger,
     ...(options.windowObserverBridge === undefined
       ? {}
       : { windowObserverBridge: options.windowObserverBridge }),

@@ -1,4 +1,4 @@
-import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
 import { z } from "zod";
 import type { ResourceManager } from "./resource-manager.js";
 
@@ -157,97 +157,167 @@ export interface PermissionOptions {
 }
 
 export class PermissionManager {
-  constructor(private readonly options: PermissionOptions) {}
+  private readonly logger: StructuredLogger | undefined;
+
+  constructor(
+    private readonly options: PermissionOptions,
+    logger?: StructuredLogger,
+  ) {
+    this.logger = logger;
+  }
 
   authorize(step: ExecutionStep, tool: ToolRegistration): Result<"allowed"> {
     if (!this.options.allowedToolIds.has(tool.tool_id)) {
-      return err({
-        code: "NOVA-SEC001",
-        message: "Tool is outside the agent-scoped allowlist.",
-        retryable: false,
-        details: { toolId: tool.tool_id },
-      });
+      return this.deny(
+        step,
+        tool.tool_id,
+        "unknown",
+        "NOVA-SEC001",
+        "allowlist",
+        "Tool is outside the agent-scoped allowlist.",
+        { toolId: tool.tool_id },
+      );
     }
 
     const action = tool.actions[step.action_id];
     if (!action) {
-      return err({
-        code: "NOVA-TL004",
-        message: "Requested tool action is unavailable.",
-        retryable: false,
-      });
+      return this.deny(
+        step,
+        tool.tool_id,
+        "unknown",
+        "NOVA-TL004",
+        "missing_action",
+        "Requested tool action is unavailable.",
+      );
     }
 
     if (action.risk_tier === "read_only" && action.verification_signal !== "none") {
+      this.logDecision(step, tool.tool_id, action.risk_tier, "allowed", "read_only");
       return ok("allowed");
     }
 
     if (step.confirmation_status !== "approved" || this.options.confirmationTimeoutMs <= 0) {
-      return err({
-        code: "NOVA-SEC001",
-        message: "Explicit confirmation is required before this action can execute.",
-        retryable: false,
-      });
+      return this.deny(
+        step,
+        tool.tool_id,
+        action.risk_tier,
+        "NOVA-SEC001",
+        "confirmation_required",
+        "Explicit confirmation is required before this action can execute.",
+      );
     }
 
+    this.logDecision(step, tool.tool_id, action.risk_tier, "allowed", "confirmed");
     return ok("allowed");
+  }
+
+  private deny(
+    step: ExecutionStep,
+    toolId: string,
+    riskTier: string,
+    errorCode: ErrorInfo["code"],
+    reason: string,
+    message: string,
+    details?: Readonly<Record<string, string>>,
+  ): Result<"allowed"> {
+    this.logDecision(step, toolId, riskTier, "denied", reason, errorCode);
+    return err({
+      code: errorCode,
+      message,
+      retryable: false,
+      ...(details === undefined ? {} : { details }),
+    });
+  }
+
+  private logDecision(
+    step: ExecutionStep,
+    toolId: string,
+    riskTier: string,
+    decision: "allowed" | "denied",
+    reason: string,
+    errorCode?: string,
+  ): void {
+    this.logger?.info(
+      "permission.decision",
+      {
+        tool_id: toolId,
+        action_id: step.action_id,
+        risk_tier: riskTier,
+        decision,
+        reason,
+        ...(errorCode === undefined ? {} : { error_code: errorCode }),
+      },
+      step.correlation_id,
+    );
   }
 }
 
 export class Executor {
+  private readonly logger: StructuredLogger | undefined;
+
   constructor(
     private readonly permissionManager: PermissionManager,
     private readonly tools: ReadonlyMap<string, ToolRegistration>,
     private readonly resourceManager?: ResourceManager,
-  ) {}
+    logger?: StructuredLogger,
+  ) {
+    this.logger = logger;
+  }
 
   async execute(step: ExecutionStep): Promise<Result<ExecutionResult>> {
     const tool = this.tools.get(step.resolved_tool_id);
     if (!tool) {
-      return err({
-        code: "NOVA-TL004",
-        message: "Requested tool is unavailable.",
-        retryable: false,
-      });
+      return this.rejected(step, "NOVA-TL004", "tool_unavailable", false);
     }
 
     const permission = this.permissionManager.authorize(step, tool);
     if (!permission.ok) {
+      this.logResult(step, "rejected", permission.error.code, permission.error.retryable);
       return permission;
     }
 
     const action = tool.actions[step.action_id];
     if (!action) {
-      return err({
-        code: "NOVA-TL004",
-        message: "Requested tool action is unavailable.",
-        retryable: false,
-      });
+      return this.rejected(step, "NOVA-TL004", "action_unavailable", false);
     }
 
     let lockGranted = false;
     if (this.resourceManager && action.risk_tier !== "read_only") {
       const lockResult = this.resourceManager.acquire(step.task_id, step.required_locks);
       if (!lockResult.ok) {
+        this.logResult(step, "rejected", lockResult.error.code, lockResult.error.retryable);
         return lockResult;
       }
       if (lockResult.value.status === "queued") {
-        return err({
-          code: "NOVA-TL003",
-          message: "Required resource locks are currently held by another task.",
-          retryable: true,
-          details: { taskId: step.task_id },
-        });
+        return this.rejected(step, "NOVA-TL003", "resource_lock_queued", true);
       }
       lockGranted = true;
     }
 
+    this.logger?.info(
+      "executor.invocation",
+      {
+        step_id: step.step_id,
+        task_id: step.task_id,
+        tool_id: step.resolved_tool_id,
+        action_id: step.action_id,
+        risk_tier: step.risk_tier,
+        execution_tier: step.execution_tier,
+        required_lock_count: step.required_locks.length,
+      },
+      step.correlation_id,
+    );
+
     try {
       const result = await action.execute(step.parameters);
-      return ok({ ...result, step_id: step.step_id });
+      const executionResult = { ...result, step_id: step.step_id };
+      this.logResult(step, executionResult.status, undefined, false, executionResult.evidence.type);
+      return ok(executionResult);
     } catch (cause) {
+      const errorCode = "NOVA-TL002";
+      this.logResult(step, "failure", errorCode, action.idempotent);
       return err({
-        code: "NOVA-TL002",
+        code: errorCode,
         message: cause instanceof Error ? cause.message : "Tool invocation failed.",
         retryable: action.idempotent,
       });
@@ -257,11 +327,64 @@ export class Executor {
       }
     }
   }
+
+  private rejected(
+    step: ExecutionStep,
+    errorCode: ErrorInfo["code"],
+    reason: string,
+    retryable: boolean,
+  ): Result<ExecutionResult> {
+    this.logResult(step, "rejected", errorCode, retryable);
+    return err({
+      code: errorCode,
+      message:
+        errorCode === "NOVA-TL003"
+          ? "Required resource locks are currently held by another task."
+          : reason === "action_unavailable"
+            ? "Requested tool action is unavailable."
+            : "Requested tool is unavailable.",
+      retryable,
+      ...(errorCode === "NOVA-TL003" ? { details: { taskId: step.task_id } } : {}),
+    });
+  }
+
+  private logResult(
+    step: ExecutionStep,
+    status: string,
+    errorCode: string | undefined,
+    retryable: boolean,
+    evidenceType?: VerificationSignal,
+  ): void {
+    this.logger?.info(
+      "executor.result",
+      {
+        step_id: step.step_id,
+        tool_id: step.resolved_tool_id,
+        action_id: step.action_id,
+        status,
+        retryable,
+        ...(errorCode === undefined ? {} : { error_code: errorCode }),
+        ...(evidenceType === undefined ? {} : { evidence_type: evidenceType }),
+      },
+      step.correlation_id,
+    );
+  }
 }
 
 export class Verifier {
+  private readonly logger: StructuredLogger | undefined;
+
+  constructor(logger?: StructuredLogger) {
+    this.logger = logger;
+  }
+
   verify(step: ExecutionStep, result: ExecutionResult): Result<VerificationVerdict> {
     if (step.step_id !== result.step_id) {
+      this.logger?.warning(
+        "verifier.rejected",
+        { step_id: step.step_id, result_step_id: result.step_id, error_code: "NOVA-TL002" },
+        step.correlation_id,
+      );
       return err({
         code: "NOVA-TL002",
         message: "Executor result step_id does not match the planned step.",
@@ -270,7 +393,7 @@ export class Verifier {
     }
 
     if (result.status === "failure" || result.status === "partial") {
-      return ok({
+      return this.record(step, {
         step_id: step.step_id,
         outcome: "failed",
         confidence: 1,
@@ -280,7 +403,7 @@ export class Verifier {
     }
 
     if (result.evidence.type === "none") {
-      return ok({
+      return this.record(step, {
         step_id: step.step_id,
         outcome: "unverified",
         confidence: 0,
@@ -289,12 +412,26 @@ export class Verifier {
       });
     }
 
-    return ok({
+    return this.record(step, {
       step_id: step.step_id,
       outcome: "verified",
       confidence: 1,
       verification_method: "ground_truth",
       explanation: "Ground-truth evidence confirms the step result.",
     });
+  }
+
+  private record(step: ExecutionStep, verdict: VerificationVerdict): Result<VerificationVerdict> {
+    this.logger?.info(
+      "verifier.outcome",
+      {
+        step_id: verdict.step_id,
+        outcome: verdict.outcome,
+        confidence: verdict.confidence,
+        verification_method: verdict.verification_method,
+      },
+      step.correlation_id,
+    );
+    return ok(verdict);
   }
 }

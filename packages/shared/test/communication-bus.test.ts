@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { InMemoryCommunicationBus, createMessage } from "../src/communication-bus.js";
+import { MemoryLogSink, StructuredLogger } from "../src/structured-logger.js";
 
 describe("InMemoryCommunicationBus", () => {
   const message = () =>
@@ -61,6 +62,27 @@ describe("InMemoryCommunicationBus", () => {
     expect(finalResult).toEqual({ ok: true, value: undefined });
     expect(bus.deadLetters()).toHaveLength(1);
     expect(bus.deadLetters()[0]?.error.code).toBe("NOVA-EVT002");
+  });
+
+  it("logs publish, delivery, and dead-letter checkpoints without recording payload data", async () => {
+    const sink = new MemoryLogSink();
+    const logger = new StructuredLogger({
+      service: "communication.bus",
+      sink,
+      minimumLevel: "debug",
+    });
+    const bus = new InMemoryCommunicationBus(logger);
+    bus.subscribe("system.test", async () => undefined);
+
+    await bus.publish(message());
+
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "bus.publish.received",
+      "bus.delivery.succeeded",
+      "bus.publish.completed",
+    ]);
+    expect(sink.records().every((record) => record.correlation_id !== undefined)).toBe(true);
+    expect(JSON.stringify(sink.records())).not.toContain("value");
   });
 
   it("rejects an invalid message envelope before delivery", async () => {

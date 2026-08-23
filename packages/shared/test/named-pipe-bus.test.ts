@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMessage } from "../src/communication-bus.js";
+import { MemoryLogSink, StructuredLogger } from "../src/structured-logger.js";
 import { NamedPipeCommunicationBus, namedPipeTransportPath } from "../src/named-pipe-bus.js";
 
 const resources: Array<{
@@ -54,6 +55,38 @@ describe("NamedPipeCommunicationBus", () => {
 
     expect(result).toMatchObject({ ok: true });
     await expect.poll(() => received).toEqual(["hello"]);
+  });
+
+  it("logs named-pipe startup and client publish evidence without payload data", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "nova-bus-"));
+    const path = join(directory, "bus.sock");
+    const server = new NamedPipeCommunicationBus({ path, role: "server" });
+    const sink = new MemoryLogSink();
+    const logger = new StructuredLogger({
+      service: "communication.named-pipe",
+      sink,
+      minimumLevel: "debug",
+    });
+    const client = new NamedPipeCommunicationBus({ path, role: "client" }, logger);
+    resources.push({ server, client, directory });
+    await server.start();
+    await client.start();
+
+    await client.publish(
+      createMessage({
+        topic: "test.topic",
+        schema_version: "1.0.0",
+        correlation_id: "00000000-0000-4000-8000-000000000013",
+        source_service: "test-client",
+        payload: { secret: "must-not-log" },
+      }),
+    );
+
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "pipe.started",
+      "pipe.publish.sent",
+    ]);
+    expect(JSON.stringify(sink.records())).not.toContain("must-not-log");
   });
 
   it("rejects publish before a client connects and accepts subscribers on both ends", async () => {

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import type { ExecutionStep, ToolRegistration } from "../src/orchestration.js";
 import { ResourceManager } from "../src/resource-manager.js";
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import { createWorkspaceCodeTool } from "../src/workspace-code-executor.js";
 
 const temporaryDirectories: string[] = [];
@@ -190,6 +191,51 @@ describe("Workspace code execution through Executor", () => {
       },
     });
     expect(resources.holder(`workspace:${root}`)).toBeUndefined();
+  });
+});
+
+describe("Structured orchestration evidence", () => {
+  it("logs correlated permission, invocation, result, and verification checkpoints without parameters", async () => {
+    const sink = new MemoryLogSink();
+    const logger = new StructuredLogger({ service: "runtime.orchestration", sink });
+    const executor = new Executor(
+      new PermissionManager(
+        {
+          allowedToolIds: new Set(["tool.filesystem"]),
+          confirmationTimeoutMs: 300_000,
+        },
+        logger,
+      ),
+      new Map([[readTool.tool_id, readTool]]),
+      undefined,
+      logger,
+    );
+
+    const execution = await executor.execute(step());
+    const verdict = new Verifier(logger).verify(
+      step(),
+      execution.ok
+        ? execution.value
+        : {
+            step_id: "step-1",
+            status: "failure",
+            evidence: { type: "none", value: null },
+            affected_resources: [],
+          },
+    );
+
+    expect(execution).toMatchObject({ ok: true });
+    expect(verdict).toMatchObject({ ok: true, value: { outcome: "verified" } });
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "permission.decision",
+      "executor.invocation",
+      "executor.result",
+      "verifier.outcome",
+    ]);
+    expect(sink.records().every((record) => record.correlation_id === step().correlation_id)).toBe(
+      true,
+    );
+    expect(JSON.stringify(sink.records())).not.toContain("/workspace/report.txt");
   });
 });
 

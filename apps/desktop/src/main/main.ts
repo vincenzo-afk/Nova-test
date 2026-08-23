@@ -9,7 +9,12 @@ import {
   type PermissionGrant,
   type RuntimeApplication,
 } from "@nova/runtime";
-import { createMessage, NamedPipeCommunicationBus } from "@nova/shared";
+import {
+  createMessage,
+  FileJsonlLogSink,
+  NamedPipeCommunicationBus,
+  StructuredLogger,
+} from "@nova/shared";
 import { createDesktopRuntime } from "./runtime.js";
 import {
   DesktopAgentController,
@@ -175,12 +180,20 @@ ipcMain.handle(
 );
 
 const startGateway = async (): Promise<void> => {
-  gatewayBus = new NamedPipeCommunicationBus({
-    path: join(app.getPath("userData"), "nova-api.sock"),
-    role: "server",
+  const logger = new StructuredLogger({
+    service: "desktop.main",
+    sink: new FileJsonlLogSink(join(app.getPath("userData"), "logs", "nova.jsonl")),
   });
-  const gateway = new ApiGateway(gatewayBus);
+  gatewayBus = new NamedPipeCommunicationBus(
+    {
+      path: join(app.getPath("userData"), "nova-api.sock"),
+      role: "server",
+    },
+    logger,
+  );
+  const gateway = new ApiGateway(gatewayBus, logger);
   runtimeApplication = await createDesktopRuntime({
+    logger,
     userDataPath: app.getPath("userData"),
     migrationsPath: join(app.getAppPath(), "dist", "migrations"),
     desktopAgent: () => desktopAgent,

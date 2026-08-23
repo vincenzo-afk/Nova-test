@@ -4,6 +4,7 @@ import {
   type ErrorInfo,
   type MessageEnvelope,
 } from "@nova/shared";
+import type { StructuredLogger } from "@nova/shared";
 
 interface InternalRequest {
   readonly operation: string;
@@ -17,8 +18,14 @@ type GatewayHandler = (data: unknown) => Promise<unknown>;
 export class ApiGateway {
   private readonly handlers = new Map<string, GatewayHandler>();
   private unsubscribe: (() => void) | undefined;
+  private readonly logger: StructuredLogger | undefined;
 
-  public constructor(private readonly bus: CommunicationBus) {}
+  public constructor(
+    private readonly bus: CommunicationBus,
+    logger?: StructuredLogger,
+  ) {
+    this.logger = logger;
+  }
 
   public register(operation: string, handler: GatewayHandler): void {
     this.handlers.set(operation, handler);
@@ -29,18 +36,42 @@ export class ApiGateway {
     this.unsubscribe = this.bus.subscribe("api.internal.request", async (message) => {
       await this.handle(message);
     });
+    this.logger?.info("gateway.started", { subscribed_topic: "api.internal.request" });
   }
 
   public async stop(): Promise<void> {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
+    this.logger?.info("gateway.stopped", { subscribed_topic: "api.internal.request" });
   }
 
   private async handle(message: MessageEnvelope): Promise<void> {
     const request = this.parseRequest(message.payload);
-    if (!request.ok) return this.publishError(message, "", request.error);
+    if (!request.ok) {
+      this.logger?.warning(
+        "gateway.request.rejected",
+        { error_code: request.error.code, reason: "malformed_request" },
+        message.correlation_id,
+      );
+      return this.publishError(message, "", request.error);
+    }
+    this.logger?.debug(
+      "gateway.request.received",
+      { operation: request.value.operation, request_id: request.value.request_id },
+      message.correlation_id,
+    );
     const handler = this.handlers.get(request.value.operation);
     if (!handler) {
+      this.logger?.warning(
+        "gateway.request.rejected",
+        {
+          operation: request.value.operation,
+          request_id: request.value.request_id,
+          reason: "unknown_operation",
+          error_code: "NOVA-TL004",
+        },
+        message.correlation_id,
+      );
       return this.publishError(message, request.value.request_id, {
         code: "NOVA-TL004",
         message: `Unknown internal API operation: ${request.value.operation}.`,
@@ -58,7 +89,21 @@ export class ApiGateway {
           payload: { request_id: request.value.request_id, ok: true, data },
         }),
       );
+      this.logger?.info(
+        "gateway.response.published",
+        { operation: request.value.operation, request_id: request.value.request_id, ok: true },
+        message.correlation_id,
+      );
     } catch (cause) {
+      this.logger?.error(
+        "gateway.request.failed",
+        {
+          operation: request.value.operation,
+          request_id: request.value.request_id,
+          error_code: "NOVA-TL002",
+        },
+        message.correlation_id,
+      );
       await this.publishError(message, request.value.request_id, {
         code: "NOVA-TL002",
         message: cause instanceof Error ? cause.message : "Internal API operation failed.",
@@ -82,6 +127,11 @@ export class ApiGateway {
         source_service: "api.gateway",
         payload: { request_id: requestId, ok: false, error },
       }),
+    );
+    this.logger?.info(
+      "gateway.response.published",
+      { request_id: requestId, ok: false, error_code: error.code },
+      message.correlation_id,
     );
   }
 

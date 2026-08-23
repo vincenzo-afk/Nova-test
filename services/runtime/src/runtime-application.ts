@@ -3,7 +3,13 @@ import type {
   ObservationIndexResult,
   ObservationIndexer,
 } from "@nova/memory";
-import { InMemoryCommunicationBus, err, ok, type Result } from "@nova/shared";
+import {
+  InMemoryCommunicationBus,
+  err,
+  ok,
+  type Result,
+  type StructuredLogger,
+} from "@nova/shared";
 import {
   BrowserObserver,
   NativeBrowserEventBridge,
@@ -76,6 +82,7 @@ export interface RuntimeApplicationOptions {
   readonly browserExcludedDomains?: readonly string[];
   readonly observationIndexer?: ObservationIndexer;
   readonly registeredTools?: readonly RegisteredTool[];
+  readonly logger?: StructuredLogger;
 }
 
 export class RuntimeApplication {
@@ -100,11 +107,13 @@ export class RuntimeApplication {
   private readonly verifier: Verifier;
   private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
   private readonly dispose: RuntimeApplicationOptions["dispose"];
+  private readonly logger: StructuredLogger | undefined;
 
   public constructor(options: RuntimeApplicationOptions) {
-    const bus = new InMemoryCommunicationBus();
     this.optionsPersistence = options.persistence;
     this.dispose = options.dispose;
+    this.logger = options.logger;
+    const bus = new InMemoryCommunicationBus(this.logger);
     this.executor = options.executor;
     this.verifier = options.verifier;
     this.toolRegistry = new ToolRegistry();
@@ -179,23 +188,38 @@ export class RuntimeApplication {
   }
 
   public async start(): Promise<void> {
+    this.logger?.info("runtime.start.begin", {
+      persistence_enabled: this.optionsPersistence !== undefined,
+    });
     if (this.optionsPersistence) {
       const recovered = await this.optionsPersistence.recoverAfterCrash();
-      if (!recovered.ok) throw new Error(recovered.error.message);
+      if (!recovered.ok) {
+        this.logger?.error("runtime.recovery.failed", { error_code: recovered.error.code });
+        throw new Error(recovered.error.message);
+      }
       this.tasks.restore(recovered.value);
+      this.logger?.info("runtime.recovery.completed", {
+        recovered_task_count: recovered.value.length,
+      });
     }
     const observers = await this.syncObservers();
-    if (!observers.ok) throw new Error(observers.error.message);
+    if (!observers.ok) {
+      this.logger?.error("runtime.observers.sync_failed", { error_code: observers.error.code });
+      throw new Error(observers.error.message);
+    }
     await this.rest.start();
     try {
       await this.websocket.start();
+      this.logger?.info("runtime.started", { observer_state: observers.value });
     } catch (cause) {
+      this.logger?.error("runtime.start.failed", { component: "websocket" });
       await this.rest.stop();
       throw cause;
     }
   }
 
   public async stop(): Promise<void> {
+    this.logger?.info("runtime.stop.begin", {});
     try {
       if (this.windowsObserver.state() !== "Disabled") await this.windowsObserver.revoke();
       if (this.clipboardObserver.state() !== "Disabled") await this.clipboardObserver.revoke();
@@ -205,6 +229,10 @@ export class RuntimeApplication {
       this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
+      this.logger?.info("runtime.stopped", {});
+    } catch (cause) {
+      this.logger?.error("runtime.stop.failed", { component: "runtime" });
+      throw cause;
     } finally {
       await this.dispose?.();
     }
@@ -215,24 +243,80 @@ export class RuntimeApplication {
   ): Promise<
     Result<{ readonly execution: ExecutionResult; readonly verification: VerificationVerdict }>
   > {
+    this.logger?.info(
+      "runtime.task_step.begin",
+      {
+        task_id: input.task_id,
+        step_id: input.step_id,
+        tool_id: input.resolved_tool_id,
+        action_id: input.action_id,
+      },
+      input.correlation_id,
+    );
     const execution = await this.executor.execute(input);
-    if (!execution.ok) return execution;
+    if (!execution.ok) {
+      this.logger?.warning(
+        "runtime.task_step.execution_rejected",
+        { step_id: input.step_id, error_code: execution.error.code },
+        input.correlation_id,
+      );
+      return execution;
+    }
     const verification = this.verifier.verify(input, execution.value);
-    if (!verification.ok) return verification;
+    if (!verification.ok) {
+      this.logger?.error(
+        "runtime.task_step.verification_failed",
+        { step_id: input.step_id, error_code: verification.error.code },
+        input.correlation_id,
+      );
+      return verification;
+    }
+    this.logger?.info(
+      "runtime.task_step.completed",
+      {
+        step_id: input.step_id,
+        execution_status: execution.value.status,
+        verification_outcome: verification.value.outcome,
+      },
+      input.correlation_id,
+    );
     return ok({ execution: execution.value, verification: verification.value });
   }
 
   public async adoptObservation(
     request: ObservationIndexRequest,
   ): Promise<Result<ObservationIndexResult>> {
+    this.logger?.debug(
+      "runtime.observation.adoption_begin",
+      { task_id: request.task_id, topic: request.event.topic },
+      request.event.correlation_id,
+    );
     if (!this.observationIndexer) {
+      this.logger?.warning(
+        "runtime.observation.adoption_rejected",
+        { topic: request.event.topic, error_code: "NOVA-MEM001" },
+        request.event.correlation_id,
+      );
       return err({
         code: "NOVA-MEM001",
         message: "Observation indexing is not configured for this runtime.",
         retryable: true,
       });
     }
-    return await this.observationIndexer.index(request);
+    const result = await this.observationIndexer.index(request);
+    this.logger?.info(
+      result.ok ? "runtime.observation.adopted" : "runtime.observation.adoption_failed",
+      {
+        topic: request.event.topic,
+        ...(result.ok
+          ? result.value.persisted
+            ? { memory_id: result.value.memory_id }
+            : { persisted: false }
+          : { error_code: result.error.code }),
+      },
+      request.event.correlation_id,
+    );
+    return result;
   }
 
   public async syncObservers(): Promise<Result<WindowsObserverState>> {

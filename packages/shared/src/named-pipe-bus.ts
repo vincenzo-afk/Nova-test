@@ -10,6 +10,7 @@ import {
   type MessageEnvelope,
   type Result,
 } from "./contracts.js";
+import type { StructuredLogger } from "./structured-logger.js";
 import type { CommunicationBus, DeadLetter, MessageHandler } from "./communication-bus.js";
 
 export interface NamedPipeBusOptions {
@@ -41,8 +42,14 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
   private socket: Socket | undefined;
   private started = false;
   private clientReadyResolver: (() => void) | undefined;
+  private readonly logger: StructuredLogger | undefined;
 
-  public constructor(private readonly options: NamedPipeBusOptions) {}
+  public constructor(
+    private readonly options: NamedPipeBusOptions,
+    logger?: StructuredLogger,
+  ) {
+    this.logger = logger;
+  }
 
   public async start(): Promise<void> {
     if (this.started) return;
@@ -52,6 +59,7 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
       await this.startClient();
     }
     this.started = true;
+    this.logger?.info("pipe.started", { role: this.options.role });
   }
 
   public subscribe<TPayload>(topic: string, handler: MessageHandler<TPayload>): () => void {
@@ -76,6 +84,11 @@ export class NamedPipeCommunicationBus implements CommunicationBus {
       if (!this.socket || this.socket.destroyed)
         return err(this.error("Named-pipe client is not connected."));
       this.write(this.socket, message);
+      this.logger?.debug(
+        "pipe.publish.sent",
+        { role: this.options.role, topic: message.topic, message_id: message.message_id },
+        message.correlation_id,
+      );
       return ok(undefined);
     }
     await this.dispatch(message);

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PermissionGrantStore } from "../../runtime/src/permission-grant-store.js";
-import { InMemoryCommunicationBus } from "@nova/shared";
+import { InMemoryCommunicationBus, MemoryLogSink, StructuredLogger } from "@nova/shared";
 import {
   BrowserObserver,
   NativeBrowserEventBridge,
@@ -199,6 +199,37 @@ describe("BrowserObserver", () => {
     await bridge.receive(browserEvent());
 
     expect(received).toHaveLength(1);
+  });
+
+  it("logs browser permission, exclusion, queue, publication, and revocation checkpoints safely", async () => {
+    const sink = new MemoryLogSink();
+    const logger = new StructuredLogger({
+      service: "observer.browser",
+      sink,
+      minimumLevel: "debug",
+    });
+    const bridge = new NativeBrowserEventBridge();
+    const observer = new BrowserObserver({
+      permissions: permissions(),
+      bridge,
+      bus: new InMemoryCommunicationBus(),
+      excludedDomains: ["bank.example"],
+      logger,
+    });
+
+    await observer.enable();
+    await observer.captureAndPublish(browserEvent({ url: "https://example.com/docs" }));
+    await observer.captureAndPublish(browserEvent({ url: "https://bank.example/login" }));
+    await observer.revoke();
+
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "browser.observer.enabled",
+      "browser.event.queued",
+      "browser.event.published",
+      "browser.event.excluded",
+      "browser.observer.revoked",
+    ]);
+    expect(JSON.stringify(sink.records())).not.toContain("token=secret");
   });
 
   it("uses a local extension bridge and never requests page content", () => {

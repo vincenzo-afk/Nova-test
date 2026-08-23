@@ -45,6 +45,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - A real event-based Windows clipboard observer using separate off-by-default `clipboard_metadata` and `clipboard_content` permissions, metadata-only downgrade behavior, sensitive-source exclusion, latest-state coalescing, task correlation, and task-bound normalized memory indexing without raw-content leakage.
 - A real event-based Windows notifications observer using separate off-by-default `notifications_metadata` and `notifications_content` permissions, metadata-only downgrade behavior, sensitive messaging/authentication-source exclusion, task correlation, event coalescing, immediate revocation shutdown, and task-bound normalized Recent Memory indexing without unapproved body leakage. Live Windows validation remains deferred while no Windows host is connected.
 - A real browser metadata observer using the off-by-default `browser_metadata` permission and a visible Manifest V3 extension. It observes tab open/close/activation/navigation metadata through Chrome Native Messaging and the local named-pipe API Gateway, accepts only normalized HTTP(S) domain/path URLs and bounded titles, applies persisted `permissions.browser_excluded_domains` before publication, coalesces per-tab state, and never captures page content, forms, passwords, payments, DOM state, screenshots, or browser automation. Chrome/Windows installation and live validation remain deferred while no Windows host is connected.
+- Local privacy-safe structured diagnostics across the CommunicationBus, NamedPipe transport, API Gateway, permission store, orchestration, RuntimeApplication, and observers. Desktop logs are retained as bounded JSONL under the user data directory with UTC timestamps, severity, correlation IDs where applicable, stable event names, recursive redaction, and no default external telemetry. Tests can inject an in-memory sink.
 - Knowledge graph, retrieval fusion, context building, workflows, plugins, configuration, credentials, setup, diagnostics, backup, restore, repair, and upgrade boundaries.
 - A real Groq OpenAI-compatible LLM provider adapter with vault-reference credential resolution, authenticated model health checks, chat-completion translation, strict response validation, and compatibility with the deterministic provider router.
 - Multi-agent coordination, authenticated network discovery, paired-device synchronization, distributed Full Peer task scheduling, and logical clocks.
@@ -130,6 +131,16 @@ pnpm --filter @nova/browser-extension build
 ```
 
 The output is written to `apps/browser-extension/dist`. Install the extension through the browser’s unpacked-extension workflow, then install the Native Messaging host manifest from `dist/native-host/com.nova.browser.json` using an explicit Windows installation step. Replace `__NOVA_EXTENSION_ID__` with the installed extension ID and `__NOVA_NATIVE_HOST_PATH__` with the absolute host executable path; the repository’s source-checkout bootstrap intentionally does not claim to perform this registration. The extension requests only the Chrome `tabs` permission and has no content scripts. Page content, DOM automation, screenshots, and vision fallback are separate future slices, not hidden behavior of this surface. No live browser or Windows validation is claimed in the current sandbox.
+
+### Local diagnostics
+
+Desktop diagnostics are written locally to `<userDataPath>/logs/nova.jsonl` by the shared structured logger. The logger records lifecycle, permission, routing, execution, verification, observer, retry, recovery, and failure checkpoints using UTC JSONL records. It never logs secrets, credentials, raw action parameters, page content, entered text, keystrokes, clipboard or notification bodies, screenshots, or pipe paths. The file is automatically bounded to a seven-day default window and 10,000 records; diagnostic logs are not transmitted externally by default.
+
+For focused logger tests, run:
+
+```bash
+pnpm exec vitest run packages/shared/test/structured-logger.test.ts packages/shared/test/communication-bus.test.ts packages/shared/test/named-pipe-bus.test.ts
+```
 
 ### Desktop build
 

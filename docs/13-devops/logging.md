@@ -52,6 +52,49 @@ pipeline sending logs off the device; any future opt-in diagnostic
 sharing would be a separate, explicitly consented feature, not a
 default behavior of this logging system.
 
+## Implemented structured logger
+
+Nova implements this contract through `@nova/shared`'s `StructuredLogger`,
+`MemoryLogSink`, and `FileJsonlLogSink`. Desktop runtime construction shares
+one logger between the Electron main process, the local NamedPipe bus, the API
+Gateway, RuntimeApplication, permission storage, orchestration, and the
+browser metadata observer. The default desktop sink is a local JSONL file at
+`<userDataPath>/logs/nova.jsonl`; it creates its directory on demand and
+retains only the configured recent window and record bound. The default
+retention window is seven days and the default maximum is 10,000 records.
+
+Every record is a JSON object with `timestamp`, `service`, `severity`,
+`event`, `details`, and an optional `correlation_id`. Timestamps are validated
+as UTC ISO-8601 values. The standard levels are `debug`, `info`, `warning`,
+`error`, and `critical`. High-volume transport receipt and successful delivery
+records are debug-level; lifecycle, permission, rejection, failure, and
+completion checkpoints are info-level or higher. A caller can inject a
+`MemoryLogSink` in tests or another local `LogSink` without changing feature
+behavior.
+
+| Boundary | Required checkpoint evidence | Deliberately omitted |
+|---|---|---|
+| Communication bus | publish receipt/completion, duplicate delivery, successful delivery, retry, and dead-letter code | envelope payload and error text that may contain user data |
+| NamedPipe transport | startup and outbound publish metadata | local pipe path and payload |
+| API Gateway | lifecycle, request receipt, rejection, handler failure, and response outcome | request data, credentials, and handler response bodies |
+| Permission and orchestration | grant update, authorization decision, executor invocation/result, and verifier outcome | action parameters, raw resource contents, and credential values |
+| Runtime and observers | startup/recovery/shutdown, adoption outcome, permission gating, policy exclusion, queue, publication, and revocation | protected observation content, raw screen data, keystrokes, and page content |
+
+The sanitizer recursively redacts credential-like keys, browser page/form
+content, entered text, keystrokes, clipboard and notification bodies,
+screenshots, raw content, bearer tokens, common API-token patterns, and email
+addresses. Strings are bounded to 512 characters by default, arrays and object
+entries are bounded, and circular structures are represented by a marker.
+Feature code must log identifiers, stable codes, counts, states, types, and
+bounded metadata rather than copying input payloads into `details`.
+
+Logging failures are not silently swallowed: a sink write failure propagates
+to the caller so the owning boundary can surface or handle the failure. This
+supports FM-17-001 and FM-17-005 while the local retention and level policy
+limit FM-17-006 risk. Diagnostic JSONL files are local troubleshooting
+artifacts, not a replacement for the user-facing action audit trail defined in
+`docs/10-security/audit.md`.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-17-observability.md` — failure modes for this subsystem
