@@ -20,17 +20,17 @@ given call is `provider-routing.md`.
 Each domain defines its own request/response schema but shares the same
 provider lifecycle:
 
-| Domain | Examples |
-|---|---|
-| LLM (text generation) | local GGUF model, OpenAI-compatible endpoint, Anthropic, etc. |
-| Vision | local VLM, cloud vision API |
-| Speech-to-Text | Whisper (local), Sarvam, cloud STT API |
-| Text-to-Speech | Coqui (local), cloud TTS API |
-| Embeddings | local embedding model, cloud embedding API |
-| OCR | local OCR engine, cloud OCR API |
-| Reranking | local cross-encoder, cloud rerank API |
-| Messaging channel | Telegram, Discord, WhatsApp, Slack, etc. |
-| Remote control transport | Tailscale, other WireGuard-based mesh |
+| Domain                   | Examples                                                      |
+| ------------------------ | ------------------------------------------------------------- |
+| LLM (text generation)    | local GGUF model, OpenAI-compatible endpoint, Anthropic, etc. |
+| Vision                   | local VLM, cloud vision API                                   |
+| Speech-to-Text           | Whisper (local), Sarvam, cloud STT API                        |
+| Text-to-Speech           | Coqui (local), cloud TTS API                                  |
+| Embeddings               | local embedding model, cloud embedding API                    |
+| OCR                      | local OCR engine, cloud OCR API                               |
+| Reranking                | local cross-encoder, cloud rerank API                         |
+| Messaging channel        | Telegram, Discord, WhatsApp, Slack, etc.                      |
+| Remote control transport | Tailscale, other WireGuard-based mesh                         |
 
 Adding a new domain means adding a row here and an interface definition
 below — it never means adding a branch inside the Planner or Executor.
@@ -60,7 +60,11 @@ interface Provider {
   includes a `schema_version` field (the domain request/response schema
   version this provider adapter implements, per that domain's own doc)
   so the router can detect a mismatch before invoking, rather than
-  discovering it as a runtime schema-validation failure.
+  discovering it as a runtime schema-validation failure. Local descriptors
+  may also advertise a `minimum_hardware_tier`; the Setup Wizard uses this
+  metadata with the current `HardwareProfile` to label providers as
+  recommended or available-but-unrecommended without blocking an explicit
+  user choice.
 - `invoke()` accepts and returns the domain's typed schema. NOVA Core code
   that calls a capability is written against the domain schema, never
   against a specific provider's native API shape — provider-specific
@@ -76,6 +80,7 @@ provider's adapter supports serving an older schema shape) or excluded
 from the candidate list for that call, per `docs/25-failure-modes/FM-04-model-router-provider-fallback.md`'s FM-04-015 — this check happens
 before invocation, never as a reactive response to a schema-validation
 failure at runtime.
+
 - Streaming domains (LLM, STT, TTS, voice) return a
   `Stream<DomainChunk>`
   so low-latency, interrupt-capable interaction (per
@@ -85,7 +90,6 @@ failure at runtime.
   `AsyncIterable`; an adapter that advertises streaming but returns a
   buffered value is rejected and the bounded fallback chain continues. NOVA
   never wraps a buffered response in a fake stream.
-
 
 ## Registration
 

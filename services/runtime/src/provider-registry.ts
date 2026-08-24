@@ -1,5 +1,6 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 import type { StructuredLogger } from "@nova/shared";
+import type { HardwareProfile, HardwareTier } from "./hardware-detection.js";
 
 export type CapabilityDomain =
   | "llm"
@@ -23,6 +24,19 @@ export interface ProviderDescriptor {
   readonly capabilities: readonly string[];
   readonly cost_per_request: number;
   readonly latency_p50_ms: number;
+  readonly minimum_hardware_tier?: HardwareTier;
+}
+
+export type ProviderAvailability = "recommended" | "available-but-unrecommended";
+
+export interface ProviderRecommendation {
+  readonly capability_id: string;
+  readonly provider_id: string;
+  readonly domain: CapabilityDomain;
+  readonly privacy_class: ProviderPrivacyClass;
+  readonly availability: ProviderAvailability;
+  readonly reason: string;
+  readonly minimum_hardware_tier?: HardwareTier;
 }
 
 export interface Provider {
@@ -253,6 +267,52 @@ export class CapabilityRegistry {
     const record = this.capabilities.get(capabilityId);
     const entry = record?.providers.get(providerId);
     return entry?.enabled ? this.providers.get(providerId) : undefined;
+  }
+
+  public recommendations(
+    capabilityId: string,
+    hardware: HardwareProfile,
+  ): readonly ProviderRecommendation[] {
+    const record = this.capabilities.get(capabilityId);
+    if (!record) return [];
+
+    const recommendations = this.entries(capabilityId).map(({ provider }) => {
+      const minimumTier = provider.descriptor.minimum_hardware_tier;
+      const hardwareMeetsTier =
+        provider.descriptor.privacy_class === "cloud" ||
+        minimumTier === undefined ||
+        tierRank(hardware.overall_tier) >= tierRank(minimumTier);
+      const availability: ProviderAvailability = hardwareMeetsTier
+        ? "recommended"
+        : "available-but-unrecommended";
+      const reason =
+        provider.descriptor.privacy_class === "cloud"
+          ? "cloud_provider_available"
+          : minimumTier === undefined
+            ? "hardware_requirement_not_declared"
+            : hardwareMeetsTier
+              ? "hardware_meets_minimum_tier"
+              : "hardware_below_minimum_tier";
+      return {
+        capability_id: capabilityId,
+        provider_id: provider.descriptor.provider_id,
+        domain: provider.descriptor.domain,
+        privacy_class: provider.descriptor.privacy_class,
+        availability,
+        reason,
+        ...(minimumTier === undefined ? {} : { minimum_hardware_tier: minimumTier }),
+      } satisfies ProviderRecommendation;
+    });
+
+    this.logger?.info("provider.recommendations.generated", {
+      capability_id: capabilityId,
+      hardware_tier: hardware.overall_tier,
+      provider_count: recommendations.length,
+      recommended_count: recommendations.filter(
+        ({ availability }) => availability === "recommended",
+      ).length,
+    });
+    return recommendations;
   }
 
   public entries(
@@ -492,6 +552,9 @@ export class ProviderRouter {
     return sorted;
   }
 }
+
+const tierRank = (tier: HardwareTier): number =>
+  tier === "High" ? 2 : tier === "Standard" ? 1 : 0;
 
 const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
   value !== null &&

@@ -26,7 +26,13 @@ document is the orchestration and UX contract across them.
   one-time gate.
 - **Hardware detection runs first** (`docs/18-providers/hardware-detection.md`)
   so every subsequent provider-choice step can pre-filter and recommend
-  rather than presenting an undifferentiated list.
+  rather than presenting an undifferentiated list. The shared Capability
+  Registry exposes each registered provider's descriptor through its
+  recommendation surface; local providers below the advertised
+  `minimum_hardware_tier` remain selectable but are labeled
+  `available-but-unrecommended` with a performance warning, while providers
+  meeting the tier and cloud providers are labeled `recommended`. This is
+  advisory and does not silently change the user's selection.
 
 ## Steps
 

@@ -55,9 +55,9 @@ retrying silently forever.
 
 ## Offline fallback
 
-If every enabled *cloud* provider for a capability is unreachable
+If every enabled _cloud_ provider for a capability is unreachable
 (network partition, or `docs/00-overview/assumptions.md`'s "the network
-is unreliable" case generally) but an enabled *local* provider for that
+is unreliable" case generally) but an enabled _local_ provider for that
 same capability exists and passes `healthCheck()`, the fallback chain
 must fall through to it regardless of the capability's configured
 routing policy — a `cost-optimized` or `latency-optimized` policy's

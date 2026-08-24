@@ -6,6 +6,7 @@ import {
   type Provider,
   type ProviderDescriptor,
 } from "../src/provider-registry.js";
+import type { HardwareProfile } from "../src/hardware-detection.js";
 
 const descriptor = (overrides: Partial<ProviderDescriptor> = {}): ProviderDescriptor => ({
   provider_id: "local.test",
@@ -16,6 +17,39 @@ const descriptor = (overrides: Partial<ProviderDescriptor> = {}): ProviderDescri
   cost_per_request: 0,
   latency_p50_ms: 20,
   ...overrides,
+});
+
+const hardware = (overall_tier: HardwareProfile["overall_tier"]): HardwareProfile => ({
+  scanned_at: "2026-08-24T00:00:00.000Z",
+  signals: {
+    cpu_architecture: "x86_64",
+    cpu_cores: 8,
+    avx2: true,
+    avx512: false,
+    gpu_vendor: null,
+    gpu_vram_gb: 0,
+    gpu_accelerator: null,
+    system_ram_gb: overall_tier === "Minimal" ? 8 : overall_tier === "Standard" ? 16 : 32,
+    available_disk_gb: 100,
+    os: "linux",
+    battery_powered: false,
+  },
+  overall_tier,
+  recommendations: {
+    llm:
+      overall_tier === "High"
+        ? "local-first"
+        : overall_tier === "Standard"
+          ? "local-or-cloud"
+          : "cloud",
+    vision:
+      overall_tier === "High"
+        ? "local-first"
+        : overall_tier === "Standard"
+          ? "local-or-cloud"
+          : "cloud",
+    speech: overall_tier === "High" ? "local-first" : "local-or-cloud",
+  },
 });
 
 const provider = (
@@ -259,6 +293,76 @@ describe("CapabilityRegistry and ProviderRouter", () => {
       error: { code: "NOVA-AI002", retryable: true },
     });
     expect(buffered.invoke).toHaveBeenCalledOnce();
+  });
+
+  it("classifies local providers as recommended or available-but-unrecommended by hardware tier", () => {
+    const sink = new MemoryLogSink();
+    const registry = new CapabilityRegistry(
+      new StructuredLogger({ service: "runtime.providers", sink }),
+    );
+    registry.register(
+      "speech-to-text",
+      provider({
+        provider_id: "local.whisper.standard",
+        domain: "speech-to-text",
+        privacy_class: "local",
+        minimum_hardware_tier: "Standard",
+      }),
+    );
+    registry.register(
+      "speech-to-text",
+      provider({
+        provider_id: "local.whisper.small",
+        domain: "speech-to-text",
+        privacy_class: "local",
+        minimum_hardware_tier: "Minimal",
+      }),
+    );
+    registry.register(
+      "speech-to-text",
+      provider({
+        provider_id: "cloud.sarvam",
+        domain: "speech-to-text",
+        privacy_class: "cloud",
+      }),
+    );
+
+    const recommendations = registry.recommendations("speech-to-text", hardware("Minimal"));
+
+    expect(recommendations).toMatchObject([
+      {
+        provider_id: "local.whisper.standard",
+        availability: "available-but-unrecommended",
+        reason: "hardware_below_minimum_tier",
+      },
+      {
+        provider_id: "local.whisper.small",
+        availability: "recommended",
+        reason: "hardware_meets_minimum_tier",
+      },
+      {
+        provider_id: "cloud.sarvam",
+        availability: "recommended",
+        reason: "cloud_provider_available",
+      },
+    ]);
+    expect(sink.records()).toContainEqual(
+      expect.objectContaining({
+        event: "provider.recommendations.generated",
+        details: expect.objectContaining({
+          capability_id: "speech-to-text",
+          hardware_tier: "Minimal",
+          provider_count: 3,
+        }),
+      }),
+    );
+    expect(JSON.stringify(sink.records())).not.toContain("audio");
+  });
+
+  it("rejects an unknown capability when generating provider recommendations", () => {
+    const registry = new CapabilityRegistry();
+
+    expect(registry.recommendations("speech-to-text", hardware("Standard"))).toEqual([]);
   });
 
   it("records routing decisions with eliminations and final choice", async () => {

@@ -32,16 +32,22 @@ Detection runs once at first setup and again on demand from Settings
 Detection maps the machine to a tier per model family (LLM, vision,
 speech), not a single global tier:
 
-| Tier | Typical hardware | Recommendation |
-|---|---|---|
-| Minimal | No dedicated GPU, <16GB RAM | Cloud providers recommended for LLM/vision; small local STT/TTS models still viable |
-| Standard | Consumer GPU, 8-16GB VRAM | Mid-size local LLM (quantized) and full local speech stack viable |
-| High | 24GB+ VRAM or Apple Silicon with 32GB+ unified memory | Larger local LLM and vision models viable; local-first fully practical |
+| Tier     | Typical hardware                                      | Recommendation                                                                      |
+| -------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Minimal  | No dedicated GPU, <16GB RAM                           | Cloud providers recommended for LLM/vision; small local STT/TTS models still viable |
+| Standard | Consumer GPU, 8-16GB VRAM                             | Mid-size local LLM (quantized) and full local speech stack viable                   |
+| High     | 24GB+ VRAM or Apple Silicon with 32GB+ unified memory | Larger local LLM and vision models viable; local-first fully practical              |
 
 Tiers are advisory input to the Setup Wizard's provider picker
 (`docs/19-setup/setup-wizard.md`) — the user can always override and
 choose a cloud provider on high-tier hardware, or attempt a local model
-above the recommended tier (with a performance warning, not a block).
+above the recommended tier (with a performance warning, not a block). The
+shared Capability Registry compares each local provider descriptor's
+`minimum_hardware_tier` with `HardwareProfile.overall_tier` and returns a
+stable recommendation label: `recommended` when the minimum is met, or
+`available-but-unrecommended` when it is not. Providers without a declared
+minimum and cloud providers remain available without a fabricated hardware
+claim.
 
 ## Re-evaluation triggers
 
