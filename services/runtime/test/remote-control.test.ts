@@ -81,6 +81,27 @@ describe("RemoteControlManager", () => {
     }
   });
 
+  it("rejects invalid pre-approval inputs with typed errors", () => {
+    const manager = new RemoteControlManager({
+      verify: () => true,
+      send: async () => undefined,
+    });
+
+    expect(manager.preApprove("", 1000)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(manager.preApprove("phone", 0)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(manager.preApprove("phone", Number.NaN)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(manager.preApprove("phone", 1000)).toMatchObject({ ok: true });
+  });
+
   it("rejects duplicate session identifiers without replacing the original session", () => {
     const manager = new RemoteControlManager({
       verify: () => true,

@@ -61,9 +61,12 @@ export class RemoteControlManager {
     this.options = { sessionTtlMs: 3_600_000, ...options };
   }
 
-  public preApprove(deviceId: string, durationMs: number): void {
+  public preApprove(deviceId: string, durationMs: number): Result<void> {
+    if (!hasText(deviceId) || !Number.isSafeInteger(durationMs) || durationMs <= 0)
+      return err(this.securityError("Remote pre-approval fields are invalid."));
     this.revokedDevices.delete(deviceId);
     this.preapprovals.set(deviceId, this.now() + durationMs);
+    return ok(undefined);
   }
 
   public requestSession(request: RemoteSessionRequest): Result<RemoteSessionView> {
