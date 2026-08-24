@@ -58,6 +58,12 @@ Core change. This is also the primary target of
 NOVA finds and proposes installing the Telegram adapter through this
 same mechanism.
 
+## Shared provider lifecycle
+
+Every messaging adapter is also a Provider in the `messaging-channel` capability domain. Its descriptor is the source of truth for the adapter's provider ID, schema version, media/message capabilities, privacy class, cost, and latency metadata. Registration rejects adapters whose provider ID does not match the channel ID or whose domain is not `messaging-channel`; no platform SDK is imported into NOVA Core.
+
+A registered adapter is live until explicit removal. Removal calls its terminal `shutdown()` lifecycle method before the manager forgets the adapter, and callbacks from a removed adapter are ignored. The shared `healthCheck()`, `invoke()`, `cancel()`, and `shutdown()` methods keep messaging providers compatible with the Capability Registry and common routing lifecycle.
+
 ## Identity and authorization
 
 Each channel's `resolveIdentity()` maps a platform-specific

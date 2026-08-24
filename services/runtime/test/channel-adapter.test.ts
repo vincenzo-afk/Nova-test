@@ -8,6 +8,19 @@ import {
 
 const adapter = (authorized = true): ChannelAdapter => ({
   channel_id: "telegram",
+  descriptor: {
+    provider_id: "telegram",
+    domain: "messaging-channel",
+    privacy_class: "cloud",
+    schema_version: "1.0.0",
+    capabilities: ["send_message", "receive_message"],
+    cost_per_request: 0,
+    latency_p50_ms: 50,
+  },
+  healthCheck: vi.fn(async () => "reachable" as const),
+  invoke: vi.fn(async (request: Readonly<Record<string, unknown>>) => request),
+  cancel: vi.fn(),
+  shutdown: vi.fn(),
   sendMessage: vi.fn(async (chatId, content) => ({
     message_id: `msg-${chatId}`,
     status: "sent",
@@ -20,6 +33,46 @@ const adapter = (authorized = true): ChannelAdapter => ({
 });
 
 describe("ChannelManager", () => {
+  it("exposes the shared messaging-provider descriptor and lifecycle contract", async () => {
+    const telegram = adapter();
+
+    expect(telegram.descriptor).toMatchObject({
+      provider_id: "telegram",
+      domain: "messaging-channel",
+      privacy_class: "cloud",
+      schema_version: "1.0.0",
+    });
+    expect(await telegram.healthCheck()).toBe("reachable");
+    telegram.cancel("request-1");
+    telegram.shutdown();
+  });
+
+  it("rejects provider metadata that does not describe a messaging channel", () => {
+    const manager = new ChannelManager();
+    const invalid = {
+      ...adapter(),
+      descriptor: { ...adapter().descriptor, domain: "llm" },
+    } as ChannelAdapter;
+
+    expect(manager.register(invalid)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-AI002" },
+    });
+  });
+
+  it("unregisters a channel provider through its terminal shutdown lifecycle", () => {
+    const manager = new ChannelManager();
+    const telegram = adapter();
+    manager.register(telegram);
+
+    expect(manager.unregister("telegram")).toMatchObject({ ok: true });
+    expect(telegram.shutdown).toHaveBeenCalledOnce();
+    expect(manager.mediaCapabilities("telegram")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-AI002" },
+    });
+  });
+
   it("registers one adapter per channel and normalizes inbound messages", () => {
     const manager = new ChannelManager();
     const telegram = adapter();

@@ -1,4 +1,5 @@
 import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
+import type { Provider } from "./provider-registry.js";
 
 export interface InboundMessage {
   readonly channel_id: string;
@@ -26,7 +27,7 @@ export interface UserIdentityRef {
   readonly authorized: boolean;
 }
 
-export interface ChannelAdapter {
+export interface ChannelAdapter extends Provider {
   readonly channel_id: string;
   readonly sendMessage: (chatId: string, content: string) => Promise<DeliveryReceipt>;
   readonly onMessage: (handler: (message: InboundMessage) => void) => void;
@@ -48,11 +49,30 @@ export class ChannelManager {
   public register(adapter: ChannelAdapter): Result<void> {
     if (this.adapters.has(adapter.channel_id))
       return err(this.error("Channel adapter is already registered."));
+    if (
+      adapter.descriptor.provider_id !== adapter.channel_id ||
+      adapter.descriptor.domain !== "messaging-channel"
+    ) {
+      return err(this.error("Channel adapter provider metadata is invalid."));
+    }
     this.adapters.set(adapter.channel_id, adapter);
     adapter.onMessage((message) => {
-      this.dispatchInbound(adapter, message);
+      if (this.adapters.get(adapter.channel_id) === adapter) this.dispatchInbound(adapter, message);
     });
-    this.logger?.info("channel.adapter.registered", { channel_id: adapter.channel_id });
+    this.logger?.info("channel.adapter.registered", {
+      channel_id: adapter.channel_id,
+      provider_id: adapter.descriptor.provider_id,
+      schema_version: adapter.descriptor.schema_version,
+    });
+    return ok(undefined);
+  }
+
+  public unregister(channelId: string): Result<void> {
+    const adapter = this.adapters.get(channelId);
+    if (!adapter) return err(this.error("Channel adapter is unavailable."));
+    adapter.shutdown();
+    this.adapters.delete(channelId);
+    this.logger?.info("channel.adapter.unregistered", { channel_id: channelId });
     return ok(undefined);
   }
 
