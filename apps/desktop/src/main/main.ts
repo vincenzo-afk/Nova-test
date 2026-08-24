@@ -12,6 +12,7 @@ import {
   type GraphQueryInput,
   type DeviceRuntimeMode,
   type PairingRequest,
+  type CompanionCapability,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -150,6 +151,19 @@ ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
   requestGateway("graph.query", payload),
 );
 ipcMain.handle("nova:devices:sync", () => requestGateway("devices.sync", undefined));
+ipcMain.handle("nova:companion:permission", (_event, permission: string) =>
+  requestGateway("companion.permission", { permission }),
+);
+ipcMain.handle(
+  "nova:companion:permission-set",
+  (_event, payload: { readonly permission: string; readonly granted: boolean }) =>
+    requestGateway("companion.permission-set", payload),
+);
+ipcMain.handle(
+  "nova:companion:capability",
+  (_event, payload: { readonly capability_id: string; readonly required_permissions: string[] }) =>
+    requestGateway("companion.capability", payload),
+);
 ipcMain.handle("nova:devices:sync-flush", () => requestGateway("devices.sync-flush", undefined));
 ipcMain.handle(
   "nova:devices:pairing-offer",
@@ -306,6 +320,52 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("companion.permission", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly permission?: unknown };
+    if (typeof payload.permission !== "string" || payload.permission.trim() === "")
+      throw new Error("Companion permission is required.");
+    const result = runtimeApplication.getAndroidCompanionPermission(payload.permission);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("companion.permission-set", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly permission?: unknown; readonly granted?: unknown };
+    if (typeof payload.permission !== "string" || payload.permission.trim() === "")
+      throw new Error("Companion permission is required.");
+    if (typeof payload.granted !== "boolean") throw new Error("Companion grant state is required.");
+    const result = runtimeApplication.setAndroidCompanionPermission(
+      payload.permission,
+      payload.granted,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("companion.capability", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly capability_id?: unknown;
+      readonly required_permissions?: unknown;
+    };
+    if (typeof payload.capability_id !== "string" || payload.capability_id.trim() === "")
+      throw new Error("Companion capability ID is required.");
+    if (
+      !Array.isArray(payload.required_permissions) ||
+      !payload.required_permissions.every(
+        (permission): permission is string =>
+          typeof permission === "string" && permission.trim() !== "",
+      )
+    ) {
+      throw new Error("Companion capability permissions are required.");
+    }
+    const result = runtimeApplication.checkAndroidCompanionCapability({
+      capability_id: payload.capability_id,
+      required_permissions: payload.required_permissions,
+    } satisfies CompanionCapability);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("devices.sync", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

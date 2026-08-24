@@ -69,6 +69,11 @@ import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
 import type { CrossDeviceSyncManager, FlushResult, SyncResult } from "./cross-device-sync.js";
 import type {
+  AndroidCompanionManager,
+  CompanionCapability,
+  CompanionPermissionState,
+} from "./android-companion.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -120,6 +125,7 @@ export interface RuntimeApplicationOptions {
   readonly knowledgeGraph?: KnowledgeGraph;
   readonly distributedTaskCoordinator?: DistributedTaskCoordinator;
   readonly crossDeviceSyncManager?: CrossDeviceSyncManager;
+  readonly androidCompanionManager?: AndroidCompanionManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -148,6 +154,7 @@ export class RuntimeApplication {
   public readonly knowledgeGraph: KnowledgeGraph;
   public readonly distributedTaskCoordinator: DistributedTaskCoordinator;
   public readonly crossDeviceSyncManager: CrossDeviceSyncManager | undefined;
+  public readonly androidCompanionManager: AndroidCompanionManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -178,6 +185,7 @@ export class RuntimeApplication {
     this.distributedTaskCoordinator =
       options.distributedTaskCoordinator ?? new DistributedTaskCoordinator(this.tasks);
     this.crossDeviceSyncManager = options.crossDeviceSyncManager;
+    this.androidCompanionManager = options.androidCompanionManager;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -509,6 +517,43 @@ export class RuntimeApplication {
       });
     }
     return await this.crossDeviceSyncManager.flush();
+  }
+
+  public getAndroidCompanionPermission(permission: string): Result<CompanionPermissionState> {
+    if (!this.androidCompanionManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return ok(this.androidCompanionManager.permission(permission));
+  }
+
+  public setAndroidCompanionPermission(permission: string, granted: boolean): Result<void> {
+    if (!this.androidCompanionManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return granted
+      ? this.androidCompanionManager.grant(permission)
+      : this.androidCompanionManager.revoke(permission);
+  }
+
+  public checkAndroidCompanionCapability(
+    capability: CompanionCapability,
+  ): ReturnType<AndroidCompanionManager["use"]> {
+    if (!this.androidCompanionManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.androidCompanionManager.use(capability);
   }
 
   public listTrustedDevices(): readonly TrustedDevice[] {

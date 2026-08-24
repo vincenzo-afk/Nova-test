@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ok } from "@nova/shared";
 import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
+import { AndroidCompanionManager, type CompanionCapability } from "../src/android-companion.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -45,6 +46,36 @@ afterEach(async () => {
 });
 
 describe("RuntimeApplication", () => {
+  it("delegates explicit Android companion permissions and capability checks", () => {
+    const companion = new AndroidCompanionManager("android-1", ["camera"]);
+    const capability: CompanionCapability = {
+      capability_id: "camera.capture",
+      required_permissions: ["camera"],
+    };
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      androidCompanionManager: companion,
+    });
+    applications.push(application);
+
+    expect(application.checkAndroidCompanionCapability(capability)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.setAndroidCompanionPermission("camera", true)).toMatchObject({ ok: true });
+    expect(application.checkAndroidCompanionCapability(capability)).toMatchObject({
+      ok: true,
+      value: { status: "Available", device_id: "android-1" },
+    });
+    expect(application.setAndroidCompanionPermission("camera", false)).toMatchObject({ ok: true });
+  });
+
   it("composes the real REST task lifecycle and configuration handlers", async () => {
     const application = createApplication();
     applications.push(application);

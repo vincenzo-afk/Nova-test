@@ -87,6 +87,26 @@ declare global {
         value?: { pushed_change_ids: string[] };
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      getAndroidCompanionPermission: (permission: string) => Promise<{
+        ok: boolean;
+        value?: "Granted" | "Revoked";
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      setAndroidCompanionPermission: (
+        permission: string,
+        granted: boolean,
+      ) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      checkAndroidCompanionCapability: (input: {
+        capability_id: string;
+        required_permissions: string[];
+      }) => Promise<{
+        ok: boolean;
+        value?: { status: "Available"; device_id: string };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       createPairingOffer: (input: {
         runtime_mode: DeviceRuntimeMode;
         primary_public_key: string;
