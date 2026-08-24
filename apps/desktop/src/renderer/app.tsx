@@ -395,6 +395,12 @@ export const App = () => {
             />
           ) : view === "home" ? (
             <HomeView permissions={permissions} task={lastTask} />
+          ) : view === "voice" ? (
+            <VoiceSettingsView
+              configuration={configuration}
+              error={configurationError}
+              onUpdate={updateConfiguration}
+            />
           ) : view === "provider" ? (
             <ProviderSettings
               configuration={configuration}
@@ -1745,6 +1751,138 @@ const UpdatesView = () => {
           )}
         </div>
       ) : null}
+    </section>
+  );
+};
+
+const VoiceSettingsView = ({
+  configuration,
+  error,
+  onUpdate,
+}: {
+  configuration: NovaConfiguration | null;
+  error: string | null;
+  onUpdate: (
+    section: ConfigurationSectionName,
+    value: NovaConfiguration[ConfigurationSectionName],
+  ) => Promise<NovaConfiguration>;
+}) => {
+  const voice = configuration?.voice;
+  const [enabled, setEnabled] = useState(voice?.enabled ?? false);
+  const [alwaysListening, setAlwaysListening] = useState(voice?.always_listening ?? false);
+  const [wakeWord, setWakeWord] = useState(voice?.wake_word ?? "nova");
+  const [sensitivity, setSensitivity] = useState(voice?.barge_in_sensitivity ?? "conservative");
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEnabled(voice?.enabled ?? false);
+    setAlwaysListening(voice?.always_listening ?? false);
+    setWakeWord(voice?.wake_word ?? "nova");
+    setSensitivity(voice?.barge_in_sensitivity ?? "conservative");
+  }, [voice]);
+
+  const save = async () => {
+    if (!wakeWord.trim()) {
+      setStatus("Wake word is required when voice configuration is enabled.");
+      return;
+    }
+    try {
+      await onUpdate("voice", {
+        enabled,
+        wake_word: wakeWord.trim(),
+        always_listening: alwaysListening,
+        barge_in_sensitivity: sensitivity,
+      });
+      setStatus("Voice configuration saved locally.");
+    } catch (cause: unknown) {
+      setStatus(cause instanceof Error ? cause.message : "Voice configuration could not be saved.");
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="voice-title">
+      <div className="section-kicker">Voice / Privacy-first readiness</div>
+      <h1 id="voice-title">Control how NOVA listens.</h1>
+      <p className="lede">
+        Voice settings are explicit local policy. Audio providers and speech binaries are not
+        bundled with this source checkout, so enabling policy never starts a hidden listener.
+      </p>
+      {error ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>Voice configuration unavailable</strong>
+          <span className="muted">{error}</span>
+        </div>
+      ) : null}
+      {configuration === null ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading voice settings</strong>
+          <span className="muted">Reading the local configuration store.</span>
+        </div>
+      ) : (
+        <div className="surface-grid">
+          <article className="surface-card">
+            <div className="task-header">
+              <strong>Voice pipeline</strong>
+              <span className="task-status">{enabled ? "Enabled" : "Off"}</span>
+            </div>
+            <p>
+              Streaming transcript, barge-in, and speaking states are available when a provider is
+              configured.
+            </p>
+            <label className="toggle-row">
+              <span>Enable voice policy</span>
+              <input
+                checked={enabled}
+                onChange={(event) => setEnabled(event.target.checked)}
+                type="checkbox"
+              />
+            </label>
+            <label className="toggle-row">
+              <span>Always listening</span>
+              <input
+                checked={alwaysListening}
+                disabled={!enabled}
+                onChange={(event) => setAlwaysListening(event.target.checked)}
+                type="checkbox"
+              />
+            </label>
+          </article>
+          <article className="surface-card">
+            <label htmlFor="wake-word">Wake word</label>
+            <input
+              id="wake-word"
+              value={wakeWord}
+              onChange={(event) => setWakeWord(event.target.value)}
+            />
+            <label htmlFor="barge-in-sensitivity">Barge-in sensitivity</label>
+            <select
+              id="barge-in-sensitivity"
+              value={sensitivity}
+              onChange={(event) =>
+                setSensitivity(event.target.value as "aggressive" | "conservative")
+              }
+            >
+              <option value="conservative">Conservative</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+            <button type="button" onClick={() => void save()}>
+              Save voice settings
+            </button>
+            {status ? (
+              <p className="muted" role="status">
+                {status}
+              </p>
+            ) : null}
+          </article>
+          <article className="surface-card">
+            <strong>Privacy boundary</strong>
+            <p>Voice configuration does not grant microphone access or persist raw audio.</p>
+            <span className="muted">
+              Provider installation and live hardware validation remain explicit follow-up steps.
+            </span>
+          </article>
+        </div>
+      )}
     </section>
   );
 };
