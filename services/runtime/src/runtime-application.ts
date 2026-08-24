@@ -124,6 +124,7 @@ import type {
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
 } from "./plugin-discovery.js";
+import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -190,6 +191,7 @@ export interface RuntimeApplicationOptions {
   readonly localModelManager?: LocalModelManager;
   readonly voicePipeline?: VoicePipeline;
   readonly pluginDiscovery?: PluginDiscovery;
+  readonly backupManager?: BackupManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -232,6 +234,7 @@ export class RuntimeApplication {
   public readonly localModelManager: LocalModelManager | undefined;
   public readonly voicePipeline: VoicePipeline | undefined;
   public readonly pluginDiscovery: PluginDiscovery | undefined;
+  public readonly backupManager: BackupManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -296,6 +299,7 @@ export class RuntimeApplication {
     this.localModelManager = options.localModelManager;
     this.voicePipeline = options.voicePipeline;
     this.pluginDiscovery = options.pluginDiscovery;
+    this.backupManager = options.backupManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -690,6 +694,21 @@ export class RuntimeApplication {
     return this.localModelManager?.discover(hardware) ?? [];
   }
 
+  public createBackup<T>(state: T): Result<SnapshotMetadata> {
+    if (!this.backupManager) return err(this.backupUnavailableError());
+    return this.backupManager.create(state);
+  }
+
+  public preUpdateBackup<T>(state: T): Result<SnapshotMetadata> {
+    if (!this.backupManager) return err(this.backupUnavailableError());
+    return this.backupManager.preUpdate(state);
+  }
+
+  public restoreBackup<T>(snapshotId: string): Result<T> {
+    if (!this.backupManager) return err(this.backupUnavailableError());
+    return this.backupManager.restore<T>(snapshotId);
+  }
+
   public async discoverPluginsForGap(gap: CapabilityGap): Promise<Result<PluginDiscoveryResult>> {
     if (!this.pluginDiscovery) return err(this.pluginUnavailableError());
     return await this.pluginDiscovery.discover(gap);
@@ -1067,6 +1086,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private backupUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Backup manager is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private pluginUnavailableError(): {

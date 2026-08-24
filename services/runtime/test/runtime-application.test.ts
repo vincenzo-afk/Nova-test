@@ -18,6 +18,7 @@ import { LocalModelManager, type LocalModelCatalogEntry } from "../src/local-mod
 import type { HardwareProfile } from "../src/hardware-detection.js";
 import { VoicePipeline } from "../src/voice-pipeline.js";
 import { PluginDiscovery, type PluginIndexEntry } from "../src/plugin-discovery.js";
+import { BackupManager, type BackupBackend } from "../src/backup-manager.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -632,6 +633,42 @@ describe("RuntimeApplication", () => {
       value: { status: "approved" },
     });
     expect(application.pendingPluginDiscovery()).toHaveLength(0);
+  });
+
+  it("delegates owner-scoped backup creation and non-destructive restoration", () => {
+    const snapshots = new Map<string, string>();
+    const backend: BackupBackend = {
+      write: (snapshotId, contents) => snapshots.set(snapshotId, contents),
+      read: (snapshotId) => snapshots.get(snapshotId),
+      delete: (snapshotId) => snapshots.delete(snapshotId),
+      list: () => [...snapshots.keys()],
+    };
+    const backup = new BackupManager(backend, {
+      ownerId: "owner-1",
+      idFactory: () => "snapshot-1",
+      encrypt: (plainText) => plainText,
+      decrypt: (cipherText) => cipherText,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      backupManager: backup,
+    });
+    applications.push(application);
+
+    expect(application.createBackup({ theme: "dark" })).toMatchObject({
+      ok: true,
+      value: { snapshot_id: "snapshot-1", owner_id: "owner-1", encrypted: true },
+    });
+    expect(application.restoreBackup<{ theme: string }>("snapshot-1")).toMatchObject({
+      ok: true,
+      value: { theme: "dark" },
+    });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

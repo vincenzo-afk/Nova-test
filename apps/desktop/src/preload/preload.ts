@@ -91,6 +91,9 @@ const novaApi = {
   declinePluginDiscovery: (pluginId: string) =>
     ipcRenderer.invoke("nova:plugins:decline", pluginId),
   pendingPluginDiscovery: () => ipcRenderer.invoke("nova:plugins:pending"),
+  createBackup: (state: unknown) => ipcRenderer.invoke("nova:backup:create", state),
+  preUpdateBackup: (state: unknown) => ipcRenderer.invoke("nova:backup:pre-update", state),
+  restoreBackup: (snapshotId: string) => ipcRenderer.invoke("nova:backup:restore", snapshotId),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

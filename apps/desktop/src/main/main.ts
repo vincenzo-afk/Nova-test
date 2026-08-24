@@ -34,6 +34,7 @@ import {
   type CapabilityGap,
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
+  type SnapshotMetadata,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -108,6 +109,11 @@ const parseIncidentId = (value: unknown): string => {
 const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
+  return value;
+};
+
+const parseSnapshotId = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "") throw new Error("Snapshot ID is required.");
   return value;
 };
 
@@ -596,6 +602,15 @@ ipcMain.handle("nova:plugins:decline", (_event, pluginId: string) =>
   requestGateway("plugins.decline", { plugin_id: pluginId }),
 );
 ipcMain.handle("nova:plugins:pending", () => requestGateway("plugins.pending", undefined));
+ipcMain.handle("nova:backup:create", (_event, state: unknown) =>
+  requestGateway("backup.create", { state }),
+);
+ipcMain.handle("nova:backup:pre-update", (_event, state: unknown) =>
+  requestGateway("backup.pre-update", { state }),
+);
+ipcMain.handle("nova:backup:restore", (_event, snapshotId: string) =>
+  requestGateway("backup.restore", { snapshot_id: snapshotId }),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -994,6 +1009,27 @@ const startGateway = async (): Promise<void> => {
   gateway.register("plugins.pending", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     return runtimeApplication.pendingPluginDiscovery() satisfies readonly PluginDiscoveryProposal[];
+  });
+  gateway.register("backup.create", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly state?: unknown };
+    const result = runtimeApplication.createBackup(payload.state);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies SnapshotMetadata;
+  });
+  gateway.register("backup.pre-update", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly state?: unknown };
+    const result = runtimeApplication.preUpdateBackup(payload.state);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies SnapshotMetadata;
+  });
+  gateway.register("backup.restore", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly snapshot_id?: unknown };
+    const result = runtimeApplication.restoreBackup(parseSnapshotId(payload.snapshot_id));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

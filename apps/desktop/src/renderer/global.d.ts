@@ -482,6 +482,21 @@ declare global {
           status: "pending";
         }[]
       >;
+      createBackup: (state: unknown) => Promise<{
+        snapshot_id: string;
+        owner_id: string;
+        encrypted: true;
+        created_at: number;
+        reason: "scheduled" | "pre-update";
+      }>;
+      preUpdateBackup: (state: unknown) => Promise<{
+        snapshot_id: string;
+        owner_id: string;
+        encrypted: true;
+        created_at: number;
+        reason: "scheduled" | "pre-update";
+      }>;
+      restoreBackup: (snapshotId: string) => Promise<unknown>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {
