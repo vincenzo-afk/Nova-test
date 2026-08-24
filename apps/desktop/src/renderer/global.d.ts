@@ -93,6 +93,19 @@ declare global {
         changelog: Array<{ version: string; date: string }>;
         partial: boolean;
       }>;
+      validateWorkflow: (draft: {
+        workflow_id: string;
+        start_node_id: string;
+        nodes: Array<{
+          id: string;
+          type:
+            "task" | "decision" | "parallel_split" | "join" | "human_approval" | "rollback" | "end";
+        }>;
+        edges: Array<{ from: string; to: string; condition?: string }>;
+      }) => Promise<
+        | { valid: true; workflow_id: string; node_count: number; edge_count: number }
+        | { valid: false; code: "NOVA-WFL001" | "NOVA-WFL002"; message: string }
+      >;
       captureScreenshot: (request: {
         task_id: string;
         target: "screen" | "focused-window";

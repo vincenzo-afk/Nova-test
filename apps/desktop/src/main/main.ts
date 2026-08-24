@@ -29,6 +29,7 @@ import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from ".
 import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
+import { validateWorkflowDraft, type WorkflowDraft } from "./workflow-draft.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
@@ -148,6 +149,9 @@ ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
 );
 ipcMain.handle("nova:diagnostics:get", () => requestGateway("diagnostics.get", undefined));
 ipcMain.handle("nova:updates:get", () => requestGateway("updates.get", undefined));
+ipcMain.handle("nova:workflow:validate", (_event, payload: WorkflowDraft) =>
+  requestGateway("workflow.validate", payload),
+);
 ipcMain.handle("nova:desktop:screenshot", (_event, payload: ScreenshotRequest) =>
   requestGateway("desktop.screenshot", payload),
 );
@@ -279,6 +283,9 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("diagnostics.get", async () => readDiagnostics(diagnosticsPath));
   gateway.register("updates.get", async () => readUpdateInfo(packagePath, changelogPath));
+  gateway.register("workflow.validate", async (data) =>
+    validateWorkflowDraft(data as WorkflowDraft),
+  );
   gateway.register("task.list", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const payload = data as { readonly limit?: number; readonly cursor?: string };

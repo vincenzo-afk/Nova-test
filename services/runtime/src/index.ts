@@ -32,3 +32,4 @@ export {
 } from "./knowledge-graph.js";
 export * from "./workspace-code-executor.js";
 export * from "./tool-registry.js";
+export * from "./workflow-engine.js";

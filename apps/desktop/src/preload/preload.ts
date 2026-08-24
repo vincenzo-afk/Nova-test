@@ -12,6 +12,7 @@ const novaApi = {
   queryGraph: (input: unknown) => ipcRenderer.invoke("nova:graph:query", input),
   getDiagnostics: () => ipcRenderer.invoke("nova:diagnostics:get"),
   getUpdateInfo: () => ipcRenderer.invoke("nova:updates:get"),
+  validateWorkflow: (draft: unknown) => ipcRenderer.invoke("nova:workflow:validate", draft),
   captureScreenshot: (request: unknown) => ipcRenderer.invoke("nova:desktop:screenshot", request),
   executeUiAction: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-action", request),
   readAccessibilityState: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-read", request),

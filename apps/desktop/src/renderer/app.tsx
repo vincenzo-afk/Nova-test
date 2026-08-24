@@ -41,6 +41,8 @@ type DesktopDiagnosticRecord = Awaited<
   ReturnType<typeof window.nova.getDiagnostics>
 >["records"][number];
 type DesktopUpdateInfo = Awaited<ReturnType<typeof window.nova.getUpdateInfo>>;
+type DesktopWorkflowDraft = Parameters<typeof window.nova.validateWorkflow>[0];
+type DesktopWorkflowValidation = Awaited<ReturnType<typeof window.nova.validateWorkflow>>;
 
 const actionPermissionSources = new Set(["screen", "desktop_control"]);
 const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
@@ -429,6 +431,8 @@ export const App = () => {
             <MemoryView />
           ) : view === "graph" ? (
             <GraphView />
+          ) : view === "workflow" ? (
+            <WorkflowView />
           ) : view === "diagnostics" ? (
             <DiagnosticsView />
           ) : view === "logs" ? (
@@ -1385,6 +1389,136 @@ const GraphView = () => {
           </article>
         </div>
       ) : null}
+    </section>
+  );
+};
+
+const WorkflowView = () => {
+  const [draftText, setDraftText] = useState(
+    JSON.stringify(
+      {
+        workflow_id: "daily-review",
+        start_node_id: "start",
+        nodes: [
+          { id: "start", type: "task" },
+          { id: "finish", type: "end" },
+        ],
+        edges: [{ from: "start", to: "finish" }],
+      },
+      null,
+      2,
+    ),
+  );
+  const [draft, setDraft] = useState<DesktopWorkflowDraft | null>(null);
+  const [validation, setValidation] = useState<DesktopWorkflowValidation | null>(null);
+  const [state, setState] = useState<"empty" | "ready" | "validating" | "invalid" | "error">(
+    "empty",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const validate = async () => {
+    setState("validating");
+    setError(null);
+    let parsed: DesktopWorkflowDraft;
+    try {
+      parsed = JSON.parse(draftText) as DesktopWorkflowDraft;
+    } catch {
+      setState("invalid");
+      setValidation({
+        valid: false,
+        code: "NOVA-WFL001",
+        message: "Workflow draft must be valid JSON.",
+      });
+      return;
+    }
+    try {
+      const result = await window.nova.validateWorkflow(parsed);
+      setDraft(parsed);
+      setValidation(result);
+      setState(result.valid ? "ready" : "invalid");
+    } catch (cause: unknown) {
+      setState("error");
+      setError(cause instanceof Error ? cause.message : "Workflow validation is unavailable.");
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="workflow-title">
+      <div className="section-kicker">Workflow Builder / Bounded validation</div>
+      <h1 id="workflow-title">Compose verified workflow graphs.</h1>
+      <p className="lede">
+        Draft nodes and directed edges, then validate them against the authoritative WorkflowEngine.
+        Execution remains gated behind the existing Planner, Executor, Verifier, and Permission
+        Manager.
+      </p>
+      <div className="surface-grid workflow-grid">
+        <article className="surface-card workflow-editor-card">
+          <label htmlFor="workflow-json">Workflow draft (JSON)</label>
+          <textarea
+            id="workflow-json"
+            rows={19}
+            value={draftText}
+            onChange={(event) => setDraftText(event.target.value)}
+          />
+          <button type="button" disabled={state === "validating"} onClick={() => void validate()}>
+            {state === "validating" ? "Validating…" : "Validate workflow"}
+          </button>
+        </article>
+        <article className="surface-card workflow-status-card">
+          <strong>Validation status</strong>
+          {state === "validating" ? (
+            <div className="state-strip" aria-busy="true" role="status">
+              <strong>Checking graph constraints</strong>
+              <span className="muted">
+                Validating node identity, edges, start node, and cycles.
+              </span>
+            </div>
+          ) : state === "error" ? (
+            <div className="state-strip state-error" role="alert">
+              <strong>Workflow service unavailable</strong>
+              <span className="muted">{error}</span>
+            </div>
+          ) : state === "invalid" && validation && !validation.valid ? (
+            <div className="state-strip state-error" role="alert">
+              <strong>{validation.code}</strong>
+              <span className="muted">{validation.message}</span>
+            </div>
+          ) : state === "ready" && validation && validation.valid ? (
+            <div className="state-strip" role="status">
+              <strong>Workflow is valid</strong>
+              <span className="muted">
+                {validation.node_count} nodes and {validation.edge_count} directed edges are ready
+                for a runtime execution adapter.
+              </span>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <span className="empty-glyph">W</span>
+              <strong>No validation result yet.</strong>
+              <span className="muted">
+                Edit the draft and validate it before execution is considered.
+              </span>
+            </div>
+          )}
+          {draft ? (
+            <div className="workflow-node-list" aria-label="Workflow node summary">
+              {draft.nodes.map((node, index) => (
+                <div className="workflow-node-row" key={`${node.id}-${index}`}>
+                  <span className="task-status">{node.type}</span>
+                  <strong>{node.id}</strong>
+                  <span className="muted">{index === 0 ? "start candidate" : "graph node"}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </article>
+      </div>
+      <div className="state-strip" role="note">
+        <strong>Execution boundary</strong>
+        <span className="muted">
+          This editor does not run tasks, request permissions, or execute arbitrary workflow JSON.
+        </span>
+      </div>
     </section>
   );
 };
