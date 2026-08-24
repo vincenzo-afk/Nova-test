@@ -115,6 +115,8 @@ import type {
   CapabilityRecord,
   CapabilityRegistry,
 } from "./provider-registry.js";
+import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
+import type { HardwareProfile } from "./hardware-detection.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -178,6 +180,7 @@ export interface RuntimeApplicationOptions {
   readonly incidentManager?: IncidentManager;
   readonly runbookManager?: RunbookManager;
   readonly capabilityRegistry?: CapabilityRegistry;
+  readonly localModelManager?: LocalModelManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -217,6 +220,7 @@ export class RuntimeApplication {
   public readonly incidentManager: IncidentManager;
   public readonly runbookManager: RunbookManager | undefined;
   public readonly capabilityRegistry: CapabilityRegistry | undefined;
+  public readonly localModelManager: LocalModelManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -278,6 +282,7 @@ export class RuntimeApplication {
       options.incidentManager ?? new IncidentManager({ owner: "desktop-runtime" });
     this.runbookManager = options.runbookManager;
     this.capabilityRegistry = options.capabilityRegistry;
+    this.localModelManager = options.localModelManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -666,6 +671,10 @@ export class RuntimeApplication {
       });
     }
     return await this.runbookManager.handle(incident);
+  }
+
+  public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
+    return this.localModelManager?.discover(hardware) ?? [];
   }
 
   public getCapabilityRecord(capabilityId: string): Result<CapabilityRecord> {

@@ -14,6 +14,8 @@ import { PersonalAnalytics, type AnalyticsInput } from "../src/personal-analytic
 import { IncidentManager, type IncidentSeverity } from "../src/incident-lifecycle.js";
 import { RunbookManager, type RunbookIncident } from "../src/runbook-manager.js";
 import { CapabilityRegistry, type Provider } from "../src/provider-registry.js";
+import { LocalModelManager, type LocalModelCatalogEntry } from "../src/local-model-manager.js";
+import type { HardwareProfile } from "../src/hardware-detection.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -493,6 +495,66 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { active_policy: { policy: "manual", manual_override: "local-llm" } },
     });
+  });
+
+  it("delegates catalog-backed local-model discovery without downloading model bytes", () => {
+    const entry: LocalModelCatalogEntry = {
+      model_id: "whisper-small",
+      provider_id: "whisper-local",
+      domain: "speech-to-text",
+      download_url: "https://models.example.test/whisper-small.bin",
+      sha256: "a".repeat(64),
+      size_bytes: 10,
+      minimum_hardware_tier: "Standard",
+      adapter_id: "onnx-whisper",
+    };
+    const localModels = new LocalModelManager({
+      storagePath: "/tmp/nova-models",
+      catalog: [entry],
+      fetchModel: async () => new Uint8Array(),
+      loadAdapter: async () => ({}),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      localModelManager: localModels,
+    });
+    applications.push(application);
+    const hardware = {
+      scanned_at: "2026-08-25T00:00:00.000Z",
+      signals: {
+        cpu_architecture: "x86_64",
+        cpu_cores: 8,
+        avx2: true,
+        avx512: false,
+        gpu_vendor: "nvidia",
+        gpu_vram_gb: 8,
+        gpu_accelerator: "cuda",
+        system_ram_gb: 16,
+        available_disk_gb: 100,
+        os: "linux",
+        battery_powered: false,
+      },
+      overall_tier: "Standard",
+      recommendations: {
+        llm: "local-or-cloud",
+        vision: "local-or-cloud",
+        speech: "local-or-cloud",
+      },
+    } satisfies HardwareProfile;
+
+    expect(application.discoverLocalModels(hardware)).toMatchObject([
+      {
+        model_id: "whisper-small",
+        availability: "recommended",
+        status: "not-downloaded",
+      },
+    ]);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

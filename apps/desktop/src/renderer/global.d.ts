@@ -413,6 +413,23 @@ declare global {
         };
         state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
       }>;
+      discoverLocalModels: (hardware: {
+        scanned_at: string;
+        signals: Record<string, unknown>;
+        overall_tier: "Minimal" | "Standard" | "High";
+        recommendations: Record<string, string>;
+      }) => Promise<
+        readonly {
+          model_id: string;
+          provider_id: string;
+          domain: string;
+          adapter_id: string;
+          minimum_hardware_tier: "Minimal" | "Standard" | "High";
+          availability: "recommended" | "available-but-unrecommended";
+          reason: "hardware_meets_minimum_tier" | "hardware_below_minimum_tier";
+          status: "not-downloaded" | "downloaded" | "loaded" | "reclaimable";
+        }[]
+      >;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

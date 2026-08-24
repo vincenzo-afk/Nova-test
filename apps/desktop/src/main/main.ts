@@ -29,6 +29,8 @@ import {
   type RunbookResult,
   type CapabilityPolicy,
   type CapabilityRecord,
+  type HardwareProfile,
+  type LocalModelDiscovery,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -104,6 +106,27 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseHardwareProfile = (value: unknown): HardwareProfile => {
+  const profile = value as {
+    readonly scanned_at?: unknown;
+    readonly signals?: unknown;
+    readonly overall_tier?: unknown;
+    readonly recommendations?: unknown;
+  };
+  if (
+    typeof profile.scanned_at !== "string" ||
+    profile.signals === null ||
+    typeof profile.signals !== "object" ||
+    (profile.overall_tier !== "Minimal" &&
+      profile.overall_tier !== "Standard" &&
+      profile.overall_tier !== "High") ||
+    profile.recommendations === null ||
+    typeof profile.recommendations !== "object"
+  )
+    throw new Error("Hardware profile is invalid.");
+  return profile as HardwareProfile;
 };
 
 const parseCapabilityId = (value: unknown): string => {
@@ -532,6 +555,9 @@ ipcMain.handle(
   (_event, payload: { readonly capability_id: string; readonly policy: CapabilityPolicy }) =>
     requestGateway("capability.policy", payload),
 );
+ipcMain.handle("nova:models:discover", (_event, hardware: HardwareProfile) =>
+  requestGateway("models.discover", hardware),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -876,6 +902,12 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies CapabilityRecord;
+  });
+  gateway.register("models.discover", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.discoverLocalModels(
+      parseHardwareProfile(data),
+    ) satisfies readonly LocalModelDiscovery[];
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

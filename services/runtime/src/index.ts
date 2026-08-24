@@ -20,6 +20,7 @@ export * from "./task-scheduler.js";
 export * from "./model-router.js";
 export * from "./provider-registry.js";
 export * from "./local-model-manager.js";
+export * from "./hardware-detection.js";
 export * from "./personal-analytics.js";
 export * from "./adaptive-personalization.js";
 export * from "./incident-lifecycle.js";
