@@ -56,6 +56,20 @@ simply fail. It emits a **Capability Gap** event.
   re-propose the identical install on every subsequent request for the
   same capability; the user can always ask again later.
 
+The runtime `PluginDiscovery` implements the search-and-proposal boundary
+against an injected vetted registry search function. It searches only when
+a capability gap has zero enabled providers, filters candidates to HTTPS
+signed index entries that explicitly declare the missing capability, and
+returns at most three proposals. Ranking favors the matching capability,
+verified/security-reviewed trust signals, download history, and fewer
+required permission scopes. Proposals remain pending until an explicit
+confirmation; confirmation records readiness for the separate plugin
+installation flow and never calls an installer. A decline is remembered for
+the session, while an explicit forced rediscovery can show it again. The
+component emits only bounded capability/plugin/status metadata in its local
+diagnostics; source URLs, descriptions, permission lists, package contents,
+and arbitrary registry payloads are not logged.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-18-autonomy-policy-approval.md` — failure modes for this subsystem
