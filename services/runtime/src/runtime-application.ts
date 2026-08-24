@@ -67,6 +67,7 @@ import type {
 } from "./orchestration.js";
 import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
+import type { CrossDeviceSyncManager, FlushResult, SyncResult } from "./cross-device-sync.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -118,6 +119,7 @@ export interface RuntimeApplicationOptions {
   readonly memoryStore?: MemoryStore;
   readonly knowledgeGraph?: KnowledgeGraph;
   readonly distributedTaskCoordinator?: DistributedTaskCoordinator;
+  readonly crossDeviceSyncManager?: CrossDeviceSyncManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -145,6 +147,7 @@ export class RuntimeApplication {
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly knowledgeGraph: KnowledgeGraph;
   public readonly distributedTaskCoordinator: DistributedTaskCoordinator;
+  public readonly crossDeviceSyncManager: CrossDeviceSyncManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -174,6 +177,7 @@ export class RuntimeApplication {
     this.tasks = options.taskManager ?? new TaskManager();
     this.distributedTaskCoordinator =
       options.distributedTaskCoordinator ?? new DistributedTaskCoordinator(this.tasks);
+    this.crossDeviceSyncManager = options.crossDeviceSyncManager;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -483,6 +487,28 @@ export class RuntimeApplication {
 
   public placeTask(input: DistributedPlacementInput): Result<DistributedPlacementResult> {
     return this.distributedTaskCoordinator.place(input);
+  }
+
+  public async syncDevices(): Promise<Result<SyncResult>> {
+    if (!this.crossDeviceSyncManager) {
+      return err({
+        code: "NOVA-EVT001",
+        message: "Cross-device synchronization is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.crossDeviceSyncManager.sync();
+  }
+
+  public async flushDeviceSync(): Promise<Result<FlushResult>> {
+    if (!this.crossDeviceSyncManager) {
+      return err({
+        code: "NOVA-EVT001",
+        message: "Cross-device synchronization is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.crossDeviceSyncManager.flush();
   }
 
   public listTrustedDevices(): readonly TrustedDevice[] {

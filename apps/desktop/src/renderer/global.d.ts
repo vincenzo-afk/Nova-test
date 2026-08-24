@@ -77,6 +77,16 @@ declare global {
       }>;
       getMemoryRecord: (recordId: string) => Promise<DesktopMemoryRecord>;
       queryGraph: (input: DesktopGraphQueryInput) => Promise<DesktopGraphQueryResult>;
+      syncDevices: () => Promise<{
+        ok: boolean;
+        value?: { checkpoint: number; applied_change_ids: string[] };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      flushDeviceSync: () => Promise<{
+        ok: boolean;
+        value?: { pushed_change_ids: string[] };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       createPairingOffer: (input: {
         runtime_mode: DeviceRuntimeMode;
         primary_public_key: string;

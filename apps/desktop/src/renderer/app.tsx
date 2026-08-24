@@ -2041,6 +2041,8 @@ const DevicesView = ({
   const [trustedError, setTrustedError] = useState<string | null>(null);
   const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [syncAction, setSyncAction] = useState<"pull" | "flush" | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [deviceSnapshots, setDeviceSnapshots] = useState<readonly DesktopDeviceSnapshot[]>([]);
   const [snapshotState, setSnapshotState] = useState<"loading" | "ready" | "error">("loading");
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
@@ -2122,6 +2124,34 @@ const DevicesView = ({
       );
     } finally {
       setRevokingDeviceId(null);
+    }
+  };
+
+  const runSync = async (action: "pull" | "flush") => {
+    setSyncAction(action);
+    setSyncStatus(null);
+    try {
+      if (action === "pull") {
+        const result = await window.nova.syncDevices();
+        if (!result.ok || !result.value) {
+          setSyncStatus(result.error?.message ?? "Device sync could not be completed.");
+          return;
+        }
+        setSyncStatus(
+          `Checkpoint ${result.value.checkpoint}; applied ${result.value.applied_change_ids.length} change(s).`,
+        );
+      } else {
+        const result = await window.nova.flushDeviceSync();
+        if (!result.ok || !result.value) {
+          setSyncStatus(result.error?.message ?? "Local sync changes could not be flushed.");
+          return;
+        }
+        setSyncStatus(`Flushed ${result.value.pushed_change_ids.length} local change(s).`);
+      }
+    } catch (cause: unknown) {
+      setSyncStatus(cause instanceof Error ? cause.message : "Device sync is unavailable.");
+    } finally {
+      setSyncAction(null);
     }
   };
 
@@ -2209,10 +2239,34 @@ const DevicesView = ({
                 : "Paired records are available to the runtime boundary."}
             </p>
           </article>
-          <article className="surface-card">
-            <strong>Sync boundary</strong>
-            <p>Hosted sync is not enabled by this local-first source checkout.</p>
-            <span className="muted">No network pairing action runs silently.</span>
+          <article className="surface-card sync-card">
+            <div className="task-header">
+              <strong>Sync boundary</strong>
+              <span className="muted">on demand</span>
+            </div>
+            <p>Pull encrypted changes or flush local changes only when explicitly requested.</p>
+            <div className="sync-actions">
+              <button
+                type="button"
+                onClick={() => void runSync("pull")}
+                disabled={syncAction !== null}
+              >
+                {syncAction === "pull" ? "Syncing…" : "Sync now"}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void runSync("flush")}
+                disabled={syncAction !== null}
+              >
+                {syncAction === "flush" ? "Flushing…" : "Flush local changes"}
+              </button>
+            </div>
+            {syncStatus ? (
+              <p className="muted" role="status">
+                {syncStatus}
+              </p>
+            ) : null}
           </article>
           <article className="surface-card trusted-devices-card">
             <div className="task-header">

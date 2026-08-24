@@ -3,6 +3,7 @@ import { ok } from "@nova/shared";
 import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
+import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
 import { TaskScheduler } from "../src/task-scheduler.js";
@@ -222,6 +223,37 @@ describe("RuntimeApplication", () => {
         paired_at: expect.any(Number),
       },
     ]);
+  });
+
+  it("syncs and flushes through the composed cross-device manager", async () => {
+    const sync = new CrossDeviceSyncManager(
+      {
+        pull: async () => ({ next_clock: 3, envelopes: [] }),
+        encrypt: (payload) => payload,
+        decrypt: (payload) => payload,
+      },
+      { granted_partitions: new Set(["security"]) },
+    );
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      crossDeviceSyncManager: sync,
+    });
+    applications.push(application);
+
+    expect(await application.syncDevices()).toMatchObject({
+      ok: true,
+      value: { checkpoint: 3, applied_change_ids: [] },
+    });
+    expect(await application.flushDeviceSync()).toMatchObject({
+      ok: true,
+      value: { pushed_change_ids: [] },
+    });
   });
 
   it("routes pairing offer creation and completion through the composed runtime", () => {

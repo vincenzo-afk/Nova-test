@@ -769,8 +769,15 @@ h2 {
 }
 
 .trusted-devices-card,
-.presence-card {
+.presence-card,
+.sync-card {
   min-height: 0;
+}
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
 }
 .trusted-device-list,
 .presence-list {
@@ -864,5 +871,11 @@ h2 {
 @media (max-width: 680px) {
   .negotiation-fields {
     grid-template-columns: 1fr;
+  }
+  .sync-actions {
+    flex-direction: column;
+  }
+  .sync-actions button {
+    width: 100%;
   }
 }

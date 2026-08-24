@@ -149,6 +149,8 @@ ipcMain.handle("nova:memory:record", (_event, payload: { readonly record_id: str
 ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
   requestGateway("graph.query", payload),
 );
+ipcMain.handle("nova:devices:sync", () => requestGateway("devices.sync", undefined));
+ipcMain.handle("nova:devices:sync-flush", () => requestGateway("devices.sync-flush", undefined));
 ipcMain.handle(
   "nova:devices:pairing-offer",
   (
@@ -304,6 +306,18 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("devices.sync", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.syncDevices();
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("devices.sync-flush", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.flushDeviceSync();
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("devices.pairing-offer", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -10,6 +10,8 @@ const novaApi = {
   getMemoryRecord: (recordId: string) =>
     ipcRenderer.invoke("nova:memory:record", { record_id: recordId }),
   queryGraph: (input: unknown) => ipcRenderer.invoke("nova:graph:query", input),
+  syncDevices: () => ipcRenderer.invoke("nova:devices:sync"),
+  flushDeviceSync: () => ipcRenderer.invoke("nova:devices:sync-flush"),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
