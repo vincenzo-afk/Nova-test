@@ -4,7 +4,7 @@
 
 Specifies recurring, cron-style, and delayed background jobs — a
 distinct concept from `docs/03-runtime/scheduler.md`'s task-dispatch
-ordering, which governs *when a queued, user-triggered task starts*. This
+ordering, which governs _when a queued, user-triggered task starts_. This
 document covers jobs that run on their own schedule, independent of any
 user request: garbage collection, defragmentation, memory summarization
 passes, benchmark runs, and similar maintenance work already described
@@ -71,6 +71,19 @@ its window during downtime, rather than waiting a full interval from
 restart time, unless the job is explicitly configured as "skip missed
 occurrences" (appropriate for something like a benchmark run, where a
 missed occurrence is not worth catching up on).
+
+The runtime `JobScheduler` implements this contract over an injected local
+`JobStore`; `FileJobStore` provides atomic JSON persistence and
+`InMemoryJobStore` supports isolated tests. Newly registered recurring jobs
+run at the first due dispatch and then advance by their interval. Cron jobs
+use UTC five-field expressions, and delayed jobs complete after their
+one-shot timestamp. Due dependencies execute before their dependents, while
+jobs sharing a `concurrency_group` are serialized. A running job receives an
+`AbortSignal` for safe cancellation at its own checkpoint boundary. Missed
+runs are caught up by default, and jobs opting out advance to their next
+future occurrence. Scheduler diagnostics contain only bounded job IDs,
+status, priority, group, counts, and timestamps; job payloads are not part
+of the logging contract.
 
 ## Related documents
 
