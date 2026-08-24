@@ -530,6 +530,23 @@ declare global {
       releaseResources: (taskId: string) => Promise<readonly string[]>;
       resourceHolder: (resource: string) => Promise<{ task_id: string | null }>;
       expireResourceLocks: () => Promise<readonly string[]>;
+      acquireArbitratedResource: (
+        resource: string,
+        request: {
+          request_id: string;
+          origin: "local" | "remote";
+          explicit_remote_override?: boolean;
+        },
+      ) => Promise<{
+        status: "Granted" | "Queued";
+        request_id?: string;
+      }>;
+      releaseArbitratedResource: (
+        resource: string,
+        requestId: string,
+      ) => Promise<{
+        granted_request_id?: string;
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

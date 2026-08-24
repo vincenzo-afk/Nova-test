@@ -105,6 +105,13 @@ const novaApi = {
   releaseResources: (taskId: string) => ipcRenderer.invoke("nova:resources:release", taskId),
   resourceHolder: (resource: string) => ipcRenderer.invoke("nova:resources:holder", resource),
   expireResourceLocks: () => ipcRenderer.invoke("nova:resources:expire"),
+  acquireArbitratedResource: (resource: string, request: unknown) =>
+    ipcRenderer.invoke("nova:resources:arbitrate", { resource, request }),
+  releaseArbitratedResource: (resource: string, requestId: string) =>
+    ipcRenderer.invoke("nova:resources:arbitration-release", {
+      resource,
+      request_id: requestId,
+    }),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

@@ -40,6 +40,8 @@ import {
   type UpgradeResult,
   type RepairRequest,
   type RepairResult,
+  type ResourceRequest,
+  type ResourceDecision,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -115,6 +117,23 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseArbitrationRequest = (value: unknown): ResourceRequest => {
+  const request = value as {
+    readonly request_id?: unknown;
+    readonly origin?: unknown;
+    readonly explicit_remote_override?: unknown;
+  };
+  if (
+    typeof request.request_id !== "string" ||
+    request.request_id.trim() === "" ||
+    (request.origin !== "local" && request.origin !== "remote") ||
+    (request.explicit_remote_override !== undefined &&
+      typeof request.explicit_remote_override !== "boolean")
+  )
+    throw new Error("Resource arbitration request is invalid.");
+  return request as ResourceRequest;
 };
 
 const parseResourceTaskId = (value: unknown): string => {
@@ -696,6 +715,16 @@ ipcMain.handle("nova:resources:holder", (_event, resource: string) =>
   requestGateway("resources.holder", { resource }),
 );
 ipcMain.handle("nova:resources:expire", () => requestGateway("resources.expire", undefined));
+ipcMain.handle(
+  "nova:resources:arbitrate",
+  (_event, payload: { readonly resource: string; readonly request: ResourceRequest }) =>
+    requestGateway("resources.arbitrate", payload),
+);
+ipcMain.handle(
+  "nova:resources:arbitration-release",
+  (_event, payload: { readonly resource: string; readonly request_id: string }) =>
+    requestGateway("resources.arbitration-release", payload),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1177,6 +1206,26 @@ const startGateway = async (): Promise<void> => {
   gateway.register("resources.expire", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     return runtimeApplication.expireResourceLocks();
+  });
+  gateway.register("resources.arbitrate", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly resource?: unknown; readonly request?: unknown };
+    const result = runtimeApplication.acquireArbitratedResource(
+      parseResourceName(payload.resource),
+      parseArbitrationRequest(payload.request),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies ResourceDecision;
+  });
+  gateway.register("resources.arbitration-release", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly resource?: unknown; readonly request_id?: unknown };
+    const result = runtimeApplication.releaseArbitratedResource(
+      parseResourceName(payload.resource),
+      parseResourceTaskId(payload.request_id),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

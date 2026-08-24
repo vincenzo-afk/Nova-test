@@ -130,6 +130,11 @@ import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-ma
 import type { RepairManager, RepairRequest, RepairResult } from "./repair-manager.js";
 import type { LockGrant, ResourceManager } from "./resource-manager.js";
 import type {
+  ResourceArbitrator,
+  ResourceDecision,
+  ResourceRequest,
+} from "./resource-arbitration.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -200,6 +205,7 @@ export interface RuntimeApplicationOptions {
   readonly upgradeManager?: UpgradeManager;
   readonly repairManager?: RepairManager;
   readonly resourceManager?: ResourceManager;
+  readonly resourceArbitrator?: ResourceArbitrator;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -247,6 +253,7 @@ export class RuntimeApplication {
   public readonly upgradeManager: UpgradeManager | undefined;
   public readonly repairManager: RepairManager | undefined;
   public readonly resourceManager: ResourceManager | undefined;
+  public readonly resourceArbitrator: ResourceArbitrator | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -316,6 +323,7 @@ export class RuntimeApplication {
     this.upgradeManager = options.upgradeManager;
     this.repairManager = options.repairManager;
     this.resourceManager = options.resourceManager;
+    this.resourceArbitrator = options.resourceArbitrator;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -708,6 +716,22 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public acquireArbitratedResource(
+    resource: string,
+    request: ResourceRequest,
+  ): Result<ResourceDecision> {
+    if (!this.resourceArbitrator) return err(this.arbitrationUnavailableError());
+    return this.resourceArbitrator.acquire(resource, request);
+  }
+
+  public releaseArbitratedResource(
+    resource: string,
+    requestId: string,
+  ): Result<{ readonly granted_request_id?: string }> {
+    if (!this.resourceArbitrator) return err(this.arbitrationUnavailableError());
+    return this.resourceArbitrator.release(resource, requestId);
   }
 
   public acquireResources(taskId: string, resources: readonly string[]): Result<LockGrant> {
@@ -1155,6 +1179,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private arbitrationUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Resource arbitration is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private resourceUnavailableError(): {

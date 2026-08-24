@@ -29,6 +29,7 @@ export * from "./backup-manager.js";
 export * from "./restore-manager.js";
 export * from "./upgrade-manager.js";
 export * from "./repair-manager.js";
+export * from "./resource-arbitration.js";
 export * from "./job-scheduler.js";
 export * from "./background-assistant.js";
 export * from "./plugin-discovery.js";

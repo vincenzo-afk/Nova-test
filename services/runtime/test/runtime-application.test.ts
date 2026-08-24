@@ -23,6 +23,7 @@ import { RestoreManager } from "../src/restore-manager.js";
 import { UpgradeManager, type UpgradeAdapter } from "../src/upgrade-manager.js";
 import { RepairManager } from "../src/repair-manager.js";
 import { ResourceManager } from "../src/resource-manager.js";
+import { ResourceArbitrator, type ResourceRequest } from "../src/resource-arbitration.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -829,6 +830,43 @@ describe("RuntimeApplication", () => {
     now = 110;
     expect(application.expireResourceLocks()).toEqual(["task-2"]);
     expect(application.resourceHolder("gpu")).toBeUndefined();
+  });
+
+  it("delegates consent-gated cross-device resource arbitration", () => {
+    const arbitration = new ResourceArbitrator();
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      resourceArbitrator: arbitration,
+    });
+    applications.push(application);
+    const local: ResourceRequest = { request_id: "local-1", origin: "local" };
+    const remote: ResourceRequest = { request_id: "remote-1", origin: "remote" };
+
+    expect(application.acquireArbitratedResource("microphone", local)).toMatchObject({
+      ok: true,
+      value: { status: "Granted", request_id: "local-1" },
+    });
+    expect(application.acquireArbitratedResource("microphone", remote)).toMatchObject({
+      ok: true,
+      value: { status: "Queued", request_id: "remote-1" },
+    });
+    expect(application.releaseArbitratedResource("microphone", "local-1")).toMatchObject({
+      ok: true,
+      value: { granted_request_id: "remote-1" },
+    });
+    expect(
+      application.acquireArbitratedResource("microphone", {
+        request_id: "remote-2",
+        origin: "remote",
+        explicit_remote_override: true,
+      }),
+    ).toMatchObject({ ok: true, value: { status: "Granted", request_id: "remote-2" } });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {
