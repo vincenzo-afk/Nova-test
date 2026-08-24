@@ -15,6 +15,25 @@ export interface DiagnosticsSnapshot {
   readonly partial: boolean;
 }
 
+export interface DiagnosticsFilter {
+  readonly severity?: LogLevel;
+  readonly event?: string;
+}
+
+export function filterDiagnostics(
+  records: readonly DiagnosticLogSummary[],
+  filter: DiagnosticsFilter,
+): readonly DiagnosticLogSummary[] {
+  const event = filter.event?.trim().toLocaleLowerCase();
+  return records.filter(
+    (record) =>
+      (filter.severity === undefined || record.severity === filter.severity) &&
+      (event === undefined ||
+        event.length === 0 ||
+        record.event.toLocaleLowerCase().includes(event)),
+  );
+}
+
 const levels = new Set<LogLevel>(["debug", "info", "warning", "error", "critical"]);
 const DEFAULT_MAX_RECORDS = 100;
 const MAX_RECORDS = 10_000;

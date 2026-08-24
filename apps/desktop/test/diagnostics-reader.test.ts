@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readDiagnostics } from "../src/main/diagnostics.js";
+import { filterDiagnostics, readDiagnostics } from "../src/main/diagnostics.js";
 
 describe("readDiagnostics", () => {
   it("returns an empty healthy snapshot when no log file exists", async () => {
@@ -61,5 +61,36 @@ describe("readDiagnostics", () => {
 
     expect(snapshot.partial).toBe(true);
     expect(snapshot.records).toEqual([]);
+  });
+
+  it("filters records by severity and event text without mutating the snapshot", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "nova-diagnostics-"));
+    const path = join(directory, "nova.jsonl");
+    await writeFile(
+      path,
+      [
+        JSON.stringify({
+          timestamp: "2026-08-24T00:00:00.000Z",
+          service: "desktop.main",
+          severity: "info",
+          event: "runtime.start.begin",
+          details: {},
+        }),
+        JSON.stringify({
+          timestamp: "2026-08-24T00:01:00.000Z",
+          service: "desktop.main",
+          severity: "error",
+          event: "runtime.start.failed",
+          details: {},
+        }),
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const snapshot = await readDiagnostics(path, 10);
+
+    expect(filterDiagnostics(snapshot.records, { severity: "error", event: "failed" })).toEqual([
+      snapshot.records[1],
+    ]);
+    expect(filterDiagnostics(snapshot.records, { event: "missing" })).toEqual([]);
   });
 });

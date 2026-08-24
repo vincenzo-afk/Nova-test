@@ -389,6 +389,8 @@ export const App = () => {
             <GraphView />
           ) : view === "diagnostics" ? (
             <DiagnosticsView />
+          ) : view === "logs" ? (
+            <LogsView />
           ) : (
             <SurfaceView view={view} />
           )}
@@ -1443,6 +1445,142 @@ const DiagnosticsView = () => {
               </article>
             ))}
           </div>
+        </div>
+      )}
+    </section>
+  );
+};
+
+const LogsView = () => {
+  const [records, setRecords] = useState<readonly DesktopDiagnosticRecord[]>([]);
+  const [eventFilter, setEventFilter] = useState("");
+  const [severity, setSeverity] = useState<"all" | DesktopDiagnosticRecord["severity"]>("all");
+  const [state, setState] = useState<"loading" | "ready" | "empty" | "partial" | "error">(
+    "loading",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setState("loading");
+    setError(null);
+    try {
+      const snapshot = await window.nova.getDiagnostics();
+      setRecords(snapshot.records);
+      setState(snapshot.partial ? "partial" : snapshot.records.length > 0 ? "ready" : "empty");
+    } catch (cause: unknown) {
+      setState("error");
+      setError(cause instanceof Error ? cause.message : "Logs are unavailable.");
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const filtered = records.filter(
+    (record) =>
+      (severity === "all" || record.severity === severity) &&
+      (eventFilter.trim().length === 0 ||
+        record.event.toLocaleLowerCase().includes(eventFilter.trim().toLocaleLowerCase())),
+  );
+
+  return (
+    <section className="content-column" aria-labelledby="logs-title">
+      <div className="section-kicker">Logs / Power-user event stream</div>
+      <div className="task-header diagnostics-heading">
+        <div>
+          <h1 id="logs-title">Search runtime events.</h1>
+          <p className="lede">
+            Filter local structured events by severity or event name. Details are intentionally
+            omitted from this view to preserve the privacy-safe diagnostics boundary.
+          </p>
+        </div>
+        <button
+          className="secondary-button"
+          disabled={state === "loading"}
+          onClick={() => void refresh()}
+          type="button"
+        >
+          {state === "loading" ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      <div className="surface-card log-filter-card">
+        <label htmlFor="event-filter">Event filter</label>
+        <div className="inline-form">
+          <input
+            id="event-filter"
+            value={eventFilter}
+            onChange={(event) => setEventFilter(event.target.value)}
+            placeholder="runtime.start or observer"
+          />
+          <select
+            aria-label="Log severity filter"
+            value={severity}
+            onChange={(event) =>
+              setSeverity(event.target.value as "all" | DesktopDiagnosticRecord["severity"])
+            }
+          >
+            <option value="all">All severities</option>
+            <option value="debug">Debug</option>
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="error">Error</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+      {state === "loading" ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading event stream</strong>
+          <span className="muted">Reading bounded local JSONL diagnostics.</span>
+        </div>
+      ) : state === "error" ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>Event stream unavailable</strong>
+          <span className="muted">{error}</span>
+        </div>
+      ) : state === "empty" ? (
+        <div className="empty-state">
+          <span className="empty-glyph">L</span>
+          <strong>No structured events retained.</strong>
+          <span className="muted">Run a task or refresh later to collect local events.</span>
+        </div>
+      ) : (
+        <div className="diagnostic-list" aria-live="polite">
+          {state === "partial" ? (
+            <div className="state-strip state-error" role="status">
+              <strong>Partial event stream</strong>
+              <span className="muted">Malformed lines were excluded before filtering.</span>
+            </div>
+          ) : null}
+          {filtered.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-glyph">?</span>
+              <strong>No events match the active filters.</strong>
+              <span className="muted">
+                Clear the event or severity filter to broaden the result.
+              </span>
+            </div>
+          ) : (
+            <div className="log-list">
+              {filtered.map((record) => (
+                <article
+                  className="log-row"
+                  key={`${record.timestamp}-${record.event}-${record.correlation_id ?? ""}`}
+                >
+                  <div className="task-header">
+                    <span className={`log-severity log-${record.severity}`}>{record.severity}</span>
+                    <time dateTime={record.timestamp}>
+                      {new Date(record.timestamp).toLocaleString()}
+                    </time>
+                  </div>
+                  <strong>{record.event}</strong>
+                  <span className="muted">{record.service}</span>
+                  {record.correlation_id ? <code>{record.correlation_id}</code> : null}
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
