@@ -556,6 +556,48 @@ export class RuntimeApplication {
     return this.androidCompanionManager.use(capability);
   }
 
+  public startAndroidCompanionForegroundService(): Result<void> {
+    if (!this.androidCompanionManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    this.androidCompanionManager.startForegroundService();
+    return ok(undefined);
+  }
+
+  public stopAndroidCompanionForegroundService(): Result<void> {
+    if (!this.androidCompanionManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    this.androidCompanionManager.stopForegroundService();
+    return ok(undefined);
+  }
+
+  public startAndroidCompanionBackground(capabilityId: string): Result<void> {
+    if (!this.androidCompanionManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    if (capabilityId.trim() === "") {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Android companion capability ID is required.",
+        retryable: false,
+      });
+    }
+    return this.androidCompanionManager.startBackground(capabilityId);
+  }
+
   public listTrustedDevices(): readonly TrustedDevice[] {
     return this.devicePairingManager?.listTrusted() ?? [];
   }

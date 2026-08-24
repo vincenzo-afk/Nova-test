@@ -76,6 +76,35 @@ describe("RuntimeApplication", () => {
     expect(application.setAndroidCompanionPermission("camera", false)).toMatchObject({ ok: true });
   });
 
+  it("controls the Android companion foreground service before background use", () => {
+    const companion = new AndroidCompanionManager("android-1", ["notifications"]);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      androidCompanionManager: companion,
+    });
+    applications.push(application);
+
+    expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.startAndroidCompanionForegroundService()).toMatchObject({ ok: true });
+    expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
+      ok: true,
+    });
+    expect(application.stopAndroidCompanionForegroundService()).toMatchObject({ ok: true });
+    expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+  });
+
   it("composes the real REST task lifecycle and configuration handlers", async () => {
     const application = createApplication();
     applications.push(application);

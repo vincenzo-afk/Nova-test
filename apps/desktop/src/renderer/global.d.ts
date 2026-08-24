@@ -107,6 +107,18 @@ declare global {
         value?: { status: "Available"; device_id: string };
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      startAndroidCompanionForegroundService: () => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      stopAndroidCompanionForegroundService: () => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      startAndroidCompanionBackground: (capabilityId: string) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       createPairingOffer: (input: {
         runtime_mode: DeviceRuntimeMode;
         primary_public_key: string;

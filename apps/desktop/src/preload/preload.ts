@@ -18,6 +18,11 @@ const novaApi = {
     ipcRenderer.invoke("nova:companion:permission-set", { permission, granted }),
   checkAndroidCompanionCapability: (input: unknown) =>
     ipcRenderer.invoke("nova:companion:capability", input),
+  startAndroidCompanionForegroundService: () =>
+    ipcRenderer.invoke("nova:companion:foreground-start"),
+  stopAndroidCompanionForegroundService: () => ipcRenderer.invoke("nova:companion:foreground-stop"),
+  startAndroidCompanionBackground: (capabilityId: string) =>
+    ipcRenderer.invoke("nova:companion:background-start", { capability_id: capabilityId }),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

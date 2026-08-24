@@ -159,6 +159,17 @@ ipcMain.handle(
   (_event, payload: { readonly permission: string; readonly granted: boolean }) =>
     requestGateway("companion.permission-set", payload),
 );
+ipcMain.handle("nova:companion:foreground-start", () =>
+  requestGateway("companion.foreground-start", undefined),
+);
+ipcMain.handle("nova:companion:foreground-stop", () =>
+  requestGateway("companion.foreground-stop", undefined),
+);
+ipcMain.handle(
+  "nova:companion:background-start",
+  (_event, payload: { readonly capability_id: string }) =>
+    requestGateway("companion.background-start", payload),
+);
 ipcMain.handle(
   "nova:companion:capability",
   (_event, payload: { readonly capability_id: string; readonly required_permissions: string[] }) =>
@@ -320,6 +331,27 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("companion.foreground-start", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.startAndroidCompanionForegroundService();
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("companion.foreground-stop", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.stopAndroidCompanionForegroundService();
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("companion.background-start", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly capability_id?: unknown };
+    if (typeof payload.capability_id !== "string" || payload.capability_id.trim() === "")
+      throw new Error("Companion capability ID is required.");
+    const result = runtimeApplication.startAndroidCompanionBackground(payload.capability_id);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("companion.permission", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
