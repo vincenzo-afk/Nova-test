@@ -130,6 +130,7 @@ export class SessionContinuityManager {
     try {
       return ok(await execute());
     } catch {
+      this.updateCapability(deviceId, { capability_id: capabilityId, status: "Degraded" });
       return err({
         code: "NOVA-EVT001",
         message: "Remote execution failed after capability re-validation.",

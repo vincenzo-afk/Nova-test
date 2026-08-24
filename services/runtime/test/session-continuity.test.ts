@@ -77,6 +77,21 @@ describe("SessionContinuityManager", () => {
     });
   });
 
+  it("downgrades a supported capability to Degraded after a failed functional probe", async () => {
+    const manager = new SessionContinuityManager({ now: () => 1000 });
+    manager.registerDevice("phone", [{ capability_id: "camera", status: "Supported" }]);
+
+    expect(
+      await manager.remoteExecute("phone", "camera", async () => {
+        throw new Error("camera driver failed");
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-EVT001" } });
+    expect(manager.negotiate("phone", "camera")).toMatchObject({
+      ok: true,
+      value: { status: "Degraded" },
+    });
+  });
+
   it("revalidates capability immediately before remote execution", async () => {
     const execute = vi.fn(async () => "captured-image");
     const manager = new SessionContinuityManager({ now: () => 1000 });
