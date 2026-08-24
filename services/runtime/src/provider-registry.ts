@@ -1,4 +1,5 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import type { StructuredLogger } from "@nova/shared";
 
 export type CapabilityDomain =
   | "llm"
@@ -75,6 +76,7 @@ interface MutableCapabilityRecord {
   readonly capability_id: string;
   readonly domain: CapabilityDomain;
   readonly providers: Map<string, CapabilityProviderEntry>;
+  readonly health: Map<string, ProviderHealth>;
   active_policy: CapabilityPolicy;
   state: CapabilityState;
 }
@@ -82,6 +84,11 @@ interface MutableCapabilityRecord {
 export class CapabilityRegistry {
   private readonly capabilities = new Map<string, MutableCapabilityRecord>();
   private readonly providers = new Map<string, Provider>();
+  private readonly logger: StructuredLogger | undefined;
+
+  public constructor(logger?: StructuredLogger) {
+    this.logger = logger;
+  }
 
   public register(capabilityId: string, provider: Provider): Result<CapabilityRecord> {
     if (this.providers.has(provider.descriptor.provider_id)) {
@@ -97,6 +104,7 @@ export class CapabilityRegistry {
         capability_id: capabilityId,
         domain: provider.descriptor.domain,
         providers: new Map(),
+        health: new Map(),
         active_policy: { policy: "privacy-first" },
         state: "Unconfigured",
       };
@@ -112,8 +120,14 @@ export class CapabilityRegistry {
       enabled: true,
       priority: record.providers.size + 1,
     });
+    record.health.set(provider.descriptor.provider_id, "reachable");
     this.providers.set(provider.descriptor.provider_id, provider);
-    record.state = "Active";
+    record.state = this.stateFor(record);
+    this.logger?.info("provider.registered", {
+      capability_id: capabilityId,
+      provider_id: provider.descriptor.provider_id,
+      privacy_class: provider.descriptor.privacy_class,
+    });
     return ok(this.publicRecord(record));
   }
 
@@ -130,6 +144,77 @@ export class CapabilityRegistry {
       );
     record.providers.set(providerId, { ...entry, enabled });
     record.state = this.stateFor(record);
+    this.logger?.info("provider.enabled.updated", {
+      capability_id: capabilityId,
+      provider_id: providerId,
+      previous_enabled: entry.enabled,
+      enabled,
+    });
+    return ok(this.publicRecord(record));
+  }
+
+  public setPriority(
+    capabilityId: string,
+    providerId: string,
+    priority: number,
+  ): Result<CapabilityRecord> {
+    const record = this.capabilities.get(capabilityId);
+    const entry = record?.providers.get(providerId);
+    if (!record || !entry) {
+      return err(
+        this.failure("Capability provider is not registered.", { capabilityId, providerId }),
+      );
+    }
+    if (!Number.isInteger(priority) || priority < 0) {
+      return err(this.failure("Provider priority must be a non-negative integer.", { priority }));
+    }
+    const entries = [...record.providers.values()].filter(
+      (candidate) => candidate.provider_id !== providerId,
+    );
+    const targetPosition = Math.min(priority, entries.length);
+    entries.splice(targetPosition, 0, entry);
+    entries.forEach((candidate, index) => {
+      record.providers.set(candidate.provider_id, { ...candidate, priority: index });
+    });
+    this.logger?.info("provider.priority.updated", {
+      capability_id: capabilityId,
+      provider_id: providerId,
+      previous_priority: entry.priority,
+      priority: targetPosition,
+    });
+    return ok(this.publicRecord(record));
+  }
+
+  public updateHealth(
+    capabilityId: string,
+    providerId: string,
+    health: ProviderHealth,
+  ): Result<CapabilityRecord> {
+    const record = this.capabilities.get(capabilityId);
+    const entry = record?.providers.get(providerId);
+    if (!record || !entry) {
+      return err(
+        this.failure("Capability provider is not registered.", { capabilityId, providerId }),
+      );
+    }
+    const previousHealth = record.health.get(providerId) ?? "reachable";
+    record.health.set(providerId, health);
+    record.state = this.stateFor(record);
+    if (health !== "reachable" && previousHealth !== health) {
+      this.logger?.warning("provider.health.demoted", {
+        capability_id: capabilityId,
+        provider_id: providerId,
+        previous_health: previousHealth,
+        health,
+      });
+    } else if (health === "reachable" && previousHealth !== health) {
+      this.logger?.info("provider.health.recovered", {
+        capability_id: capabilityId,
+        provider_id: providerId,
+        previous_health: previousHealth,
+        health,
+      });
+    }
     return ok(this.publicRecord(record));
   }
 
@@ -146,7 +231,10 @@ export class CapabilityRegistry {
     provider.shutdown();
     this.providers.delete(providerId);
     for (const record of this.capabilities.values()) {
-      if (record.providers.delete(providerId)) record.state = this.stateFor(record);
+      if (record.providers.delete(providerId)) {
+        record.health.delete(providerId);
+        record.state = this.stateFor(record);
+      }
     }
     return ok(undefined);
   }
@@ -178,9 +266,11 @@ export class CapabilityRegistry {
   }
 
   private stateFor(record: MutableCapabilityRecord): CapabilityState {
-    return [...record.providers.values()].some((entry) => entry.enabled)
-      ? "Active"
-      : "Configured, disabled";
+    const enabled = [...record.providers.values()].filter((entry) => entry.enabled);
+    if (enabled.length === 0) return "Configured, disabled";
+    return enabled.some((entry) => record.health.get(entry.provider_id) !== "reachable")
+      ? "Degraded"
+      : "Active";
   }
 
   private publicRecord(record: MutableCapabilityRecord): CapabilityRecord {
@@ -239,8 +329,19 @@ export class ProviderRouter {
         continue;
       }
       const health = await provider.healthCheck();
+      this.registry.updateHealth(capabilityId, provider.descriptor.provider_id, health);
       if (health === "down") {
-        eliminated.push({ provider_id: provider.descriptor.provider_id, reason: "down" });
+        eliminated.push({ provider_id: provider.descriptor.provider_id, reason: health });
+        continue;
+      }
+      if (
+        health === "degraded" &&
+        !(
+          record.value.active_policy.policy === "manual" &&
+          record.value.active_policy.manual_override === provider.descriptor.provider_id
+        )
+      ) {
+        eliminated.push({ provider_id: provider.descriptor.provider_id, reason: health });
         continue;
       }
       healthy.push({ provider, priority: entry.priority, health });
@@ -315,7 +416,15 @@ export class ProviderRouter {
       )
         continue;
       const health = await provider.healthCheck();
-      if (health !== "down") healthy.push({ provider, priority: entry.priority, health });
+      this.registry.updateHealth(capabilityId, provider.descriptor.provider_id, health);
+      if (
+        health === "reachable" ||
+        (health === "degraded" &&
+          record.value.active_policy.policy === "manual" &&
+          record.value.active_policy.manual_override === provider.descriptor.provider_id)
+      ) {
+        healthy.push({ provider, priority: entry.priority, health });
+      }
     }
     return this.order(record.value.active_policy, healthy).map((item) => item.provider);
   }

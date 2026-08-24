@@ -75,6 +75,14 @@ degraded-provider demotion is written to the audit log
 capability changes can affect where user data is sent (e.g., switching a
 capability from a local to a cloud provider).
 
+## Runtime registry behavior
+
+The live Capability Registry retains the last observed health for every registered provider. A routing health check of `degraded` or `down` marks the capability `Degraded` while at least one affected provider remains enabled. The router excludes degraded providers from ordinary policy selection and continues through the enabled fallback chain; when a provider recovers to `reachable`, the registry returns to `Active` if no other enabled provider remains unhealthy. A manually pinned provider is the documented exception: a `manual` policy continues selecting its pinned provider when that provider is `degraded`, while the registry still surfaces the `Degraded` state and health warning. A provider reported `down` is never selected.
+
+Provider priority is editable immediately through the same live registry used by routing. Priority updates reorder the provider entries and are applied to subsequent requests without restart or a separate setup-only path. Invalid negative or non-integer priorities are rejected without mutating the registry.
+
+The implementation emits local structured diagnostics for registration, enable/disable changes, priority updates, health demotions, and health recovery. These records contain only bounded capability and provider identifiers, privacy class, health/state values, and numeric priority/count metadata; request contents, prompts, credentials, model responses, and arbitrary provider payloads are excluded.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-04-model-router-provider-fallback.md` — failure modes for this subsystem

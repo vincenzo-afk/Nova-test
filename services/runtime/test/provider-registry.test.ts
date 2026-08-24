@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import {
   CapabilityRegistry,
   ProviderRouter,
@@ -61,6 +62,69 @@ describe("CapabilityRegistry and ProviderRouter", () => {
     expect(local.shutdown).toHaveBeenCalledOnce();
   });
 
+  it("marks a capability degraded and routes around an unhealthy provider", async () => {
+    const sink = new MemoryLogSink();
+    const registry = new CapabilityRegistry(
+      new StructuredLogger({ service: "runtime.providers", sink }),
+    );
+    const unhealthy = provider({ provider_id: "cloud.test", privacy_class: "cloud" }, "degraded");
+    const local = provider({ provider_id: "local.test", privacy_class: "local" }, "reachable");
+    registry.register("text-generation", unhealthy);
+    registry.register("text-generation", local);
+    const router = new ProviderRouter(registry);
+
+    const selected = await router.select("text-generation", {});
+
+    expect(selected).toMatchObject({
+      ok: true,
+      value: { descriptor: { provider_id: "local.test" } },
+    });
+    expect(registry.get("text-generation")).toMatchObject({ value: { state: "Degraded" } });
+    expect(sink.records().map((record) => record.event)).toContain("provider.health.demoted");
+    expect(
+      sink.records().find((record) => record.event === "provider.health.demoted")?.details,
+    ).toMatchObject({
+      capability_id: "text-generation",
+      provider_id: "cloud.test",
+      health: "degraded",
+    });
+  });
+
+  it("edits provider priority immediately and preserves the ordered registry snapshot", () => {
+    const sink = new MemoryLogSink();
+    const registry = new CapabilityRegistry(
+      new StructuredLogger({ service: "runtime.providers", sink }),
+    );
+    registry.register("text-generation", provider({ provider_id: "first" }));
+    registry.register("text-generation", provider({ provider_id: "second" }));
+
+    const updated = registry.setPriority("text-generation", "second", 0);
+
+    expect(updated).toMatchObject({
+      ok: true,
+      value: {
+        providers: [
+          { provider_id: "second", priority: 0 },
+          { provider_id: "first", priority: 1 },
+        ],
+      },
+    });
+    expect(sink.records().map((record) => record.event)).toContain("provider.priority.updated");
+  });
+
+  it("rejects invalid priority edits without mutating provider state", () => {
+    const registry = new CapabilityRegistry();
+    registry.register("text-generation", provider({ provider_id: "local.test" }));
+
+    expect(registry.setPriority("text-generation", "local.test", -1)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-AI002" },
+    });
+    expect(registry.get("text-generation")).toMatchObject({
+      value: { providers: [{ provider_id: "local.test", priority: 1 }] },
+    });
+  });
+
   it("uses privacy-first local routing and filters lower schema versions", async () => {
     const registry = new CapabilityRegistry();
     registry.register(
@@ -104,6 +168,21 @@ describe("CapabilityRegistry and ProviderRouter", () => {
     expect(selected).toMatchObject({
       ok: true,
       value: { descriptor: { provider_id: "local.test" } },
+    });
+  });
+
+  it("honors a manual override even when the pinned provider is degraded", async () => {
+    const registry = new CapabilityRegistry();
+    registry.register("text-generation", provider({ provider_id: "cloud.test" }, "degraded"));
+    registry.register("text-generation", provider({ provider_id: "local.test" }, "reachable"));
+    registry.setPolicy("text-generation", { policy: "manual", manual_override: "cloud.test" });
+    const router = new ProviderRouter(registry);
+
+    const selected = await router.select("text-generation", {});
+
+    expect(selected).toMatchObject({
+      ok: true,
+      value: { descriptor: { provider_id: "cloud.test" } },
     });
   });
 
