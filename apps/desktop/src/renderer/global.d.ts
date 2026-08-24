@@ -430,6 +430,18 @@ declare global {
           status: "not-downloaded" | "downloaded" | "loaded" | "reclaimable";
         }[]
       >;
+      startVoicePipeline: () => Promise<{
+        state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
+      }>;
+      stopVoicePipeline: () => Promise<{
+        state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
+      }>;
+      bargeInVoice: () => Promise<{
+        state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
+      }>;
+      voicePipelineState: () => Promise<{
+        state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking" | "Unavailable";
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

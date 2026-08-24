@@ -81,6 +81,10 @@ const novaApi = {
   setCapabilityPolicy: (capabilityId: string, policy: unknown) =>
     ipcRenderer.invoke("nova:capability:policy", { capability_id: capabilityId, policy }),
   discoverLocalModels: (hardware: unknown) => ipcRenderer.invoke("nova:models:discover", hardware),
+  startVoicePipeline: () => ipcRenderer.invoke("nova:voice:start"),
+  stopVoicePipeline: () => ipcRenderer.invoke("nova:voice:stop"),
+  bargeInVoice: () => ipcRenderer.invoke("nova:voice:barge-in"),
+  voicePipelineState: () => ipcRenderer.invoke("nova:voice:state"),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

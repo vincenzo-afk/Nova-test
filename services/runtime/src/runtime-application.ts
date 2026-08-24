@@ -117,6 +117,7 @@ import type {
 } from "./provider-registry.js";
 import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
 import type { HardwareProfile } from "./hardware-detection.js";
+import type { VoicePipeline, VoiceState } from "./voice-pipeline.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -181,6 +182,7 @@ export interface RuntimeApplicationOptions {
   readonly runbookManager?: RunbookManager;
   readonly capabilityRegistry?: CapabilityRegistry;
   readonly localModelManager?: LocalModelManager;
+  readonly voicePipeline?: VoicePipeline;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -221,6 +223,7 @@ export class RuntimeApplication {
   public readonly runbookManager: RunbookManager | undefined;
   public readonly capabilityRegistry: CapabilityRegistry | undefined;
   public readonly localModelManager: LocalModelManager | undefined;
+  public readonly voicePipeline: VoicePipeline | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -283,6 +286,7 @@ export class RuntimeApplication {
     this.runbookManager = options.runbookManager;
     this.capabilityRegistry = options.capabilityRegistry;
     this.localModelManager = options.localModelManager;
+    this.voicePipeline = options.voicePipeline;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -677,6 +681,25 @@ export class RuntimeApplication {
     return this.localModelManager?.discover(hardware) ?? [];
   }
 
+  public async startVoicePipeline(): Promise<Result<{ state: VoiceState }>> {
+    if (!this.voicePipeline) return err(this.voiceUnavailableError());
+    return await this.voicePipeline.start();
+  }
+
+  public async stopVoicePipeline(): Promise<Result<{ state: VoiceState }>> {
+    if (!this.voicePipeline) return err(this.voiceUnavailableError());
+    return await this.voicePipeline.stop();
+  }
+
+  public bargeInVoice(): Result<{ state: VoiceState }> {
+    if (!this.voicePipeline) return err(this.voiceUnavailableError());
+    return this.voicePipeline.bargeIn();
+  }
+
+  public voicePipelineState(): VoiceState | "Unavailable" {
+    return this.voicePipeline?.currentState() ?? "Unavailable";
+  }
+
   public getCapabilityRecord(capabilityId: string): Result<CapabilityRecord> {
     if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
     return this.capabilityRegistry.get(capabilityId);
@@ -1014,6 +1037,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private voiceUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Voice pipeline is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private capabilityUnavailableError(): {

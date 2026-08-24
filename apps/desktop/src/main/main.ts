@@ -558,6 +558,10 @@ ipcMain.handle(
 ipcMain.handle("nova:models:discover", (_event, hardware: HardwareProfile) =>
   requestGateway("models.discover", hardware),
 );
+ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
+ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
+ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
+ipcMain.handle("nova:voice:state", () => requestGateway("voice.state", undefined));
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -908,6 +912,28 @@ const startGateway = async (): Promise<void> => {
     return runtimeApplication.discoverLocalModels(
       parseHardwareProfile(data),
     ) satisfies readonly LocalModelDiscovery[];
+  });
+  gateway.register("voice.start", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.startVoicePipeline();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("voice.stop", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.stopVoicePipeline();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("voice.barge-in", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.bargeInVoice();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("voice.state", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return { state: runtimeApplication.voicePipelineState() };
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -16,6 +16,7 @@ import { RunbookManager, type RunbookIncident } from "../src/runbook-manager.js"
 import { CapabilityRegistry, type Provider } from "../src/provider-registry.js";
 import { LocalModelManager, type LocalModelCatalogEntry } from "../src/local-model-manager.js";
 import type { HardwareProfile } from "../src/hardware-detection.js";
+import { VoicePipeline } from "../src/voice-pipeline.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -555,6 +556,40 @@ describe("RuntimeApplication", () => {
         status: "not-downloaded",
       },
     ]);
+  });
+
+  it("delegates safe VoicePipeline lifecycle controls without exposing raw audio", async () => {
+    const voice = new VoicePipeline({
+      wakeWordDetector: { start: async () => undefined, stop: async () => undefined },
+      transcribe: async function* () {
+        yield { text: "hello", final: true };
+      },
+      plan: async (transcript) => transcript,
+      speak: async () => undefined,
+      cancelSpeech: () => undefined,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      voicePipeline: voice,
+    });
+    applications.push(application);
+
+    expect(await application.startVoicePipeline()).toMatchObject({
+      ok: true,
+      value: { state: "Listening" },
+    });
+    expect(application.voicePipelineState()).toBe("Listening");
+    expect(application.bargeInVoice()).toMatchObject({ ok: true, value: { state: "Listening" } });
+    expect(await application.stopVoicePipeline()).toMatchObject({
+      ok: true,
+      value: { state: "Idle" },
+    });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {
