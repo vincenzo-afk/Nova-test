@@ -67,6 +67,9 @@ export class RemoteControlManager {
   }
 
   public requestSession(request: RemoteSessionRequest): Result<RemoteSessionView> {
+    const sessionTtlMs = this.options.sessionTtlMs;
+    if (!Number.isSafeInteger(sessionTtlMs) || sessionTtlMs <= 0)
+      return err(this.securityError("Remote session TTL must be a positive safe integer."));
     if (
       !hasText(request.session_id) ||
       !hasText(request.initiator_device_id) ||
@@ -78,7 +81,7 @@ export class RemoteControlManager {
       return err(this.securityError("Remote-control trust has been revoked for this device."));
     if (!this.transport.verify(request))
       return err(this.securityError("Remote session signature could not be verified."));
-    const expiresAt = this.now() + this.options.sessionTtlMs;
+    const expiresAt = this.now() + sessionTtlMs;
     const state: RemoteSessionState =
       (this.preapprovals.get(request.initiator_device_id) ?? 0) > this.now()
         ? "Active"

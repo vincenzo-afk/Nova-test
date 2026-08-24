@@ -65,6 +65,22 @@ describe("RemoteControlManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("rejects invalid session TTL configuration before creating a session", () => {
+    for (const sessionTtlMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+      const manager = new RemoteControlManager(
+        { verify: () => true, send: async () => undefined },
+        { sessionTtlMs },
+      );
+      expect(
+        manager.requestSession({
+          session_id: "session",
+          initiator_device_id: "phone",
+          signature: "sig",
+        }),
+      ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    }
+  });
+
   it("rejects blank session and command fields before remote work", async () => {
     const manager = new RemoteControlManager({
       verify: () => true,
