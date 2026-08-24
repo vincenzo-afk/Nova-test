@@ -359,6 +359,60 @@ declare global {
         state: "Resolved" | "Escalated";
         action: string;
       }>;
+      getCapabilityRecord: (capabilityId: string) => Promise<{
+        capability_id: string;
+        domain: string;
+        providers: readonly { provider_id: string; enabled: boolean; priority: number }[];
+        active_policy: {
+          policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+          manual_override?: string;
+        };
+        state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
+      }>;
+      setCapabilityProviderEnabled: (
+        capabilityId: string,
+        providerId: string,
+        enabled: boolean,
+      ) => Promise<{
+        capability_id: string;
+        domain: string;
+        providers: readonly { provider_id: string; enabled: boolean; priority: number }[];
+        active_policy: {
+          policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+          manual_override?: string;
+        };
+        state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
+      }>;
+      setCapabilityProviderPriority: (
+        capabilityId: string,
+        providerId: string,
+        priority: number,
+      ) => Promise<{
+        capability_id: string;
+        domain: string;
+        providers: readonly { provider_id: string; enabled: boolean; priority: number }[];
+        active_policy: {
+          policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+          manual_override?: string;
+        };
+        state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
+      }>;
+      setCapabilityPolicy: (
+        capabilityId: string,
+        policy: {
+          policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+          manual_override?: string;
+        },
+      ) => Promise<{
+        capability_id: string;
+        domain: string;
+        providers: readonly { provider_id: string; enabled: boolean; priority: number }[];
+        active_policy: {
+          policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+          manual_override?: string;
+        };
+        state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

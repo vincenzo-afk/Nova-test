@@ -64,6 +64,22 @@ const novaApi = {
   incidentTimeline: (incidentId: string) =>
     ipcRenderer.invoke("nova:incident:timeline", incidentId),
   handleRunbook: (incident: string) => ipcRenderer.invoke("nova:runbook:handle", incident),
+  getCapabilityRecord: (capabilityId: string) =>
+    ipcRenderer.invoke("nova:capability:get", capabilityId),
+  setCapabilityProviderEnabled: (capabilityId: string, providerId: string, enabled: boolean) =>
+    ipcRenderer.invoke("nova:capability:provider-enabled", {
+      capability_id: capabilityId,
+      provider_id: providerId,
+      enabled,
+    }),
+  setCapabilityProviderPriority: (capabilityId: string, providerId: string, priority: number) =>
+    ipcRenderer.invoke("nova:capability:provider-priority", {
+      capability_id: capabilityId,
+      provider_id: providerId,
+      priority,
+    }),
+  setCapabilityPolicy: (capabilityId: string, policy: unknown) =>
+    ipcRenderer.invoke("nova:capability:policy", { capability_id: capabilityId, policy }),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

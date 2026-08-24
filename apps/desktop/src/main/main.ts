@@ -27,6 +27,8 @@ import {
   type IncidentEntry,
   type RunbookIncident,
   type RunbookResult,
+  type CapabilityPolicy,
+  type CapabilityRecord,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -102,6 +104,34 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseCapabilityId = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "")
+    throw new Error("Capability ID is required.");
+  return value;
+};
+
+const parseProviderId = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "") throw new Error("Provider ID is required.");
+  return value;
+};
+
+const parseCapabilityPolicy = (value: unknown): CapabilityPolicy => {
+  const policy = value as { readonly policy?: unknown; readonly manual_override?: unknown };
+  if (
+    policy.policy !== "privacy-first" &&
+    policy.policy !== "latency-optimized" &&
+    policy.policy !== "cost-optimized" &&
+    policy.policy !== "manual"
+  )
+    throw new Error("Capability policy is invalid.");
+  if (policy.manual_override !== undefined && typeof policy.manual_override !== "string")
+    throw new Error("Capability manual override is invalid.");
+  return {
+    policy: policy.policy,
+    ...(policy.manual_override === undefined ? {} : { manual_override: policy.manual_override }),
+  } satisfies CapabilityPolicy;
 };
 
 const parseRunbookIncident = (value: unknown): RunbookIncident => {
@@ -472,6 +502,36 @@ ipcMain.handle("nova:incident:timeline", (_event, incidentId: string) =>
 ipcMain.handle("nova:runbook:handle", (_event, incident: RunbookIncident) =>
   requestGateway("runbook.handle", { incident }),
 );
+ipcMain.handle("nova:capability:get", (_event, capabilityId: string) =>
+  requestGateway("capability.get", { capability_id: capabilityId }),
+);
+ipcMain.handle(
+  "nova:capability:provider-enabled",
+  (
+    _event,
+    payload: {
+      readonly capability_id: string;
+      readonly provider_id: string;
+      readonly enabled: boolean;
+    },
+  ) => requestGateway("capability.provider-enabled", payload),
+);
+ipcMain.handle(
+  "nova:capability:provider-priority",
+  (
+    _event,
+    payload: {
+      readonly capability_id: string;
+      readonly provider_id: string;
+      readonly priority: number;
+    },
+  ) => requestGateway("capability.provider-priority", payload),
+);
+ipcMain.handle(
+  "nova:capability:policy",
+  (_event, payload: { readonly capability_id: string; readonly policy: CapabilityPolicy }) =>
+    requestGateway("capability.policy", payload),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -765,6 +825,57 @@ const startGateway = async (): Promise<void> => {
     const result = await runtimeApplication.handleRunbook(parseRunbookIncident(payload.incident));
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies RunbookResult;
+  });
+  gateway.register("capability.get", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly capability_id?: unknown };
+    const result = runtimeApplication.getCapabilityRecord(parseCapabilityId(payload.capability_id));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies CapabilityRecord;
+  });
+  gateway.register("capability.provider-enabled", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly capability_id?: unknown;
+      readonly provider_id?: unknown;
+      readonly enabled?: unknown;
+    };
+    if (typeof payload.enabled !== "boolean") throw new Error("Provider enabled flag is invalid.");
+    const result = runtimeApplication.setCapabilityProviderEnabled(
+      parseCapabilityId(payload.capability_id),
+      parseProviderId(payload.provider_id),
+      payload.enabled,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies CapabilityRecord;
+  });
+  gateway.register("capability.provider-priority", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly capability_id?: unknown;
+      readonly provider_id?: unknown;
+      readonly priority?: unknown;
+    };
+    const priority = payload.priority;
+    if (typeof priority !== "number" || !Number.isSafeInteger(priority) || priority < 0)
+      throw new Error("Provider priority is invalid.");
+    const result = runtimeApplication.setCapabilityProviderPriority(
+      parseCapabilityId(payload.capability_id),
+      parseProviderId(payload.provider_id),
+      priority,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies CapabilityRecord;
+  });
+  gateway.register("capability.policy", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly capability_id?: unknown; readonly policy?: unknown };
+    const result = runtimeApplication.setCapabilityPolicy(
+      parseCapabilityId(payload.capability_id),
+      parseCapabilityPolicy(payload.policy),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies CapabilityRecord;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -111,6 +111,11 @@ import {
 } from "./incident-lifecycle.js";
 import type { RunbookIncident, RunbookManager, RunbookResult } from "./runbook-manager.js";
 import type {
+  CapabilityPolicy,
+  CapabilityRecord,
+  CapabilityRegistry,
+} from "./provider-registry.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -172,6 +177,7 @@ export interface RuntimeApplicationOptions {
   readonly personalAnalytics?: PersonalAnalytics;
   readonly incidentManager?: IncidentManager;
   readonly runbookManager?: RunbookManager;
+  readonly capabilityRegistry?: CapabilityRegistry;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -210,6 +216,7 @@ export class RuntimeApplication {
   public readonly personalAnalytics: PersonalAnalytics;
   public readonly incidentManager: IncidentManager;
   public readonly runbookManager: RunbookManager | undefined;
+  public readonly capabilityRegistry: CapabilityRegistry | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -270,6 +277,7 @@ export class RuntimeApplication {
     this.incidentManager =
       options.incidentManager ?? new IncidentManager({ owner: "desktop-runtime" });
     this.runbookManager = options.runbookManager;
+    this.capabilityRegistry = options.capabilityRegistry;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -660,6 +668,37 @@ export class RuntimeApplication {
     return await this.runbookManager.handle(incident);
   }
 
+  public getCapabilityRecord(capabilityId: string): Result<CapabilityRecord> {
+    if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    return this.capabilityRegistry.get(capabilityId);
+  }
+
+  public setCapabilityProviderEnabled(
+    capabilityId: string,
+    providerId: string,
+    enabled: boolean,
+  ): Result<CapabilityRecord> {
+    if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    return this.capabilityRegistry.setEnabled(capabilityId, providerId, enabled);
+  }
+
+  public setCapabilityProviderPriority(
+    capabilityId: string,
+    providerId: string,
+    priority: number,
+  ): Result<CapabilityRecord> {
+    if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    return this.capabilityRegistry.setPriority(capabilityId, providerId, priority);
+  }
+
+  public setCapabilityPolicy(
+    capabilityId: string,
+    policy: CapabilityPolicy,
+  ): Result<CapabilityRecord> {
+    if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    return this.capabilityRegistry.setPolicy(capabilityId, policy);
+  }
+
   public detectIncident(detail: string): Result<IncidentEntry> {
     return this.incidentManager.detect(detail);
   }
@@ -966,6 +1005,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private capabilityUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Capability registry is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private adaptiveUnavailableError(): {
