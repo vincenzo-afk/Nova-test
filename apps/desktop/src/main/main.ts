@@ -25,6 +25,8 @@ import {
   type AnalyticsReport,
   type IncidentSeverity,
   type IncidentEntry,
+  type RunbookIncident,
+  type RunbookResult,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -100,6 +102,12 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseRunbookIncident = (value: unknown): RunbookIncident => {
+  if (value === "startup-failure" || value === "provider-down" || value === "sync-failure")
+    return value;
+  throw new Error("Runbook incident is invalid.");
 };
 
 const parseIncidentSeverity = (value: unknown): IncidentSeverity => {
@@ -461,6 +469,9 @@ ipcMain.handle(
 ipcMain.handle("nova:incident:timeline", (_event, incidentId: string) =>
   requestGateway("incident.timeline", { incident_id: incidentId }),
 );
+ipcMain.handle("nova:runbook:handle", (_event, incident: RunbookIncident) =>
+  requestGateway("runbook.handle", { incident }),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -747,6 +758,13 @@ const startGateway = async (): Promise<void> => {
     const payload = data as { readonly incident_id?: unknown };
     const incidentId = parseIncidentId(payload.incident_id);
     return runtimeApplication.incidentTimeline(incidentId);
+  });
+  gateway.register("runbook.handle", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly incident?: unknown };
+    const result = await runtimeApplication.handleRunbook(parseRunbookIncident(payload.incident));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies RunbookResult;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -355,6 +355,10 @@ declare global {
           severity?: "Low" | "Medium" | "High" | "Critical";
         }[]
       >;
+      handleRunbook: (incident: "startup-failure" | "provider-down" | "sync-failure") => Promise<{
+        state: "Resolved" | "Escalated";
+        action: string;
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

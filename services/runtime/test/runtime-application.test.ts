@@ -12,6 +12,7 @@ import { AdaptivePersonalization } from "../src/adaptive-personalization.js";
 import { ConfigurationStore } from "../src/configuration-store.js";
 import { PersonalAnalytics, type AnalyticsInput } from "../src/personal-analytics.js";
 import { IncidentManager, type IncidentSeverity } from "../src/incident-lifecycle.js";
+import { RunbookManager, type RunbookIncident } from "../src/runbook-manager.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -414,6 +415,33 @@ describe("RuntimeApplication", () => {
       },
     );
     expect(application.incidentTimeline("inc-1")).toHaveLength(5);
+  });
+
+  it("delegates injected runbook handling without inventing recovery operations", async () => {
+    const operations = {
+      restoreLastKnownGoodConfig: async () => false,
+      engageProviderFallback: async () => true,
+      resumeSyncCheckpoint: async () => false,
+      fullResync: async () => false,
+      notifyDegraded: async () => undefined,
+    };
+    const runbook = new RunbookManager(operations);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      runbookManager: runbook,
+    });
+    applications.push(application);
+
+    expect(await application.handleRunbook("provider-down" as RunbookIncident)).toMatchObject({
+      ok: true,
+      value: { state: "Resolved", action: "provider-fallback" },
+    });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

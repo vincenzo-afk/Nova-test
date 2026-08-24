@@ -63,6 +63,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:incident:postmortem", { incident_id: incidentId, detail }),
   incidentTimeline: (incidentId: string) =>
     ipcRenderer.invoke("nova:incident:timeline", incidentId),
+  handleRunbook: (incident: string) => ipcRenderer.invoke("nova:runbook:handle", incident),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

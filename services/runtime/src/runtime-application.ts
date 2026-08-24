@@ -109,6 +109,7 @@ import {
   type IncidentEntry,
   type IncidentSeverity,
 } from "./incident-lifecycle.js";
+import type { RunbookIncident, RunbookManager, RunbookResult } from "./runbook-manager.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -170,6 +171,7 @@ export interface RuntimeApplicationOptions {
   readonly adaptivePersonalization?: AdaptivePersonalization;
   readonly personalAnalytics?: PersonalAnalytics;
   readonly incidentManager?: IncidentManager;
+  readonly runbookManager?: RunbookManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -207,6 +209,7 @@ export class RuntimeApplication {
   public readonly adaptivePersonalization: AdaptivePersonalization | undefined;
   public readonly personalAnalytics: PersonalAnalytics;
   public readonly incidentManager: IncidentManager;
+  public readonly runbookManager: RunbookManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -266,6 +269,7 @@ export class RuntimeApplication {
     this.personalAnalytics = options.personalAnalytics ?? new PersonalAnalytics(this.logger);
     this.incidentManager =
       options.incidentManager ?? new IncidentManager({ owner: "desktop-runtime" });
+    this.runbookManager = options.runbookManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -643,6 +647,17 @@ export class RuntimeApplication {
 
   public generatePersonalAnalytics(input: AnalyticsInput): AnalyticsReport {
     return this.personalAnalytics.generate(input);
+  }
+
+  public async handleRunbook(incident: RunbookIncident): Promise<Result<RunbookResult>> {
+    if (!this.runbookManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Runbook manager is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.runbookManager.handle(incident);
   }
 
   public detectIncident(detail: string): Result<IncidentEntry> {
