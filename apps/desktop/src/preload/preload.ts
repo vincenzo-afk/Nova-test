@@ -85,6 +85,12 @@ const novaApi = {
   stopVoicePipeline: () => ipcRenderer.invoke("nova:voice:stop"),
   bargeInVoice: () => ipcRenderer.invoke("nova:voice:barge-in"),
   voicePipelineState: () => ipcRenderer.invoke("nova:voice:state"),
+  discoverPluginsForGap: (gap: unknown) => ipcRenderer.invoke("nova:plugins:discover", gap),
+  confirmPluginDiscovery: (pluginId: string) =>
+    ipcRenderer.invoke("nova:plugins:confirm", pluginId),
+  declinePluginDiscovery: (pluginId: string) =>
+    ipcRenderer.invoke("nova:plugins:decline", pluginId),
+  pendingPluginDiscovery: () => ipcRenderer.invoke("nova:plugins:pending"),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

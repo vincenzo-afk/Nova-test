@@ -442,6 +442,46 @@ declare global {
       voicePipelineState: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking" | "Unavailable";
       }>;
+      discoverPluginsForGap: (gap: {
+        capability_id: string;
+        domain: string;
+        enabled_provider_count: number;
+        force?: boolean;
+      }) => Promise<{
+        capability_id: string;
+        domain: string;
+        proposals: readonly {
+          plugin_id: string;
+          latest_version: string;
+          publisher: string;
+          source_url: string;
+          signature_key: string;
+          capabilities: readonly string[];
+          required_permissions: readonly string[];
+          status: "pending";
+        }[];
+        fallback: "manual-settings" | null;
+      }>;
+      confirmPluginDiscovery: (pluginId: string) => Promise<{
+        plugin_id: string;
+        status: "approved";
+      }>;
+      declinePluginDiscovery: (pluginId: string) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      pendingPluginDiscovery: () => Promise<
+        readonly {
+          plugin_id: string;
+          latest_version: string;
+          publisher: string;
+          source_url: string;
+          signature_key: string;
+          capabilities: readonly string[];
+          required_permissions: readonly string[];
+          status: "pending";
+        }[]
+      >;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

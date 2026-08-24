@@ -119,6 +119,12 @@ import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manag
 import type { HardwareProfile } from "./hardware-detection.js";
 import type { VoicePipeline, VoiceState } from "./voice-pipeline.js";
 import type {
+  CapabilityGap,
+  PluginDiscovery,
+  PluginDiscoveryProposal,
+  PluginDiscoveryResult,
+} from "./plugin-discovery.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -183,6 +189,7 @@ export interface RuntimeApplicationOptions {
   readonly capabilityRegistry?: CapabilityRegistry;
   readonly localModelManager?: LocalModelManager;
   readonly voicePipeline?: VoicePipeline;
+  readonly pluginDiscovery?: PluginDiscovery;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -224,6 +231,7 @@ export class RuntimeApplication {
   public readonly capabilityRegistry: CapabilityRegistry | undefined;
   public readonly localModelManager: LocalModelManager | undefined;
   public readonly voicePipeline: VoicePipeline | undefined;
+  public readonly pluginDiscovery: PluginDiscovery | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -287,6 +295,7 @@ export class RuntimeApplication {
     this.capabilityRegistry = options.capabilityRegistry;
     this.localModelManager = options.localModelManager;
     this.voicePipeline = options.voicePipeline;
+    this.pluginDiscovery = options.pluginDiscovery;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -681,6 +690,27 @@ export class RuntimeApplication {
     return this.localModelManager?.discover(hardware) ?? [];
   }
 
+  public async discoverPluginsForGap(gap: CapabilityGap): Promise<Result<PluginDiscoveryResult>> {
+    if (!this.pluginDiscovery) return err(this.pluginUnavailableError());
+    return await this.pluginDiscovery.discover(gap);
+  }
+
+  public confirmPluginDiscovery(
+    pluginId: string,
+  ): Result<{ readonly plugin_id: string; readonly status: "approved" }> {
+    if (!this.pluginDiscovery) return err(this.pluginUnavailableError());
+    return this.pluginDiscovery.confirm(pluginId);
+  }
+
+  public declinePluginDiscovery(pluginId: string): Result<void> {
+    if (!this.pluginDiscovery) return err(this.pluginUnavailableError());
+    return this.pluginDiscovery.decline(pluginId);
+  }
+
+  public pendingPluginDiscovery(): readonly PluginDiscoveryProposal[] {
+    return this.pluginDiscovery?.pending() ?? [];
+  }
+
   public async startVoicePipeline(): Promise<Result<{ state: VoiceState }>> {
     if (!this.voicePipeline) return err(this.voiceUnavailableError());
     return await this.voicePipeline.start();
@@ -1037,6 +1067,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private pluginUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Plugin discovery is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private voiceUnavailableError(): {

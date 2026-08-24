@@ -17,6 +17,7 @@ import { CapabilityRegistry, type Provider } from "../src/provider-registry.js";
 import { LocalModelManager, type LocalModelCatalogEntry } from "../src/local-model-manager.js";
 import type { HardwareProfile } from "../src/hardware-detection.js";
 import { VoicePipeline } from "../src/voice-pipeline.js";
+import { PluginDiscovery, type PluginIndexEntry } from "../src/plugin-discovery.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -590,6 +591,47 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { state: "Idle" },
     });
+  });
+
+  it("delegates trust-filtered plugin discovery with explicit confirmation only", async () => {
+    const candidate: PluginIndexEntry = {
+      plugin_id: "com.example.calendar",
+      latest_version: "1.0.0",
+      publisher: "Example",
+      source_url: "https://plugins.example.test/calendar",
+      signature_key: "signature-key",
+      capabilities: ["calendar"],
+      required_permissions: ["calendar.read"],
+      trust: { verified_publisher: true, security_reviewed: true, download_count: 100 },
+    };
+    const discovery = new PluginDiscovery({ search: async () => [candidate] });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      pluginDiscovery: discovery,
+    });
+    applications.push(application);
+
+    const result = await application.discoverPluginsForGap({
+      capability_id: "calendar",
+      domain: "calendar",
+      enabled_provider_count: 0,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      value: { proposals: [{ plugin_id: "com.example.calendar", status: "pending" }] },
+    });
+    expect(application.pendingPluginDiscovery()).toHaveLength(1);
+    expect(application.confirmPluginDiscovery("com.example.calendar")).toMatchObject({
+      ok: true,
+      value: { status: "approved" },
+    });
+    expect(application.pendingPluginDiscovery()).toHaveLength(0);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

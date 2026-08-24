@@ -31,6 +31,9 @@ import {
   type CapabilityRecord,
   type HardwareProfile,
   type LocalModelDiscovery,
+  type CapabilityGap,
+  type PluginDiscoveryProposal,
+  type PluginDiscoveryResult,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -106,6 +109,27 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseCapabilityGap = (value: unknown): CapabilityGap => {
+  const gap = value as {
+    readonly capability_id?: unknown;
+    readonly domain?: unknown;
+    readonly enabled_provider_count?: unknown;
+    readonly force?: unknown;
+  };
+  if (
+    typeof gap.capability_id !== "string" ||
+    gap.capability_id.trim() === "" ||
+    typeof gap.domain !== "string" ||
+    gap.domain.trim() === "" ||
+    typeof gap.enabled_provider_count !== "number" ||
+    !Number.isSafeInteger(gap.enabled_provider_count) ||
+    gap.enabled_provider_count < 0 ||
+    (gap.force !== undefined && typeof gap.force !== "boolean")
+  )
+    throw new Error("Capability gap is invalid.");
+  return gap as CapabilityGap;
 };
 
 const parseHardwareProfile = (value: unknown): HardwareProfile => {
@@ -562,6 +586,16 @@ ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
 ipcMain.handle("nova:voice:state", () => requestGateway("voice.state", undefined));
+ipcMain.handle("nova:plugins:discover", (_event, gap: CapabilityGap) =>
+  requestGateway("plugins.discover", gap),
+);
+ipcMain.handle("nova:plugins:confirm", (_event, pluginId: string) =>
+  requestGateway("plugins.confirm", { plugin_id: pluginId }),
+);
+ipcMain.handle("nova:plugins:decline", (_event, pluginId: string) =>
+  requestGateway("plugins.decline", { plugin_id: pluginId }),
+);
+ipcMain.handle("nova:plugins:pending", () => requestGateway("plugins.pending", undefined));
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -934,6 +968,32 @@ const startGateway = async (): Promise<void> => {
   gateway.register("voice.state", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     return { state: runtimeApplication.voicePipelineState() };
+  });
+  gateway.register("plugins.discover", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.discoverPluginsForGap(parseCapabilityGap(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies PluginDiscoveryResult;
+  });
+  gateway.register("plugins.confirm", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly plugin_id?: unknown };
+    const pluginId = parseProviderId(payload.plugin_id);
+    const result = runtimeApplication.confirmPluginDiscovery(pluginId);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("plugins.decline", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly plugin_id?: unknown };
+    const pluginId = parseProviderId(payload.plugin_id);
+    const result = runtimeApplication.declinePluginDiscovery(pluginId);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("plugins.pending", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.pendingPluginDiscovery() satisfies readonly PluginDiscoveryProposal[];
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
