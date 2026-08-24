@@ -1,4 +1,5 @@
-import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
+import type { JobDefinition, JobScheduler, JobState } from "./job-scheduler.js";
 
 export type BriefingTrigger = "time-based" | "event-based" | "explicit-request";
 
@@ -25,6 +26,7 @@ export interface ProactiveDestination {
 
 export interface BackgroundAssistantOptions {
   readonly enabled: boolean;
+  readonly logger?: StructuredLogger;
 }
 
 export class BackgroundAssistant {
@@ -34,11 +36,36 @@ export class BackgroundAssistant {
     private readonly options: BackgroundAssistantOptions,
   ) {}
 
+  public registerScheduledBriefing(
+    scheduler: JobScheduler,
+    definition: JobDefinition,
+  ): Result<JobState> {
+    if (!this.options.enabled)
+      return err({
+        code: "NOVA-AI002",
+        message: "Proactive briefings are disabled.",
+        retryable: false,
+      });
+    return scheduler.register(definition, async (_job, signal) => {
+      if (signal.aborted) return;
+      const briefing = await this.generate("time-based");
+      if (!briefing.ok) throw new Error(briefing.error.message);
+      if (signal.aborted) return;
+      const delivered = await this.deliver(briefing.value);
+      if (!delivered.ok) throw new Error(delivered.error.message);
+    });
+  }
+
   public async generate(trigger: BriefingTrigger): Promise<Result<Briefing>> {
     if (!this.options.enabled) return ok({ trigger, items: [] });
     try {
       const collected = await Promise.all(this.sources.map((source) => source.collect()));
       const items = collected.flat().map((item) => ({ ...item }));
+      this.options.logger?.info("background.briefing.generated", {
+        trigger,
+        source_count: this.sources.length,
+        item_count: items.length,
+      });
       return ok({ trigger, items });
     } catch {
       return err(this.error("Background briefing collection failed."));
@@ -49,6 +76,10 @@ export class BackgroundAssistant {
     if (!this.options.enabled) return ok(undefined);
     try {
       await this.destination.deliver(briefing);
+      this.options.logger?.info("background.briefing.delivered", {
+        trigger: briefing.trigger,
+        item_count: briefing.items.length,
+      });
       return ok(undefined);
     } catch {
       return err({

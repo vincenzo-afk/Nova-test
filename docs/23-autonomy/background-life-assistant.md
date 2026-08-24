@@ -49,6 +49,15 @@ or a message to a configured messaging channel
 (`docs/21-channels/messaging-platforms.md`) — never through a surface
 the user hasn't set as their briefing destination.
 
+The runtime `BackgroundAssistant.registerScheduledBriefing()` registers a
+low-priority, idempotent job with the autonomous `JobScheduler`. The job
+collects the existing permissioned sources, composes a source-attributed
+briefing, and delivers it only to the configured `ProactiveDestination`.
+Scheduler persistence and missed-window recovery therefore apply to
+briefings without creating a separate always-on loop. Disabling proactive
+mode prevents registration and collection; re-enabling it does not grant any
+new channel or observer permission.
+
 ## Boundaries
 
 - **Preparation is not autonomous action.** The background assistant

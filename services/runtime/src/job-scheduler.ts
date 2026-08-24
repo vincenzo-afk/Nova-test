@@ -75,6 +75,7 @@ export class FileJobStore implements JobStore {
 export class JobScheduler {
   private readonly jobs = new Map<string, JobState>();
   private readonly running = new Map<string, AbortController>();
+  private readonly runners = new Map<string, JobRunner>();
   private readonly groups = new Set<string>();
   private readonly now: () => number;
   private runDuePromise: Promise<Result<readonly string[]>> | undefined;
@@ -86,7 +87,7 @@ export class JobScheduler {
     this.now = options.now ?? Date.now;
   }
 
-  public register(definition: JobDefinition): Result<JobState> {
+  public register(definition: JobDefinition, runner?: JobRunner): Result<JobState> {
     const validation = validateDefinition(definition);
     if (!validation.ok) return validation;
     if (this.jobs.has(definition.job_id))
@@ -101,6 +102,7 @@ export class JobScheduler {
       status: "scheduled",
     };
     this.jobs.set(definition.job_id, state);
+    if (runner) this.runners.set(definition.job_id, runner);
     this.persist();
     this.options.logger?.info("job.registered", {
       job_id: definition.job_id,
@@ -119,6 +121,7 @@ export class JobScheduler {
       return err(this.failure("Persisted job state could not be loaded."));
     }
     this.jobs.clear();
+    this.runners.clear();
     for (const state of persisted) {
       const validation = validateDefinition(state.definition);
       if (!validation.ok || this.jobs.has(state.definition.job_id))
@@ -261,7 +264,8 @@ export class JobScheduler {
       concurrency_group: group,
     });
     try {
-      await this.options.runner(current.definition, controller.signal);
+      const runner = this.runners.get(jobId) ?? this.options.runner;
+      await runner(current.definition, controller.signal);
       const latest = this.jobs.get(jobId);
       if (!latest) return false;
       if (controller.signal.aborted || latest.status === "cancelled") {
