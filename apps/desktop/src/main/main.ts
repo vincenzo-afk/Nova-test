@@ -42,6 +42,8 @@ import {
   type RepairResult,
   type ResourceRequest,
   type ResourceDecision,
+  type OfflineAction,
+  type OfflineActionResult,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -117,6 +119,18 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseOfflineAction = (value: unknown): OfflineAction => {
+  const action = value as { readonly action_id?: unknown; readonly description?: unknown };
+  if (
+    typeof action.action_id !== "string" ||
+    action.action_id.trim() === "" ||
+    typeof action.description !== "string" ||
+    action.description.trim() === ""
+  )
+    throw new Error("Offline action is invalid.");
+  return action as OfflineAction;
 };
 
 const parseArbitrationRequest = (value: unknown): ResourceRequest => {
@@ -725,6 +739,10 @@ ipcMain.handle(
   (_event, payload: { readonly resource: string; readonly request_id: string }) =>
     requestGateway("resources.arbitration-release", payload),
 );
+ipcMain.handle("nova:offline:submit", (_event, action: OfflineAction) =>
+  requestGateway("offline.submit", action),
+);
+ipcMain.handle("nova:offline:reconnect", () => requestGateway("offline.reconnect", undefined));
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1226,6 +1244,18 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
+  });
+  gateway.register("offline.submit", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.submitOfflineAction(parseOfflineAction(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies { status: "QueuedOffline" } | OfflineActionResult;
+  });
+  gateway.register("offline.reconnect", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.reconnectOfflineActions();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies readonly OfflineActionResult[];
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

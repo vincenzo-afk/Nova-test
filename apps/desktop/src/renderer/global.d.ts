@@ -547,6 +547,15 @@ declare global {
       ) => Promise<{
         granted_request_id?: string;
       }>;
+      submitOfflineAction: (action: {
+        action_id: string;
+        description: string;
+      }) => Promise<
+        { status: "QueuedOffline" } | { action_id: string; status: "completed" | "failed" }
+      >;
+      reconnectOfflineActions: () => Promise<
+        readonly { action_id: string; status: "completed" | "failed" }[]
+      >;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

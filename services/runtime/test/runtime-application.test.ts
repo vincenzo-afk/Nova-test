@@ -23,7 +23,12 @@ import { RestoreManager } from "../src/restore-manager.js";
 import { UpgradeManager, type UpgradeAdapter } from "../src/upgrade-manager.js";
 import { RepairManager } from "../src/repair-manager.js";
 import { ResourceManager } from "../src/resource-manager.js";
-import { ResourceArbitrator, type ResourceRequest } from "../src/resource-arbitration.js";
+import {
+  OfflineActionQueue,
+  type OfflineAction,
+  type ResourceRequest,
+  ResourceArbitrator,
+} from "../src/resource-arbitration.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -867,6 +872,39 @@ describe("RuntimeApplication", () => {
         explicit_remote_override: true,
       }),
     ).toMatchObject({ ok: true, value: { status: "Granted", request_id: "remote-2" } });
+  });
+
+  it("queues offline actions and only executes them after explicit reconnect", async () => {
+    const executed: string[] = [];
+    const queue = new OfflineActionQueue(async (action: OfflineAction) => {
+      executed.push(action.action_id);
+      return { action_id: action.action_id, status: "completed" };
+    });
+    queue.setOnline(false);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      offlineActionQueue: queue,
+    });
+    applications.push(application);
+
+    expect(
+      await application.submitOfflineAction({ action_id: "remote-1", description: "sync" }),
+    ).toMatchObject({
+      ok: true,
+      value: { status: "QueuedOffline" },
+    });
+    expect(executed).toEqual([]);
+    expect(await application.reconnectOfflineActions()).toMatchObject({
+      ok: true,
+      value: [{ action_id: "remote-1", status: "completed" }],
+    });
+    expect(executed).toEqual(["remote-1"]);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

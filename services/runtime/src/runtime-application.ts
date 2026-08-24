@@ -130,6 +130,9 @@ import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-ma
 import type { RepairManager, RepairRequest, RepairResult } from "./repair-manager.js";
 import type { LockGrant, ResourceManager } from "./resource-manager.js";
 import type {
+  OfflineAction,
+  OfflineActionQueue,
+  OfflineActionResult,
   ResourceArbitrator,
   ResourceDecision,
   ResourceRequest,
@@ -206,6 +209,7 @@ export interface RuntimeApplicationOptions {
   readonly repairManager?: RepairManager;
   readonly resourceManager?: ResourceManager;
   readonly resourceArbitrator?: ResourceArbitrator;
+  readonly offlineActionQueue?: OfflineActionQueue;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -254,6 +258,7 @@ export class RuntimeApplication {
   public readonly repairManager: RepairManager | undefined;
   public readonly resourceManager: ResourceManager | undefined;
   public readonly resourceArbitrator: ResourceArbitrator | undefined;
+  public readonly offlineActionQueue: OfflineActionQueue | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -324,6 +329,7 @@ export class RuntimeApplication {
     this.repairManager = options.repairManager;
     this.resourceManager = options.resourceManager;
     this.resourceArbitrator = options.resourceArbitrator;
+    this.offlineActionQueue = options.offlineActionQueue;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -716,6 +722,18 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public async submitOfflineAction(
+    action: OfflineAction,
+  ): Promise<Result<{ status: "QueuedOffline" } | OfflineActionResult>> {
+    if (!this.offlineActionQueue) return err(this.offlineUnavailableError());
+    return await this.offlineActionQueue.submit(action);
+  }
+
+  public async reconnectOfflineActions(): Promise<Result<readonly OfflineActionResult[]>> {
+    if (!this.offlineActionQueue) return err(this.offlineUnavailableError());
+    return await this.offlineActionQueue.reconnect();
   }
 
   public acquireArbitratedResource(
@@ -1179,6 +1197,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private offlineUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Offline action queue is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private arbitrationUnavailableError(): {
