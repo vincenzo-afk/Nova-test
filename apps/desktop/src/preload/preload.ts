@@ -41,6 +41,15 @@ const novaApi = {
     ipcRenderer.invoke("nova:background:generate", trigger),
   deliverBackgroundBriefing: (briefing: unknown) =>
     ipcRenderer.invoke("nova:background:deliver", briefing),
+  proposeAdaptivePreference: (input: unknown) =>
+    ipcRenderer.invoke("nova:personalization:propose", input),
+  approveAdaptivePreference: (proposalId: string) =>
+    ipcRenderer.invoke("nova:personalization:approve", proposalId),
+  dismissAdaptivePreference: (proposalId: string) =>
+    ipcRenderer.invoke("nova:personalization:dismiss", proposalId),
+  pendingAdaptivePreferences: () => ipcRenderer.invoke("nova:personalization:pending"),
+  resetAdaptivePreference: (preferenceId?: string) =>
+    ipcRenderer.invoke("nova:personalization:reset", preferenceId),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

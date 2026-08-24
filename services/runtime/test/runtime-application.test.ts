@@ -8,6 +8,8 @@ import { EmailAssistant, type EmailDraft } from "../src/email-assistant.js";
 import { CalendarAssistant, type CalendarDraft } from "../src/calendar-assistant.js";
 import { ChannelManager, type ChannelAdapter } from "../src/channel-adapter.js";
 import { BackgroundAssistant } from "../src/background-assistant.js";
+import { AdaptivePersonalization } from "../src/adaptive-personalization.js";
+import { ConfigurationStore } from "../src/configuration-store.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -288,6 +290,54 @@ describe("RuntimeApplication", () => {
         briefing.ok ? briefing.value : { trigger: "explicit-request", items: [] },
       ),
     ).toMatchObject({ ok: true });
+  });
+
+  it("delegates inspectable adaptive personalization proposals through the composed runtime", () => {
+    const configurationStore = new ConfigurationStore({ initial: configuration });
+    const adaptive = new AdaptivePersonalization(
+      configurationStore,
+      () => "2026-08-25T12:00:00.000Z",
+    );
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      adaptivePersonalization: adaptive,
+    });
+    applications.push(application);
+
+    const proposal = application.proposeAdaptivePreference({
+      id: "email.concise",
+      category: "tool-default",
+      value: { style: "concise" },
+    });
+    expect(proposal).toMatchObject({ ok: true, value: { status: "pending" } });
+    expect(application.pendingAdaptivePreferences()).toHaveLength(1);
+    expect(application.approveAdaptivePreference("email.concise")).toMatchObject({ ok: true });
+    expect(configurationStore.snapshot().personalization.preferences).toHaveLength(1);
+    expect(application.resetAdaptivePreference("email.concise")).toMatchObject({ ok: true });
+    expect(configurationStore.snapshot().personalization.preferences).toHaveLength(0);
+  });
+
+  it("binds the default adaptive personalization manager to the shared configuration store", () => {
+    const application = createApplication();
+    applications.push(application);
+
+    expect(
+      application.proposeAdaptivePreference({
+        id: "tone.concise",
+        category: "tone",
+        value: { style: "concise" },
+      }),
+    ).toMatchObject({ ok: true });
+    expect(application.approveAdaptivePreference("tone.concise")).toMatchObject({ ok: true });
+    expect(application.configuration.snapshot().personalization.preferences).toMatchObject([
+      { id: "tone.concise", source: "feedback" },
+    ]);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

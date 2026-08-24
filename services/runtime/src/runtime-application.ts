@@ -94,6 +94,11 @@ import type {
   MediaCapabilities,
 } from "./channel-adapter.js";
 import type { BackgroundAssistant, Briefing, BriefingTrigger } from "./background-assistant.js";
+import {
+  AdaptivePersonalization,
+  type AdaptivePreferenceInput,
+  type AdaptivePreferenceProposal,
+} from "./adaptive-personalization.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -152,6 +157,7 @@ export interface RuntimeApplicationOptions {
   readonly calendarAssistant?: CalendarAssistant;
   readonly channelManager?: ChannelManager;
   readonly backgroundAssistant?: BackgroundAssistant;
+  readonly adaptivePersonalization?: AdaptivePersonalization;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -186,6 +192,7 @@ export class RuntimeApplication {
   public readonly calendarAssistant: CalendarAssistant | undefined;
   public readonly channelManager: ChannelManager | undefined;
   public readonly backgroundAssistant: BackgroundAssistant | undefined;
+  public readonly adaptivePersonalization: AdaptivePersonalization | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -239,6 +246,9 @@ export class RuntimeApplication {
       initial: initialConfiguration,
       ...(this.logger === undefined ? {} : { logger: this.logger }),
     });
+    this.adaptivePersonalization =
+      options.adaptivePersonalization ??
+      new AdaptivePersonalization(this.configuration, undefined, this.logger);
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -614,6 +624,32 @@ export class RuntimeApplication {
     return await this.backgroundAssistant.deliver(briefing);
   }
 
+  public proposeAdaptivePreference(
+    input: AdaptivePreferenceInput,
+  ): Result<AdaptivePreferenceProposal> {
+    if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    return this.adaptivePersonalization.propose(input);
+  }
+
+  public approveAdaptivePreference(proposalId: string): Result<void> {
+    if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    return this.adaptivePersonalization.approve(proposalId);
+  }
+
+  public dismissAdaptivePreference(proposalId: string): Result<void> {
+    if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    return this.adaptivePersonalization.dismiss(proposalId);
+  }
+
+  public pendingAdaptivePreferences(): readonly AdaptivePreferenceProposal[] {
+    return this.adaptivePersonalization?.pending() ?? [];
+  }
+
+  public resetAdaptivePreference(preferenceId?: string): Result<void> {
+    if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    return this.adaptivePersonalization.reset(preferenceId);
+  }
+
   public async sendChannelMessage(
     channelId: string,
     chatId: string,
@@ -870,6 +906,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private adaptiveUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Adaptive personalization is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private restOptions(options: RuntimeApplicationOptions): PublicApiServerOptions {

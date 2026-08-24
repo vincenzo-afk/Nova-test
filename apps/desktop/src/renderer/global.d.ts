@@ -196,6 +196,63 @@ declare global {
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      proposeAdaptivePreference: (input: {
+        id: string;
+        category:
+          "tool-default" | "provider-default" | "proactive-timing" | "routing-preference" | "tone";
+        value: unknown;
+      }) => Promise<{
+        ok: boolean;
+        value?: {
+          proposal_id: string;
+          status: "pending";
+          preference: {
+            id: string;
+            category:
+              | "tool-default"
+              | "provider-default"
+              | "proactive-timing"
+              | "routing-preference"
+              | "tone";
+            value: unknown;
+            enabled: boolean;
+            source: "user" | "feedback";
+            updated_at: string;
+          };
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      approveAdaptivePreference: (proposalId: string) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      dismissAdaptivePreference: (proposalId: string) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      pendingAdaptivePreferences: () => Promise<
+        readonly {
+          proposal_id: string;
+          status: "pending";
+          preference: {
+            id: string;
+            category:
+              | "tool-default"
+              | "provider-default"
+              | "proactive-timing"
+              | "routing-preference"
+              | "tone";
+            value: unknown;
+            enabled: boolean;
+            source: "user" | "feedback";
+            updated_at: string;
+          };
+        }[]
+      >;
+      resetAdaptivePreference: (preferenceId?: string) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

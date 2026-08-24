@@ -19,6 +19,8 @@ import {
   type InboundMessage,
   type Briefing,
   type BriefingTrigger,
+  type AdaptivePreferenceInput,
+  type AdaptivePreferenceProposal,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -83,6 +85,31 @@ const parseBriefingTrigger = (value: unknown): BriefingTrigger => {
   if (value === "time-based" || value === "event-based" || value === "explicit-request")
     return value;
   throw new Error("Briefing trigger is invalid.");
+};
+
+const parseAdaptivePreferenceInput = (data: unknown): AdaptivePreferenceInput => {
+  const input = data as {
+    readonly id?: unknown;
+    readonly category?: unknown;
+    readonly value?: unknown;
+  };
+  if (
+    typeof input.id !== "string" ||
+    input.id.trim() === "" ||
+    (input.category !== "tool-default" &&
+      input.category !== "provider-default" &&
+      input.category !== "proactive-timing" &&
+      input.category !== "routing-preference" &&
+      input.category !== "tone") ||
+    input.value === undefined
+  ) {
+    throw new Error("Adaptive preference fields are invalid.");
+  }
+  return {
+    id: input.id,
+    category: input.category,
+    value: input.value,
+  } satisfies AdaptivePreferenceInput;
 };
 
 const parseBriefing = (data: unknown): Briefing => {
@@ -269,6 +296,21 @@ ipcMain.handle("nova:background:generate", (_event, trigger: BriefingTrigger) =>
 );
 ipcMain.handle("nova:background:deliver", (_event, briefing: Briefing) =>
   requestGateway("background.deliver", briefing),
+);
+ipcMain.handle("nova:personalization:propose", (_event, input: AdaptivePreferenceInput) =>
+  requestGateway("personalization.propose", input),
+);
+ipcMain.handle("nova:personalization:approve", (_event, proposalId: string) =>
+  requestGateway("personalization.approve", { proposal_id: proposalId }),
+);
+ipcMain.handle("nova:personalization:dismiss", (_event, proposalId: string) =>
+  requestGateway("personalization.dismiss", { proposal_id: proposalId }),
+);
+ipcMain.handle("nova:personalization:pending", () =>
+  requestGateway("personalization.pending", undefined),
+);
+ipcMain.handle("nova:personalization:reset", (_event, preferenceId?: string) =>
+  requestGateway("personalization.reset", { preference_id: preferenceId }),
 );
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
@@ -460,6 +502,43 @@ const startGateway = async (): Promise<void> => {
   gateway.register("background.deliver", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const result = await runtimeApplication.deliverBackgroundBriefing(parseBriefing(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("personalization.propose", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.proposeAdaptivePreference(parseAdaptivePreferenceInput(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result satisfies { ok: true; value: AdaptivePreferenceProposal };
+  });
+  gateway.register("personalization.approve", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly proposal_id?: unknown };
+    if (typeof payload.proposal_id !== "string" || payload.proposal_id.trim() === "")
+      throw new Error("Adaptive proposal ID is required.");
+    const result = runtimeApplication.approveAdaptivePreference(payload.proposal_id);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("personalization.dismiss", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly proposal_id?: unknown };
+    if (typeof payload.proposal_id !== "string" || payload.proposal_id.trim() === "")
+      throw new Error("Adaptive proposal ID is required.");
+    const result = runtimeApplication.dismissAdaptivePreference(payload.proposal_id);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("personalization.pending", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.pendingAdaptivePreferences();
+  });
+  gateway.register("personalization.reset", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly preference_id?: unknown };
+    if (payload.preference_id !== undefined && typeof payload.preference_id !== "string")
+      throw new Error("Adaptive preference ID is invalid.");
+    const result = runtimeApplication.resetAdaptivePreference(payload.preference_id);
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });
