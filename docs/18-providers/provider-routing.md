@@ -80,11 +80,15 @@ default policy is cost- or latency-optimized.
 
 ## Observability
 
-Every routing decision is logged with: capability, candidate list,
-eliminations and why, and the final choice. This feeds both
+Every routing decision is logged with: capability, candidate provider
+IDs, bounded eliminations and why, and the final choice. This feeds both
 `docs/10-security/audit.md` (for privacy-relevant capabilities) and
 `docs/23-autonomy/personal-analytics.md` (for the user-facing "what did
-NOVA use this month" view).
+NOVA use this month" view). Routing logs never include request contents,
+credentials, prompts, audio, transcripts, or provider responses. When a
+request requires `streaming`, invocation additionally verifies that the
+selected adapter returns a real `AsyncIterable`; a buffered response is
+rejected and the finite fallback chain continues.
 
 ## Related documents
 

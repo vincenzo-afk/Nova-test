@@ -41,10 +41,14 @@ custom wake phrases from Settings.
 STT and TTS providers used for voice must support the `Stream<DomainChunk>` return type defined in `docs/18-providers/provider-interface.md` —
 non-streaming providers can be used for other capabilities but are
 excluded from the voice routing policy's candidate set, since round-trip
-buffering defeats the responsiveness requirement. The Planner processes
-partial transcripts incrementally where possible (e.g., beginning
-intent classification before the utterance finishes) rather than waiting
-for a final STT result on every turn.
+buffering defeats the responsiveness requirement. The generic provider
+router enforces this at invocation time by requiring the `streaming`
+capability and rejecting any adapter response that is not a real
+`AsyncIterable`; it then continues through the finite fallback chain rather
+than fabricating a stream. The Planner processes partial transcripts
+incrementally where possible (e.g., beginning intent classification before
+the utterance finishes) rather than waiting for a final STT result on every
+turn.
 
 ## Interrupt (barge-in)
 

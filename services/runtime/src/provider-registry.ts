@@ -60,6 +60,9 @@ export interface ProviderRequest {
   readonly provider_hint?: string;
 }
 
+const STREAMING_CAPABILITY = "streaming";
+const MAX_ROUTING_LOG_PROVIDERS = 32;
+
 export interface RoutingElimination {
   readonly provider_id: string;
   readonly reason: string;
@@ -296,7 +299,10 @@ export class CapabilityRegistry {
 export class ProviderRouter {
   private readonly routingLog: RoutingDecision[] = [];
 
-  public constructor(private readonly registry: CapabilityRegistry) {}
+  public constructor(
+    private readonly registry: CapabilityRegistry,
+    private readonly logger?: StructuredLogger,
+  ) {}
 
   public async select(capabilityId: string, request: ProviderRequest): Promise<Result<Provider>> {
     const record = this.registry.get(capabilityId);
@@ -349,11 +355,20 @@ export class ProviderRouter {
 
     const ordered = this.order(record.value.active_policy, healthy);
     const selected = ordered[0]?.provider ?? null;
-    this.routingLog.push({
+    const decision = {
       capability_id: capabilityId,
-      candidates: entries.map(({ provider }) => provider.descriptor.provider_id),
-      eliminated,
+      candidates: entries
+        .map(({ provider }) => provider.descriptor.provider_id)
+        .slice(0, MAX_ROUTING_LOG_PROVIDERS),
+      eliminated: eliminated.slice(0, MAX_ROUTING_LOG_PROVIDERS),
       final_provider_id: selected?.descriptor.provider_id ?? null,
+    } satisfies RoutingDecision;
+    this.routingLog.push(decision);
+    this.logger?.info("provider.routing.decided", {
+      capability_id: decision.capability_id,
+      candidate_provider_ids: decision.candidates,
+      eliminated: decision.eliminated,
+      final_provider_id: decision.final_provider_id,
     });
     if (!selected)
       return err({
@@ -374,9 +389,21 @@ export class ProviderRouter {
     const candidates = await this.orderedCandidates(capabilityId, constraints);
     for (const provider of candidates) {
       try {
+        const response = await provider.invoke(request);
+        if (
+          constraints.required_capabilities?.includes(STREAMING_CAPABILITY) &&
+          !isAsyncIterable(response)
+        ) {
+          this.logger?.warning("provider.streaming.rejected", {
+            capability_id: capabilityId,
+            provider_id: provider.descriptor.provider_id,
+            reason: "response_not_async_iterable",
+          });
+          continue;
+        }
         return ok({
           provider_id: provider.descriptor.provider_id,
-          response: await provider.invoke(request),
+          response,
         });
       } catch {
         continue;
@@ -465,6 +492,11 @@ export class ProviderRouter {
     return sorted;
   }
 }
+
+const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
+  value !== null &&
+  (typeof value === "object" || typeof value === "function") &&
+  Symbol.asyncIterator in value;
 
 const compareVersion = (left: string, right: string): number => {
   const leftParts = left.split(".").map(Number);

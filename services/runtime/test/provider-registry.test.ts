@@ -205,10 +205,70 @@ describe("CapabilityRegistry and ProviderRouter", () => {
     expect(local.invoke).toHaveBeenCalledOnce();
   });
 
+  it("falls back when a provider advertises streaming but returns a buffered response", async () => {
+    const registry = new CapabilityRegistry();
+    const buffered = provider({
+      provider_id: "buffered.stt",
+      domain: "speech-to-text",
+      capabilities: ["transcription", "streaming"],
+    });
+    const streaming = provider({
+      provider_id: "streaming.stt",
+      domain: "speech-to-text",
+      capabilities: ["transcription", "streaming"],
+    });
+    streaming.invoke = vi.fn(async () =>
+      (async function* () {
+        yield { text: "partial", final: false };
+        yield { text: "final", final: true };
+      })(),
+    );
+    registry.register("speech-to-text", buffered);
+    registry.register("speech-to-text", streaming);
+    const router = new ProviderRouter(registry);
+
+    const response = await router.invoke(
+      "speech-to-text",
+      { audio: "opaque" },
+      { required_capabilities: ["transcription", "streaming"] },
+    );
+
+    expect(response).toMatchObject({ ok: true, value: { provider_id: "streaming.stt" } });
+    expect(buffered.invoke).toHaveBeenCalledOnce();
+    expect(streaming.invoke).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a voice request when no provider returns a real stream", async () => {
+    const registry = new CapabilityRegistry();
+    const buffered = provider({
+      provider_id: "buffered.tts",
+      domain: "text-to-speech",
+      capabilities: ["synthesis", "streaming"],
+    });
+    registry.register("text-to-speech", buffered);
+    const router = new ProviderRouter(registry);
+
+    const response = await router.invoke(
+      "text-to-speech",
+      { text: "opaque" },
+      { required_capabilities: ["synthesis", "streaming"] },
+    );
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-AI002", retryable: true },
+    });
+    expect(buffered.invoke).toHaveBeenCalledOnce();
+  });
+
   it("records routing decisions with eliminations and final choice", async () => {
+    const sink = new MemoryLogSink();
     const registry = new CapabilityRegistry();
     registry.register("text-generation", provider({ provider_id: "local.test" }));
-    const router = new ProviderRouter(registry);
+    const router = new ProviderRouter(
+      registry,
+      new StructuredLogger({ service: "runtime.providers", sink }),
+    );
 
     await router.select("text-generation", { required_capabilities: ["vision"] });
 
@@ -218,5 +278,16 @@ describe("CapabilityRegistry and ProviderRouter", () => {
     expect(router.decisions()[0]?.eliminated).toEqual([
       { provider_id: "local.test", reason: "missing_capability" },
     ]);
+    expect(sink.records()).toMatchObject([
+      {
+        event: "provider.routing.decided",
+        details: {
+          capability_id: "text-generation",
+          candidate_provider_ids: ["local.test"],
+          final_provider_id: null,
+        },
+      },
+    ]);
+    expect(JSON.stringify(sink.records())).not.toContain("opaque");
   });
 });

@@ -76,10 +76,16 @@ provider's adapter supports serving an older schema shape) or excluded
 from the candidate list for that call, per `docs/25-failure-modes/FM-04-model-router-provider-fallback.md`'s FM-04-015 — this check happens
 before invocation, never as a reactive response to a schema-validation
 failure at runtime.
-- Streaming domains (LLM, STT, TTS, voice) return a `Stream<DomainChunk>`
+- Streaming domains (LLM, STT, TTS, voice) return a
+  `Stream<DomainChunk>`
   so low-latency, interrupt-capable interaction (per
   `docs/22-voice/voice-assistant.md`) is a first-class return type, not a
-  bolt-on.
+  bolt-on. The generic router treats `streaming` as a required capability
+  when requested and verifies that the adapter actually returns an
+  `AsyncIterable`; an adapter that advertises streaming but returns a
+  buffered value is rejected and the bounded fallback chain continues. NOVA
+  never wraps a buffered response in a fake stream.
+
 
 ## Registration
 
