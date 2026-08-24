@@ -67,6 +67,11 @@ import type {
 } from "./orchestration.js";
 import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
+import {
+  DistributedTaskCoordinator,
+  type DistributedPlacementInput,
+  type DistributedPlacementResult,
+} from "./distributed-task-coordinator.js";
 import { WebhookManager } from "./webhook-manager.js";
 import {
   CommunicationBusEventJournal,
@@ -105,6 +110,7 @@ export interface RuntimeApplicationOptions {
   readonly observationIndexer?: ObservationIndexer;
   readonly memoryStore?: MemoryStore;
   readonly knowledgeGraph?: KnowledgeGraph;
+  readonly distributedTaskCoordinator?: DistributedTaskCoordinator;
   readonly registeredTools?: readonly RegisteredTool[];
   readonly logger?: StructuredLogger;
 }
@@ -129,6 +135,7 @@ export class RuntimeApplication {
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly knowledgeGraph: KnowledgeGraph;
+  public readonly distributedTaskCoordinator: DistributedTaskCoordinator;
   public readonly toolRegistry: ToolRegistry;
   private readonly executor: Executor;
   private readonly verifier: Verifier;
@@ -154,6 +161,8 @@ export class RuntimeApplication {
     this.knowledgeGraph = options.knowledgeGraph ?? new KnowledgeGraph();
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
+    this.distributedTaskCoordinator =
+      options.distributedTaskCoordinator ?? new DistributedTaskCoordinator(this.tasks);
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
     const initialConfiguration =
       options.browserExcludedDomains === undefined
@@ -457,6 +466,10 @@ export class RuntimeApplication {
 
   public async captureBrowserEvent(event: NativeBrowserEvent): Promise<Result<void>> {
     return await this.browserObserver.captureAndPublish(event);
+  }
+
+  public placeTask(input: DistributedPlacementInput): Result<DistributedPlacementResult> {
+    return this.distributedTaskCoordinator.place(input);
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {

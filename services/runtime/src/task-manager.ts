@@ -20,6 +20,7 @@ export interface TaskRecord {
   readonly task_id: string;
   readonly goal: string;
   readonly correlation_id: string;
+  readonly owner_device_id?: string;
   readonly state: TaskState;
   readonly retry_count: number;
   readonly step_history: readonly unknown[];
@@ -55,6 +56,7 @@ export class TaskManager {
     readonly task_id?: string;
     readonly goal: string;
     readonly correlation_id?: string;
+    readonly owner_device_id?: string;
   }): Result<TaskRecord> {
     const taskId = input.task_id ?? randomUUID();
     if (this.tasks.has(taskId)) {
@@ -69,6 +71,7 @@ export class TaskManager {
       task_id: taskId,
       goal: input.goal,
       correlation_id: input.correlation_id ?? randomUUID(),
+      ...(input.owner_device_id === undefined ? {} : { owner_device_id: input.owner_device_id }),
       state: "Created",
       retry_count: 0,
       step_history: [],
@@ -144,6 +147,9 @@ export class TaskManager {
       task_id: current.task_id,
       goal: current.goal,
       correlation_id: current.correlation_id,
+      ...(current.owner_device_id === undefined
+        ? {}
+        : { owner_device_id: current.owner_device_id }),
       state: target,
       retry_count: target === "Retrying" ? current.retry_count + 1 : current.retry_count,
       step_history: current.step_history,
@@ -155,7 +161,38 @@ export class TaskManager {
     return ok(next);
   }
 
-  appendStepHistory(taskId: string, step: unknown): Result<TaskRecord> {
+  public assignOwner(taskId: string, ownerDeviceId: string): Result<TaskRecord> {
+    const current = this.tasks.get(taskId);
+    if (!current) return err(this.notFound(taskId));
+    if (ownerDeviceId.length === 0) {
+      return err({
+        code: "NOVA-TL002",
+        message: "Task owner device identifier is required.",
+        retryable: false,
+      });
+    }
+    if (
+      current.state === "WaitingUser" &&
+      current.owner_device_id !== undefined &&
+      current.owner_device_id !== ownerDeviceId
+    ) {
+      return err({
+        code: "NOVA-TL002",
+        message: "A task waiting for user confirmation cannot move to another device.",
+        retryable: false,
+        details: { taskId, ownerDeviceId },
+      });
+    }
+    const next: TaskRecord = {
+      ...current,
+      owner_device_id: ownerDeviceId,
+      updated_at: new Date().toISOString(),
+    };
+    this.tasks.set(taskId, next);
+    return ok(next);
+  }
+
+  public appendStepHistory(taskId: string, step: unknown): Result<TaskRecord> {
     const current = this.tasks.get(taskId);
     if (!current) {
       return err(this.notFound(taskId));

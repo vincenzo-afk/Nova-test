@@ -39,6 +39,7 @@ The repository is a TypeScript monorepo containing an Electron desktop shell, sh
 - Planner, executor, verifier, task-manager, priority/concurrency task scheduler, tool-registry, deterministic model routing, and resource-locking boundaries.
 - An explicit `nova.workspace-code` CLI tool for approved script execution inside a configured workspace: it uses registered runtimes, canonical path containment, no shell, bounded output, timeouts, exit-code evidence, mandatory confirmation, and workspace locks; it does not execute free-form shell text.
 - A real desktop Task Monitor backed by the authoritative TaskManager, with paginated task history, retry/waiting metadata, isolated IPC, and cancellation controls that distinguish cancellable queued states from unsupported running-process interruption.
+- Distributed Full-Peer task placement with an explicit owning-device field, origin-device defaults, opt-in resource/capability reassignment, retry re-scoring, and confirmation-state protection.
 - Real desktop Memory and Knowledge Graph explorers backed by the workspace-scoped MemoryStore and fixed-ontology KnowledgeGraph, with checksum-verified search results, lineage visibility, bounded traversal, and explicit loading, empty, error, offline, and permission states.
 - Task-bound Windows desktop-agent boundaries for one-shot screenshots, structured accessibility-state reads, and UI Automation `invoke`/`set_value` actions, with off-by-default `screen` and `desktop_control` permissions, immediate focus revalidation, post-action accessibility-state evidence, resource locks, bounded native execution, explicit destructive confirmation, and no raw-frame persistence. Live Windows validation remains deferred when no Windows host is connected; raw input, OCR, browser control, and continuous screen streaming are not included in this slice.
 - Working, recent, and long-term memory persistence with SQLite and Prisma, workspace scoping, checksums, lineage, and schema-version controls.
@@ -262,9 +263,9 @@ The API Gateway consumes `api.internal.request` envelopes and publishes correlat
 | `permissions.get`          | Returns the current permission-grant snapshot                                                 |
 | `permissions.set`          | Updates a known permission source and returns the permission snapshot                         |
 | `browser.activity.capture` | Validates and routes one bounded browser tab-metadata event through the permissioned observer |
-| `memory.search`             | Searches workspace-scoped Working, Recent, and Long-term Memory with checksum validation    |
-| `memory.record`             | Reads one workspace-scoped memory record and its stored lineage                             |
-| `graph.query`               | Queries a fixed-ontology graph neighborhood with direction and depth bounds                 |
+| `memory.search`            | Searches workspace-scoped Working, Recent, and Long-term Memory with checksum validation      |
+| `memory.record`            | Reads one workspace-scoped memory record and its stored lineage                               |
+| `graph.query`              | Queries a fixed-ontology graph neighborhood with direction and depth bounds                   |
 
 Unknown operations return a typed `NOVA-TL004` error. Malformed routing fields return `NOVA-TL003`. Operation failures return retryable `NOVA-TL002` errors.
 

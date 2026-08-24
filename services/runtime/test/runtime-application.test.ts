@@ -156,6 +156,49 @@ describe("RuntimeApplication", () => {
     expect(appended).toEqual([expect.any(String)]);
   });
 
+  it("places tasks through the composed distributed coordinator and records the owning peer", async () => {
+    const application = createApplication();
+    applications.push(application);
+    const created = application.tasks.create({
+      task_id: "distributed-task",
+      goal: "render report",
+      owner_device_id: "laptop",
+    });
+    expect(created.ok).toBe(true);
+
+    const placed = application.placeTask({
+      task_id: "distributed-task",
+      origin_device_id: "laptop",
+      cross_peer_assignment_enabled: true,
+      peers: [
+        {
+          device_id: "laptop",
+          role: "full-peer",
+          reachable: true,
+          degraded: true,
+          resource_headroom: 0.1,
+          capabilities: [],
+        },
+        {
+          device_id: "desktop",
+          role: "full-peer",
+          reachable: true,
+          degraded: false,
+          resource_headroom: 0.8,
+          capabilities: [],
+        },
+      ],
+    });
+
+    expect(placed).toMatchObject({
+      ok: true,
+      value: {
+        task: { owner_device_id: "desktop" },
+        assignment: { device_id: "desktop", reassigned: true },
+      },
+    });
+  });
+
   it("exposes the authenticated WebSocket URL from the same composed application", async () => {
     const application = createApplication();
     applications.push(application);
