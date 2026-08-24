@@ -59,6 +59,12 @@ OAuth scopes requested follow least privilege
 never account-management or full-Drive-style broad grants, unless a
 specific feature explicitly requires more and discloses why.
 
+## Runtime diagnostics and privacy
+
+Email reads, draft validation, automation-rule updates, confirmation denials, successful sends, and provider failures emit local structured diagnostics. These records contain only bounded counts, stable reasons, and confirmation or automation-rule flags. Recipient addresses, subjects, bodies, message IDs, sender identities, attachment metadata, OAuth credentials, provider exception text, and provider response payloads are never logged.
+
+Sending remains blocked until explicit confirmation or an exact, individually configured automation rule matches the recipient and subject. The automation rule itself is not a blanket send bypass, and a provider failure remains a retryable typed result without leaking external-service details.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-11-internet-and-external-apis.md` — failure modes for this subsystem

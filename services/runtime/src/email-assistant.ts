@@ -1,3 +1,5 @@
+import type { StructuredLogger } from "@nova/shared";
+
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 
 export interface EmailMessage {
@@ -33,22 +35,38 @@ export interface EmailAutomationRule {
   readonly subject: string;
 }
 
+export interface EmailAssistantOptions {
+  readonly logger?: StructuredLogger;
+}
+
 export class EmailAssistant {
   private readonly automationRules: EmailAutomationRule[] = [];
+  private readonly logger: StructuredLogger | undefined;
 
-  public constructor(private readonly provider: EmailProvider) {}
+  public constructor(
+    private readonly provider: EmailProvider,
+    options: EmailAssistantOptions = {},
+  ) {
+    this.logger = options.logger;
+  }
 
   public async read(query: EmailQuery): Promise<Result<readonly EmailMessage[]>> {
     try {
-      return ok(await this.provider.read(query));
+      const messages = await this.provider.read(query);
+      this.logger?.info("email.read.completed", { message_count: messages.length });
+      return ok(messages);
     } catch {
+      this.logger?.warning("email.read.failed", { reason: "provider_failure" });
       return err({ code: "NOVA-AI002", message: "Email provider read failed.", retryable: true });
     }
   }
 
   public draft(input: EmailDraft): Result<EmailDraft> {
-    if (!input.to || !input.subject || !input.body)
+    if (!input.to || !input.subject || !input.body) {
+      this.logger?.warning("email.draft.rejected", { reason: "required_field_missing" });
       return err(this.validationError("Email drafts require recipient, subject, and body."));
+    }
+    this.logger?.info("email.draft.created", { has_recipient: true, has_subject: true });
     return ok({ ...input });
   }
 
@@ -56,17 +74,28 @@ export class EmailAssistant {
     const automationAllowed = this.automationRules.some(
       (rule) => rule.to === draft.to && rule.subject === draft.subject,
     );
-    if (!confirmed && !automationAllowed)
+    if (!confirmed && !automationAllowed) {
+      this.logger?.warning("email.send.rejected", { reason: "confirmation_required" });
       return err(this.securityError("Sending email requires explicit confirmation."));
+    }
     try {
-      return ok(await this.provider.send(draft));
+      const receipt = await this.provider.send(draft);
+      this.logger?.info("email.send.completed", {
+        confirmed,
+        automation_rule: automationAllowed,
+      });
+      return ok(receipt);
     } catch {
+      this.logger?.warning("email.send.failed", { reason: "provider_failure" });
       return err({ code: "NOVA-AI002", message: "Email provider send failed.", retryable: true });
     }
   }
 
   public addAutomationRule(rule: EmailAutomationRule): void {
     this.automationRules.push({ ...rule });
+    this.logger?.info("email.automation_rule.added", {
+      rule_count: this.automationRules.length,
+    });
   }
 
   private validationError(message: string): ErrorInfo {
