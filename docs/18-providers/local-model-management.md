@@ -41,6 +41,17 @@ implementing `provider-interface.md`; it is never a NOVA Core change.
    configurable idle period, surfaced in Settings as reclaimable disk
    space, deleted only on explicit confirmation.
 
+The runtime `LocalModelManager` implements the catalog-backed lifecycle
+boundary. Its discovery result carries the model/provider/domain metadata,
+minimum hardware tier, advisory availability label, and local lifecycle
+status. Downloads accept only HTTPS catalog URLs, verify the exact byte
+length and SHA-256 checksum before an atomic rename into the configured
+storage directory, and leave no unverified file behind. Loading is delegated
+to the catalog entry's adapter callback only after the stored file is
+verified again. Retirement changes metadata to `reclaimable` and never
+deletes model bytes; deletion is a separate explicit user action.
+Concurrent requests for the same model share one bounded download operation.
+
 ## User-supplied models
 
 Users may point NOVA at a local model file or directory outside the
