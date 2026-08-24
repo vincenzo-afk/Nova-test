@@ -73,6 +73,7 @@ import type {
   CompanionCapability,
   CompanionPermissionState,
 } from "./android-companion.js";
+import type { RemoteControlManager } from "./remote-control.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -126,6 +127,7 @@ export interface RuntimeApplicationOptions {
   readonly distributedTaskCoordinator?: DistributedTaskCoordinator;
   readonly crossDeviceSyncManager?: CrossDeviceSyncManager;
   readonly androidCompanionManager?: AndroidCompanionManager;
+  readonly remoteControlManager?: RemoteControlManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -155,6 +157,7 @@ export class RuntimeApplication {
   public readonly distributedTaskCoordinator: DistributedTaskCoordinator;
   public readonly crossDeviceSyncManager: CrossDeviceSyncManager | undefined;
   public readonly androidCompanionManager: AndroidCompanionManager | undefined;
+  public readonly remoteControlManager: RemoteControlManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -186,6 +189,7 @@ export class RuntimeApplication {
       options.distributedTaskCoordinator ?? new DistributedTaskCoordinator(this.tasks);
     this.crossDeviceSyncManager = options.crossDeviceSyncManager;
     this.androidCompanionManager = options.androidCompanionManager;
+    this.remoteControlManager = options.remoteControlManager;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -639,7 +643,10 @@ export class RuntimeApplication {
       });
     }
     const result = this.devicePairingManager.unpair(deviceId);
-    if (result.ok) this.sessionContinuityManager?.unregisterDevice(deviceId);
+    if (result.ok) {
+      this.sessionContinuityManager?.unregisterDevice(deviceId);
+      this.remoteControlManager?.revoke(deviceId);
+    }
     return result;
   }
 

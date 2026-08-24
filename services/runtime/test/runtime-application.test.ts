@@ -3,6 +3,7 @@ import { ok } from "@nova/shared";
 import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
 import { AndroidCompanionManager, type CompanionCapability } from "../src/android-companion.js";
+import { RemoteControlManager } from "../src/remote-control.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -359,7 +360,7 @@ describe("RuntimeApplication", () => {
     ).toMatchObject({ ok: true, value: { device_id: "android-1", state: "Trusted" } });
   });
 
-  it("revokes trusted devices through the composed runtime", () => {
+  it("revokes trusted devices through the composed runtime", async () => {
     const pairing = new DevicePairingManager({
       codeFactory: () => "PAIR",
       tokenFactory: () => "channel",
@@ -376,6 +377,18 @@ describe("RuntimeApplication", () => {
     });
     const continuity = new SessionContinuityManager({ now: () => 1000 });
     continuity.registerDevice("android-1", ["camera"]);
+    const remoteControl = new RemoteControlManager({
+      verify: () => true,
+      send: async () => undefined,
+    });
+    remoteControl.preApprove("android-1", 10_000);
+    expect(
+      remoteControl.requestSession({
+        session_id: "remote-session-1",
+        initiator_device_id: "android-1",
+        signature: "signature",
+      }),
+    ).toMatchObject({ ok: true, value: { state: "Active" } });
     const application = new RuntimeApplication({
       configuration,
       planner: new Planner({ deterministic: new Map() }),
@@ -386,12 +399,20 @@ describe("RuntimeApplication", () => {
       verifier: new Verifier(),
       devicePairingManager: pairing,
       sessionContinuityManager: continuity,
+      remoteControlManager: remoteControl,
     });
     applications.push(application);
 
     expect(application.revokeTrustedDevice("android-1")).toMatchObject({ ok: true });
     expect(application.listTrustedDevices()).toEqual([]);
     expect(application.listDeviceSnapshots()).toEqual([]);
+    expect(
+      await remoteControl.execute("remote-session-1", {
+        command_id: "command-1",
+        content: "status",
+        destructive: false,
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
     expect(application.revokeTrustedDevice("android-1")).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
