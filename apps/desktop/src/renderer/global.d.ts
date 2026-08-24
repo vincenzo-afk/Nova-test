@@ -72,6 +72,15 @@ declare global {
       }>;
       getMemoryRecord: (recordId: string) => Promise<DesktopMemoryRecord>;
       queryGraph: (input: DesktopGraphQueryInput) => Promise<DesktopGraphQueryResult>;
+      getTrustedDevices: () => Promise<
+        Array<{
+          device_id: string;
+          device_public_key: string;
+          runtime_mode: "Full peer" | "Companion";
+          state: "Trusted";
+          paired_at: number;
+        }>
+      >;
       getDiagnostics: () => Promise<{
         collected_at: string;
         partial: boolean;

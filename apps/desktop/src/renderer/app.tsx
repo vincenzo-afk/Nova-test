@@ -43,6 +43,7 @@ type DesktopDiagnosticRecord = Awaited<
 type DesktopUpdateInfo = Awaited<ReturnType<typeof window.nova.getUpdateInfo>>;
 type DesktopWorkflowDraft = Parameters<typeof window.nova.validateWorkflow>[0];
 type DesktopWorkflowValidation = Awaited<ReturnType<typeof window.nova.validateWorkflow>>;
+type DesktopTrustedDevice = Awaited<ReturnType<typeof window.nova.getTrustedDevices>>[number];
 
 const actionPermissionSources = new Set(["screen", "desktop_control"]);
 const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
@@ -2034,12 +2035,36 @@ const DevicesView = ({
   ) => Promise<NovaConfiguration>;
 }) => {
   const devices = configuration?.devices ?? [];
+  const [trustedDevices, setTrustedDevices] = useState<readonly DesktopTrustedDevice[]>([]);
+  const [trustedState, setTrustedState] = useState<"loading" | "ready" | "error">("loading");
+  const [trustedError, setTrustedError] = useState<string | null>(null);
   const [devicesText, setDevicesText] = useState(JSON.stringify(devices, null, 2));
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
     setDevicesText(JSON.stringify(configuration?.devices ?? [], null, 2));
   }, [configuration?.devices]);
+
+  useEffect(() => {
+    let active = true;
+    void window.nova
+      .getTrustedDevices()
+      .then((next) => {
+        if (!active) return;
+        setTrustedDevices(next);
+        setTrustedState("ready");
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setTrustedState("error");
+        setTrustedError(
+          cause instanceof Error ? cause.message : "Trusted devices are unavailable.",
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const save = async () => {
     let next: unknown;
@@ -2099,6 +2124,32 @@ const DevicesView = ({
             <strong>Sync boundary</strong>
             <p>Hosted sync is not enabled by this local-first source checkout.</p>
             <span className="muted">No network pairing action runs silently.</span>
+          </article>
+          <article className="surface-card trusted-devices-card">
+            <div className="task-header">
+              <strong>Trusted paired devices</strong>
+              {trustedState === "ready" ? (
+                <span className="task-status">{trustedDevices.length}</span>
+              ) : null}
+            </div>
+            {trustedState === "loading" ? (
+              <span className="muted">Loading trusted-device inventory…</span>
+            ) : trustedState === "error" ? (
+              <span className="muted">{trustedError}</span>
+            ) : trustedDevices.length === 0 ? (
+              <span className="muted">No trusted devices are paired with this runtime.</span>
+            ) : (
+              <div className="trusted-device-list">
+                {trustedDevices.map((device) => (
+                  <div className="trusted-device-row" key={device.device_id}>
+                    <strong>{device.device_id}</strong>
+                    <span className="muted">
+                      {device.runtime_mode} · {device.state}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
           <article className="surface-card device-editor-card">
             <label htmlFor="devices-json">Device records (JSON array)</label>

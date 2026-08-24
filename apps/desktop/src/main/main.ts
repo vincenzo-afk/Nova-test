@@ -147,6 +147,7 @@ ipcMain.handle("nova:memory:record", (_event, payload: { readonly record_id: str
 ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
   requestGateway("graph.query", payload),
 );
+ipcMain.handle("nova:devices:trusted", () => requestGateway("devices.trusted", undefined));
 ipcMain.handle("nova:diagnostics:get", () => requestGateway("diagnostics.get", undefined));
 ipcMain.handle("nova:updates:get", () => requestGateway("updates.get", undefined));
 ipcMain.handle("nova:workflow:validate", (_event, payload: WorkflowDraft) =>
@@ -280,6 +281,10 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("devices.trusted", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.listTrustedDevices();
   });
   gateway.register("diagnostics.get", async () => readDiagnostics(diagnosticsPath));
   gateway.register("updates.get", async () => readUpdateInfo(packagePath, changelogPath));
