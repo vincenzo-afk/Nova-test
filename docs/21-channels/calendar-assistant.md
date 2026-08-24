@@ -47,6 +47,12 @@ across all connected calendars and surfaces them as part of the
 confirmation step rather than silently double-booking or silently
 picking a resolution.
 
+## Runtime diagnostics and privacy
+
+Calendar reads, proposals, conflict detection, confirmation denials, provider failures, and successful writes emit local structured diagnostics. These records contain only bounded provider/event/conflict/attendee counts, ownership and external-effect flags, stable reasons, and result status. Event titles, event IDs, attendee addresses, locations, descriptions, OAuth credentials, and provider response payloads are never logged.
+
+A provider read or write failure remains a retryable typed result and does not expose the provider's exception text. Conflict detection and confirmation requirements are evaluated before any external write, and rejected operations do not call the provider's create method.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-11-internet-and-external-apis.md` — failure modes for this subsystem
