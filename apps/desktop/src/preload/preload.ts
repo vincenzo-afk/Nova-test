@@ -10,6 +10,8 @@ const novaApi = {
   getMemoryRecord: (recordId: string) =>
     ipcRenderer.invoke("nova:memory:record", { record_id: recordId }),
   queryGraph: (input: unknown) => ipcRenderer.invoke("nova:graph:query", input),
+  revokeTrustedDevice: (deviceId: string) =>
+    ipcRenderer.invoke("nova:devices:revoke", { device_id: deviceId }),
   getTrustedDevices: () => ipcRenderer.invoke("nova:devices:trusted"),
   getDeviceSnapshots: () => ipcRenderer.invoke("nova:devices:snapshots"),
   negotiateDeviceCapability: (deviceId: string, capabilityId: string) =>

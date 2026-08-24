@@ -72,6 +72,10 @@ declare global {
       }>;
       getMemoryRecord: (recordId: string) => Promise<DesktopMemoryRecord>;
       queryGraph: (input: DesktopGraphQueryInput) => Promise<DesktopGraphQueryResult>;
+      revokeTrustedDevice: (deviceId: string) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       getTrustedDevices: () => Promise<
         Array<{
           device_id: string;

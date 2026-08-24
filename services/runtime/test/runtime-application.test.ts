@@ -224,6 +224,41 @@ describe("RuntimeApplication", () => {
     ]);
   });
 
+  it("revokes trusted devices through the composed runtime", () => {
+    const pairing = new DevicePairingManager({
+      codeFactory: () => "PAIR",
+      tokenFactory: () => "channel",
+      verifySignature: () => true,
+    });
+    pairing.createOffer({ runtime_mode: "Companion", primary_public_key: "primary" });
+    pairing.completePairing("PAIR", {
+      device_id: "android-1",
+      device_public_key: "public-key",
+      challenge: "challenge",
+      signature: "signature",
+      runtime_mode: "Companion",
+      confirmed: true,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      devicePairingManager: pairing,
+    });
+    applications.push(application);
+
+    expect(application.revokeTrustedDevice("android-1")).toMatchObject({ ok: true });
+    expect(application.listTrustedDevices()).toEqual([]);
+    expect(application.revokeTrustedDevice("android-1")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+  });
+
   it("places tasks through the composed distributed coordinator and records the owning peer", async () => {
     const application = createApplication();
     applications.push(application);

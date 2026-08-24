@@ -2039,6 +2039,8 @@ const DevicesView = ({
   const [trustedDevices, setTrustedDevices] = useState<readonly DesktopTrustedDevice[]>([]);
   const [trustedState, setTrustedState] = useState<"loading" | "ready" | "error">("loading");
   const [trustedError, setTrustedError] = useState<string | null>(null);
+  const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const [deviceSnapshots, setDeviceSnapshots] = useState<readonly DesktopDeviceSnapshot[]>([]);
   const [snapshotState, setSnapshotState] = useState<"loading" | "ready" | "error">("loading");
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
@@ -2102,6 +2104,26 @@ const DevicesView = ({
       active = false;
     };
   }, []);
+
+  const revoke = async (deviceId: string) => {
+    if (!window.confirm(`Revoke Nova access for ${deviceId}?`)) return;
+    setRevokingDeviceId(deviceId);
+    setRevokeError(null);
+    try {
+      const result = await window.nova.revokeTrustedDevice(deviceId);
+      if (!result.ok) {
+        setRevokeError(result.error?.message ?? "Device access could not be revoked.");
+        return;
+      }
+      setTrustedDevices((current) => current.filter((device) => device.device_id !== deviceId));
+    } catch (cause: unknown) {
+      setRevokeError(
+        cause instanceof Error ? cause.message : "Device access could not be revoked.",
+      );
+    } finally {
+      setRevokingDeviceId(null);
+    }
+  };
 
   const negotiate = async () => {
     if (!negotiationDeviceId || !negotiationCapability.trim()) {
@@ -2199,6 +2221,11 @@ const DevicesView = ({
                 <span className="task-status">{trustedDevices.length}</span>
               ) : null}
             </div>
+            {revokeError ? (
+              <p className="muted" role="alert">
+                {revokeError}
+              </p>
+            ) : null}
             {trustedState === "loading" ? (
               <span className="muted">Loading trusted-device inventory…</span>
             ) : trustedState === "error" ? (
@@ -2209,10 +2236,21 @@ const DevicesView = ({
               <div className="trusted-device-list">
                 {trustedDevices.map((device) => (
                   <div className="trusted-device-row" key={device.device_id}>
-                    <strong>{device.device_id}</strong>
-                    <span className="muted">
-                      {device.runtime_mode} · {device.state}
-                    </span>
+                    <div>
+                      <strong>{device.device_id}</strong>
+                      <span className="muted">
+                        {device.runtime_mode} · {device.state}
+                      </span>
+                    </div>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => void revoke(device.device_id)}
+                      disabled={revokingDeviceId !== null}
+                      aria-label={`Revoke access for ${device.device_id}`}
+                    >
+                      {revokingDeviceId === device.device_id ? "Revoking…" : "Revoke access"}
+                    </button>
                   </div>
                 ))}
               </div>

@@ -147,6 +147,9 @@ ipcMain.handle("nova:memory:record", (_event, payload: { readonly record_id: str
 ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
   requestGateway("graph.query", payload),
 );
+ipcMain.handle("nova:devices:revoke", (_event, payload: { readonly device_id: string }) =>
+  requestGateway("devices.revoke", payload),
+);
 ipcMain.handle("nova:devices:trusted", () => requestGateway("devices.trusted", undefined));
 ipcMain.handle("nova:devices:snapshots", () => requestGateway("devices.snapshots", undefined));
 ipcMain.handle(
@@ -287,6 +290,14 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("devices.revoke", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly device_id?: string };
+    if (!payload.device_id) throw new Error("Device ID is required.");
+    const result = runtimeApplication.revokeTrustedDevice(payload.device_id);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("devices.trusted", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
