@@ -401,6 +401,12 @@ export const App = () => {
               error={configurationError}
               onUpdate={updateConfiguration}
             />
+          ) : view === "devices" ? (
+            <DevicesView
+              configuration={configuration}
+              error={configurationError}
+              onUpdate={updateConfiguration}
+            />
           ) : view === "settings" ? (
             <SettingsView
               configuration={configuration}
@@ -1733,6 +1739,108 @@ const UpdatesView = () => {
           )}
         </div>
       ) : null}
+    </section>
+  );
+};
+
+const DevicesView = ({
+  configuration,
+  error,
+  onUpdate,
+}: {
+  configuration: NovaConfiguration | null;
+  error: string | null;
+  onUpdate: (
+    section: ConfigurationSectionName,
+    value: NovaConfiguration[ConfigurationSectionName],
+  ) => Promise<NovaConfiguration>;
+}) => {
+  const devices = configuration?.devices ?? [];
+  const [devicesText, setDevicesText] = useState(JSON.stringify(devices, null, 2));
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDevicesText(JSON.stringify(configuration?.devices ?? [], null, 2));
+  }, [configuration?.devices]);
+
+  const save = async () => {
+    let next: unknown;
+    try {
+      next = JSON.parse(devicesText) as unknown;
+    } catch {
+      setStatus("Device configuration must be valid JSON.");
+      return;
+    }
+    if (!Array.isArray(next)) {
+      setStatus("Device configuration must be a JSON array.");
+      return;
+    }
+    try {
+      await onUpdate("devices", next);
+      setStatus("Device configuration saved locally.");
+    } catch (cause: unknown) {
+      setStatus(
+        cause instanceof Error ? cause.message : "Device configuration could not be saved.",
+      );
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="devices-title">
+      <div className="section-kicker">Device Management / Local configuration</div>
+      <h1 id="devices-title">Manage paired device records.</h1>
+      <p className="lede">
+        Device records are stored as validated local configuration. Pairing, presence, capability,
+        and sync services can consume these records without exposing credentials in the renderer.
+      </p>
+      {error ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>Device configuration unavailable</strong>
+          <span className="muted">{error}</span>
+        </div>
+      ) : null}
+      {configuration === null ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading devices</strong>
+          <span className="muted">Reading the local configuration store.</span>
+        </div>
+      ) : (
+        <div className="surface-grid">
+          <article className="surface-card">
+            <div className="task-header">
+              <strong>Configured devices</strong>
+              <span className="task-status">{devices.length}</span>
+            </div>
+            <p>
+              {devices.length === 0
+                ? "No paired device records are configured. Add a record below when a companion is ready."
+                : "Paired records are available to the runtime boundary."}
+            </p>
+          </article>
+          <article className="surface-card">
+            <strong>Sync boundary</strong>
+            <p>Hosted sync is not enabled by this local-first source checkout.</p>
+            <span className="muted">No network pairing action runs silently.</span>
+          </article>
+          <article className="surface-card device-editor-card">
+            <label htmlFor="devices-json">Device records (JSON array)</label>
+            <textarea
+              id="devices-json"
+              rows={12}
+              value={devicesText}
+              onChange={(event) => setDevicesText(event.target.value)}
+            />
+            <button type="button" onClick={() => void save()}>
+              Save device records
+            </button>
+            {status ? (
+              <p className="muted" role="status">
+                {status}
+              </p>
+            ) : null}
+          </article>
+        </div>
+      )}
     </section>
   );
 };
