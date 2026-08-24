@@ -5,6 +5,7 @@ import { KnowledgeGraph } from "../src/knowledge-graph.js";
 import { AndroidCompanionManager, type CompanionCapability } from "../src/android-companion.js";
 import { RemoteControlManager } from "../src/remote-control.js";
 import { EmailAssistant, type EmailDraft } from "../src/email-assistant.js";
+import { CalendarAssistant, type CalendarDraft } from "../src/calendar-assistant.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -141,6 +142,48 @@ describe("RuntimeApplication", () => {
     expect(await application.sendEmail(draft, true)).toMatchObject({
       ok: true,
       value: { message_id: "sent-1" },
+    });
+  });
+
+  it("routes calendar reads, proposals, and confirmed creates through the composed runtime", async () => {
+    const calendar = new CalendarAssistant([
+      {
+        calendar_id: "personal",
+        list: async () => [],
+        create: async (draft) => ({ id: "event-1", ...draft }),
+      },
+    ]);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      calendarAssistant: calendar,
+    });
+    applications.push(application);
+
+    expect(await application.upcomingCalendarEvents()).toMatchObject({ ok: true, value: [] });
+    const draft: CalendarDraft = {
+      title: "Planning",
+      start: 100,
+      end: 200,
+      attendees: ["guest@example.com"],
+      owner: true,
+    };
+    expect(await application.proposeCalendarEvent(draft)).toMatchObject({
+      ok: true,
+      value: { title: "Planning", conflicts: [] },
+    });
+    expect(await application.createCalendarEvent(draft, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.createCalendarEvent(draft, true)).toMatchObject({
+      ok: true,
+      value: { id: "event-1" },
     });
   });
 

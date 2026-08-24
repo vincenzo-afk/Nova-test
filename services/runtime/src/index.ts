@@ -10,6 +10,7 @@ export * from "./runtime-application.js";
 export * from "./device-pairing.js";
 export * from "./android-companion.js";
 export * from "./email-assistant.js";
+export * from "./calendar-assistant.js";
 export * from "./orchestration.js";
 export * from "./task-manager.js";
 export * from "./permission-grant-store.js";

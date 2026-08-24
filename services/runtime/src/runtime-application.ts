@@ -82,6 +82,12 @@ import type {
   EmailSendReceipt,
 } from "./email-assistant.js";
 import type {
+  CalendarAssistant,
+  CalendarDraft,
+  CalendarEvent,
+  CalendarProposal,
+} from "./calendar-assistant.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -136,6 +142,7 @@ export interface RuntimeApplicationOptions {
   readonly androidCompanionManager?: AndroidCompanionManager;
   readonly remoteControlManager?: RemoteControlManager;
   readonly emailAssistant?: EmailAssistant;
+  readonly calendarAssistant?: CalendarAssistant;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -167,6 +174,7 @@ export class RuntimeApplication {
   public readonly androidCompanionManager: AndroidCompanionManager | undefined;
   public readonly remoteControlManager: RemoteControlManager | undefined;
   public readonly emailAssistant: EmailAssistant | undefined;
+  public readonly calendarAssistant: CalendarAssistant | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -200,6 +208,7 @@ export class RuntimeApplication {
     this.androidCompanionManager = options.androidCompanionManager;
     this.remoteControlManager = options.remoteControlManager;
     this.emailAssistant = options.emailAssistant;
+    this.calendarAssistant = options.calendarAssistant;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -568,6 +577,42 @@ export class RuntimeApplication {
       });
     }
     return this.androidCompanionManager.use(capability);
+  }
+
+  public async upcomingCalendarEvents(): Promise<Result<readonly CalendarEvent[]>> {
+    if (!this.calendarAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Calendar assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.calendarAssistant.upcoming();
+  }
+
+  public async proposeCalendarEvent(draft: CalendarDraft): Promise<Result<CalendarProposal>> {
+    if (!this.calendarAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Calendar assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.calendarAssistant.propose(draft);
+  }
+
+  public async createCalendarEvent(
+    draft: CalendarDraft,
+    confirmed: boolean,
+  ): Promise<Result<CalendarEvent>> {
+    if (!this.calendarAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Calendar assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.calendarAssistant.create(draft, confirmed);
   }
 
   public async readEmail(query: EmailQuery): Promise<Result<readonly EmailMessage[]>> {

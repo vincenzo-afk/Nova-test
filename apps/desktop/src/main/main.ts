@@ -15,6 +15,7 @@ import {
   type CompanionCapability,
   type EmailDraft,
   type EmailQuery,
+  type CalendarDraft,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -42,6 +43,39 @@ interface TaskSnapshot {
   readonly state: string;
   readonly retry_count?: number;
 }
+
+const parseCalendarDraft = (data: unknown): CalendarDraft => {
+  const draft = data as {
+    readonly title?: unknown;
+    readonly start?: unknown;
+    readonly end?: unknown;
+    readonly attendees?: unknown;
+    readonly owner?: unknown;
+  };
+  if (
+    typeof draft.title !== "string" ||
+    draft.title.trim() === "" ||
+    typeof draft.start !== "number" ||
+    !Number.isFinite(draft.start) ||
+    typeof draft.end !== "number" ||
+    !Number.isFinite(draft.end) ||
+    draft.end <= draft.start ||
+    !Array.isArray(draft.attendees) ||
+    !draft.attendees.every(
+      (attendee): attendee is string => typeof attendee === "string" && attendee.trim() !== "",
+    ) ||
+    typeof draft.owner !== "boolean"
+  ) {
+    throw new Error("Calendar draft fields are invalid.");
+  }
+  return {
+    title: draft.title,
+    start: draft.start,
+    end: draft.end,
+    attendees: draft.attendees,
+    owner: draft.owner,
+  } satisfies CalendarDraft;
+};
 let gatewayBus: NamedPipeCommunicationBus | undefined;
 let runtimeApplication: RuntimeApplication | undefined;
 let desktopAgent: DesktopAgentController | undefined;
@@ -166,6 +200,15 @@ ipcMain.handle("nova:companion:foreground-start", () =>
 );
 ipcMain.handle("nova:companion:foreground-stop", () =>
   requestGateway("companion.foreground-stop", undefined),
+);
+ipcMain.handle("nova:calendar:upcoming", () => requestGateway("calendar.upcoming", undefined));
+ipcMain.handle("nova:calendar:propose", (_event, draft: CalendarDraft) =>
+  requestGateway("calendar.propose", draft),
+);
+ipcMain.handle(
+  "nova:calendar:create",
+  (_event, payload: { readonly draft: CalendarDraft; readonly confirmed: boolean }) =>
+    requestGateway("calendar.create", payload),
 );
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
@@ -344,6 +387,30 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("calendar.upcoming", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.upcomingCalendarEvents();
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("calendar.propose", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.proposeCalendarEvent(parseCalendarDraft(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("calendar.create", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly draft?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Calendar confirmation is required.");
+    const result = await runtimeApplication.createCalendarEvent(
+      parseCalendarDraft(payload.draft),
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("email.read", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
