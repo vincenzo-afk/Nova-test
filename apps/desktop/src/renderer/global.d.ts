@@ -253,6 +253,46 @@ declare global {
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      generatePersonalAnalytics: (input: {
+        period: { from: string; to: string };
+        activity: readonly {
+          occurred_at: string;
+          source: string;
+          domain: string;
+          label: string;
+          duration_ms: number;
+        }[];
+        tasks: readonly { task_id: string; state: string; updated_at: string }[];
+        provider_usage: readonly {
+          occurred_at: string;
+          capability_id: string;
+          provider_id: string;
+          request_count: number;
+          cost: number;
+        }[];
+        communications: readonly {
+          occurred_at: string;
+          channel: string;
+          topic: string;
+          message_count: number;
+        }[];
+      }) => {
+        period: { from: string; to: string };
+        time_allocation: readonly { domain: string; label: string; duration_ms: number }[];
+        task_summary: { completed: number; in_progress: number; abandoned: number };
+        provider_usage: readonly {
+          capability_id: string;
+          provider_id: string;
+          request_count: number;
+          cost: number;
+        }[];
+        communication_summary: readonly { channel: string; topic: string; message_count: number }[];
+        totals: {
+          activity_duration_ms: number;
+          provider_cost: number;
+          communication_messages: number;
+        };
+      };
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

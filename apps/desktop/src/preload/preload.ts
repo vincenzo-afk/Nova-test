@@ -50,6 +50,8 @@ const novaApi = {
   pendingAdaptivePreferences: () => ipcRenderer.invoke("nova:personalization:pending"),
   resetAdaptivePreference: (preferenceId?: string) =>
     ipcRenderer.invoke("nova:personalization:reset", preferenceId),
+  generatePersonalAnalytics: (input: unknown) =>
+    ipcRenderer.invoke("nova:analytics:generate", input),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

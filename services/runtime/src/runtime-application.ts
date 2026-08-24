@@ -99,6 +99,11 @@ import {
   type AdaptivePreferenceInput,
   type AdaptivePreferenceProposal,
 } from "./adaptive-personalization.js";
+import {
+  PersonalAnalytics,
+  type AnalyticsInput,
+  type AnalyticsReport,
+} from "./personal-analytics.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -158,6 +163,7 @@ export interface RuntimeApplicationOptions {
   readonly channelManager?: ChannelManager;
   readonly backgroundAssistant?: BackgroundAssistant;
   readonly adaptivePersonalization?: AdaptivePersonalization;
+  readonly personalAnalytics?: PersonalAnalytics;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -193,6 +199,7 @@ export class RuntimeApplication {
   public readonly channelManager: ChannelManager | undefined;
   public readonly backgroundAssistant: BackgroundAssistant | undefined;
   public readonly adaptivePersonalization: AdaptivePersonalization | undefined;
+  public readonly personalAnalytics: PersonalAnalytics;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -249,6 +256,7 @@ export class RuntimeApplication {
     this.adaptivePersonalization =
       options.adaptivePersonalization ??
       new AdaptivePersonalization(this.configuration, undefined, this.logger);
+    this.personalAnalytics = options.personalAnalytics ?? new PersonalAnalytics(this.logger);
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -622,6 +630,10 @@ export class RuntimeApplication {
       });
     }
     return await this.backgroundAssistant.deliver(briefing);
+  }
+
+  public generatePersonalAnalytics(input: AnalyticsInput): AnalyticsReport {
+    return this.personalAnalytics.generate(input);
   }
 
   public proposeAdaptivePreference(

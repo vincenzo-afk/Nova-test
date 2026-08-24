@@ -10,6 +10,7 @@ import { ChannelManager, type ChannelAdapter } from "../src/channel-adapter.js";
 import { BackgroundAssistant } from "../src/background-assistant.js";
 import { AdaptivePersonalization } from "../src/adaptive-personalization.js";
 import { ConfigurationStore } from "../src/configuration-store.js";
+import { PersonalAnalytics, type AnalyticsInput } from "../src/personal-analytics.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -338,6 +339,40 @@ describe("RuntimeApplication", () => {
     expect(application.configuration.snapshot().personalization.preferences).toMatchObject([
       { id: "tone.concise", source: "feedback" },
     ]);
+  });
+
+  it("delegates personal analytics over caller-supplied permissioned records", () => {
+    const input: AnalyticsInput = {
+      period: { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" },
+      activity: [
+        {
+          occurred_at: "2026-08-02T00:00:00.000Z",
+          source: "applications",
+          domain: "development",
+          label: "Editor",
+          duration_ms: 1_000,
+        },
+      ],
+      tasks: [],
+      provider_usage: [],
+      communications: [],
+    };
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      personalAnalytics: new PersonalAnalytics(),
+    });
+    applications.push(application);
+
+    expect(application.generatePersonalAnalytics(input)).toMatchObject({
+      period: input.period,
+      totals: { activity_duration_ms: 1_000 },
+    });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

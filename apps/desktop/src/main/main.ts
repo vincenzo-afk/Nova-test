@@ -21,6 +21,8 @@ import {
   type BriefingTrigger,
   type AdaptivePreferenceInput,
   type AdaptivePreferenceProposal,
+  type AnalyticsInput,
+  type AnalyticsReport,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -85,6 +87,95 @@ const parseBriefingTrigger = (value: unknown): BriefingTrigger => {
   if (value === "time-based" || value === "event-based" || value === "explicit-request")
     return value;
   throw new Error("Briefing trigger is invalid.");
+};
+
+const parseAnalyticsInput = (data: unknown): AnalyticsInput => {
+  const input = data as {
+    readonly period?: { readonly from?: unknown; readonly to?: unknown };
+    readonly activity?: unknown;
+    readonly tasks?: unknown;
+    readonly provider_usage?: unknown;
+    readonly communications?: unknown;
+  };
+  if (
+    typeof input.period?.from !== "string" ||
+    typeof input.period.to !== "string" ||
+    !Array.isArray(input.activity) ||
+    !Array.isArray(input.tasks) ||
+    !Array.isArray(input.provider_usage) ||
+    !Array.isArray(input.communications)
+  ) {
+    throw new Error("Analytics input fields are invalid.");
+  }
+  const activity = input.activity.map((event) => {
+    const value = event as Record<string, unknown>;
+    if (
+      typeof value.occurred_at !== "string" ||
+      typeof value.source !== "string" ||
+      typeof value.domain !== "string" ||
+      typeof value.label !== "string" ||
+      typeof value.duration_ms !== "number"
+    )
+      throw new Error("Analytics activity event is invalid.");
+    return {
+      occurred_at: value.occurred_at,
+      source: value.source,
+      domain: value.domain,
+      label: value.label,
+      duration_ms: value.duration_ms,
+    };
+  });
+  const tasks = input.tasks.map((task) => {
+    const value = task as Record<string, unknown>;
+    if (
+      typeof value.task_id !== "string" ||
+      typeof value.state !== "string" ||
+      typeof value.updated_at !== "string"
+    )
+      throw new Error("Analytics task record is invalid.");
+    return { task_id: value.task_id, state: value.state, updated_at: value.updated_at };
+  });
+  const providerUsage = input.provider_usage.map((event) => {
+    const value = event as Record<string, unknown>;
+    if (
+      typeof value.occurred_at !== "string" ||
+      typeof value.capability_id !== "string" ||
+      typeof value.provider_id !== "string" ||
+      typeof value.request_count !== "number" ||
+      typeof value.cost !== "number"
+    )
+      throw new Error("Analytics provider usage event is invalid.");
+    return {
+      occurred_at: value.occurred_at,
+      capability_id: value.capability_id,
+      provider_id: value.provider_id,
+      request_count: value.request_count,
+      cost: value.cost,
+    };
+  });
+  const communications = input.communications.map((event) => {
+    const value = event as Record<string, unknown>;
+    if (
+      typeof value.occurred_at !== "string" ||
+      typeof value.channel !== "string" ||
+      typeof value.topic !== "string" ||
+      typeof value.message_count !== "number"
+    )
+      throw new Error("Analytics communication event is invalid.");
+    return {
+      occurred_at: value.occurred_at,
+      channel: value.channel,
+      topic: value.topic,
+      message_count: value.message_count,
+    };
+  });
+  return {
+    period: { from: input.period.from, to: input.period.to },
+    activity,
+    tasks: tasks as AnalyticsInput["tasks"],
+    provider_usage: providerUsage,
+    communications,
+  } satisfies AnalyticsInput;
 };
 
 const parseAdaptivePreferenceInput = (data: unknown): AdaptivePreferenceInput => {
@@ -311,6 +402,9 @@ ipcMain.handle("nova:personalization:pending", () =>
 );
 ipcMain.handle("nova:personalization:reset", (_event, preferenceId?: string) =>
   requestGateway("personalization.reset", { preference_id: preferenceId }),
+);
+ipcMain.handle("nova:analytics:generate", (_event, input: AnalyticsInput) =>
+  requestGateway("analytics.generate", input),
 );
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
@@ -541,6 +635,12 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.resetAdaptivePreference(payload.preference_id);
     if (!result.ok) throw new Error(result.error.message);
     return result;
+  });
+  gateway.register("analytics.generate", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.generatePersonalAnalytics(
+      parseAnalyticsInput(data),
+    ) satisfies AnalyticsReport;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
