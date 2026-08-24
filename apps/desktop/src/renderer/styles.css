@@ -829,3 +829,40 @@ h2 {
     flex-direction: column;
   }
 }
+
+.negotiation-card {
+  min-height: 0;
+}
+.negotiation-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.negotiation-fields label {
+  display: grid;
+  gap: 6px;
+  color: #9ba7c2;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.negotiation-fields input,
+.negotiation-fields select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #40506f;
+  border-radius: 8px;
+  color: #eef2fa;
+  background: #0d1325;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+@media (max-width: 680px) {
+  .negotiation-fields {
+    grid-template-columns: 1fr;
+  }
+}

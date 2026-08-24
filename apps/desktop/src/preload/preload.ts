@@ -12,6 +12,11 @@ const novaApi = {
   queryGraph: (input: unknown) => ipcRenderer.invoke("nova:graph:query", input),
   getTrustedDevices: () => ipcRenderer.invoke("nova:devices:trusted"),
   getDeviceSnapshots: () => ipcRenderer.invoke("nova:devices:snapshots"),
+  negotiateDeviceCapability: (deviceId: string, capabilityId: string) =>
+    ipcRenderer.invoke("nova:devices:negotiate", {
+      device_id: deviceId,
+      capability_id: capabilityId,
+    }),
   getDiagnostics: () => ipcRenderer.invoke("nova:diagnostics:get"),
   getUpdateInfo: () => ipcRenderer.invoke("nova:updates:get"),
   validateWorkflow: (draft: unknown) => ipcRenderer.invoke("nova:workflow:validate", draft),

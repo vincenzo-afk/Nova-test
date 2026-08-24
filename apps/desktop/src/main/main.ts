@@ -149,6 +149,11 @@ ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
 );
 ipcMain.handle("nova:devices:trusted", () => requestGateway("devices.trusted", undefined));
 ipcMain.handle("nova:devices:snapshots", () => requestGateway("devices.snapshots", undefined));
+ipcMain.handle(
+  "nova:devices:negotiate",
+  (_event, payload: { readonly device_id: string; readonly capability_id: string }) =>
+    requestGateway("devices.negotiate", payload),
+);
 ipcMain.handle("nova:diagnostics:get", () => requestGateway("diagnostics.get", undefined));
 ipcMain.handle("nova:updates:get", () => requestGateway("updates.get", undefined));
 ipcMain.handle("nova:workflow:validate", (_event, payload: WorkflowDraft) =>
@@ -290,6 +295,16 @@ const startGateway = async (): Promise<void> => {
   gateway.register("devices.snapshots", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     return runtimeApplication.listDeviceSnapshots();
+  });
+  gateway.register("devices.negotiate", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly device_id: string; readonly capability_id: string };
+    const result = runtimeApplication.negotiateDeviceCapability(
+      payload.device_id,
+      payload.capability_id,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("diagnostics.get", async () => readDiagnostics(diagnosticsPath));
   gateway.register("updates.get", async () => readUpdateInfo(packagePath, changelogPath));

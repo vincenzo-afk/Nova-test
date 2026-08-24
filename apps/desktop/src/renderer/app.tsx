@@ -2042,6 +2042,17 @@ const DevicesView = ({
   const [deviceSnapshots, setDeviceSnapshots] = useState<readonly DesktopDeviceSnapshot[]>([]);
   const [snapshotState, setSnapshotState] = useState<"loading" | "ready" | "error">("loading");
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  const [negotiationDeviceId, setNegotiationDeviceId] = useState("");
+  const [negotiationCapability, setNegotiationCapability] = useState("");
+  const [negotiationState, setNegotiationState] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle",
+  );
+  const [negotiationResult, setNegotiationResult] = useState<{
+    device_id: string;
+    capability_id: string;
+    status: string;
+  } | null>(null);
+  const [negotiationError, setNegotiationError] = useState<string | null>(null);
   const [devicesText, setDevicesText] = useState(JSON.stringify(devices, null, 2));
   const [status, setStatus] = useState<string | null>(null);
 
@@ -2078,6 +2089,7 @@ const DevicesView = ({
         if (!active) return;
         setDeviceSnapshots(next);
         setSnapshotState("ready");
+        setNegotiationDeviceId((current) => current || next[0]?.device_id || "");
       })
       .catch((cause: unknown) => {
         if (!active) return;
@@ -2090,6 +2102,36 @@ const DevicesView = ({
       active = false;
     };
   }, []);
+
+  const negotiate = async () => {
+    if (!negotiationDeviceId || !negotiationCapability.trim()) {
+      setNegotiationState("error");
+      setNegotiationError("Choose a device and enter a capability before negotiating.");
+      return;
+    }
+    setNegotiationState("loading");
+    setNegotiationError(null);
+    try {
+      const result = await window.nova.negotiateDeviceCapability(
+        negotiationDeviceId,
+        negotiationCapability.trim(),
+      );
+      if (!result.ok || !result.value) {
+        setNegotiationState("error");
+        setNegotiationError(result.error?.message ?? "Capability negotiation failed.");
+        setNegotiationResult(null);
+        return;
+      }
+      setNegotiationResult(result.value);
+      setNegotiationState("ready");
+    } catch (cause: unknown) {
+      setNegotiationState("error");
+      setNegotiationError(
+        cause instanceof Error ? cause.message : "Capability negotiation failed.",
+      );
+      setNegotiationResult(null);
+    }
+  };
 
   const save = async () => {
     let next: unknown;
@@ -2204,6 +2246,54 @@ const DevicesView = ({
                 ))}
               </div>
             )}
+          </article>
+          <article className="surface-card negotiation-card">
+            <div className="task-header">
+              <strong>Negotiate a capability</strong>
+              <span className="muted">re-check before remote execution</span>
+            </div>
+            <div className="negotiation-fields">
+              <label>
+                Device
+                <select
+                  value={negotiationDeviceId}
+                  onChange={(event) => setNegotiationDeviceId(event.target.value)}
+                >
+                  <option value="">Select a device</option>
+                  {deviceSnapshots.map((device) => (
+                    <option key={device.device_id} value={device.device_id}>
+                      {device.device_id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Capability
+                <input
+                  value={negotiationCapability}
+                  onChange={(event) => setNegotiationCapability(event.target.value)}
+                  placeholder="camera, microphone, gps"
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={() => void negotiate()}
+              disabled={negotiationState === "loading"}
+            >
+              {negotiationState === "loading" ? "Checking…" : "Check capability"}
+            </button>
+            {negotiationState === "error" ? (
+              <p className="muted" role="alert">
+                {negotiationError}
+              </p>
+            ) : null}
+            {negotiationResult ? (
+              <p className="muted" role="status">
+                {negotiationResult.device_id} · {negotiationResult.capability_id} ·{" "}
+                {negotiationResult.status}
+              </p>
+            ) : null}
           </article>
           <article className="surface-card device-editor-card">
             <label htmlFor="devices-json">Device records (JSON array)</label>

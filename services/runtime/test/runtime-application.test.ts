@@ -6,6 +6,7 @@ import { DevicePairingManager } from "../src/device-pairing.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
 import { TaskScheduler } from "../src/task-scheduler.js";
+import { SessionContinuityManager } from "../src/session-continuity.js";
 
 const configuration = {
   schema_version: "1.0.0" as const,
@@ -155,6 +156,34 @@ describe("RuntimeApplication", () => {
 
     expect(submitted.status).toBe(202);
     expect(appended).toEqual([expect.any(String)]);
+  });
+
+  it("negotiates device capabilities through the composed runtime", () => {
+    const continuity = new SessionContinuityManager({ now: () => 1000 });
+    continuity.registerDevice("phone", [
+      { capability_id: "camera", status: "Supported" },
+      { capability_id: "microphone", status: "Permission denied" },
+    ]);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      sessionContinuityManager: continuity,
+    });
+    applications.push(application);
+
+    expect(application.negotiateDeviceCapability("phone", "camera")).toMatchObject({
+      ok: true,
+      value: { device_id: "phone", capability_id: "camera", status: "Supported" },
+    });
+    expect(application.negotiateDeviceCapability("phone", "microphone")).toMatchObject({
+      ok: true,
+      value: { status: "Permission denied" },
+    });
   });
 
   it("exposes the trusted paired-device inventory through the composed runtime", async () => {

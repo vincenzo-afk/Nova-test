@@ -488,6 +488,20 @@ export class RuntimeApplication {
     return this.sessionContinuityManager?.listDevices() ?? [];
   }
 
+  public negotiateDeviceCapability(
+    deviceId: string,
+    capabilityId: string,
+  ): ReturnType<SessionContinuityManager["negotiate"]> {
+    if (!this.sessionContinuityManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Device capability negotiation is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.sessionContinuityManager.negotiate(deviceId, capabilityId);
+  }
+
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {
     return this.tokenIssuer.issue(scopes);
   }

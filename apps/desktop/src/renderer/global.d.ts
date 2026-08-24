@@ -91,6 +91,18 @@ declare global {
           }>;
         }>
       >;
+      negotiateDeviceCapability: (
+        deviceId: string,
+        capabilityId: string,
+      ) => Promise<{
+        ok: boolean;
+        value?: {
+          device_id: string;
+          capability_id: string;
+          status: "Supported" | "Not supported" | "Permission denied" | "Degraded";
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       getDiagnostics: () => Promise<{
         collected_at: string;
         partial: boolean;
