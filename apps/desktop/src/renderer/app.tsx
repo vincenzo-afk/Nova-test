@@ -407,6 +407,12 @@ export const App = () => {
               error={configurationError}
               onUpdate={updateConfiguration}
             />
+          ) : view === "plugins" ? (
+            <PluginsView
+              configuration={configuration}
+              error={configurationError}
+              onUpdate={updateConfiguration}
+            />
           ) : view === "settings" ? (
             <SettingsView
               configuration={configuration}
@@ -1832,6 +1838,109 @@ const DevicesView = ({
             />
             <button type="button" onClick={() => void save()}>
               Save device records
+            </button>
+            {status ? (
+              <p className="muted" role="status">
+                {status}
+              </p>
+            ) : null}
+          </article>
+        </div>
+      )}
+    </section>
+  );
+};
+
+const PluginsView = ({
+  configuration,
+  error,
+  onUpdate,
+}: {
+  configuration: NovaConfiguration | null;
+  error: string | null;
+  onUpdate: (
+    section: ConfigurationSectionName,
+    value: NovaConfiguration[ConfigurationSectionName],
+  ) => Promise<NovaConfiguration>;
+}) => {
+  const plugins = configuration?.plugins ?? [];
+  const [pluginsText, setPluginsText] = useState(JSON.stringify(plugins, null, 2));
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPluginsText(JSON.stringify(configuration?.plugins ?? [], null, 2));
+  }, [configuration?.plugins]);
+
+  const save = async () => {
+    let next: unknown;
+    try {
+      next = JSON.parse(pluginsText) as unknown;
+    } catch {
+      setStatus("Plugin configuration must be valid JSON.");
+      return;
+    }
+    if (!Array.isArray(next)) {
+      setStatus("Plugin configuration must be a JSON array.");
+      return;
+    }
+    try {
+      await onUpdate("plugins", next);
+      setStatus("Plugin records saved locally.");
+    } catch (cause: unknown) {
+      setStatus(
+        cause instanceof Error ? cause.message : "Plugin configuration could not be saved.",
+      );
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="plugins-title">
+      <div className="section-kicker">Plugins / Sandboxed capability records</div>
+      <h1 id="plugins-title">Manage trusted extensions.</h1>
+      <p className="lede">
+        Plugin records are validated local configuration. Installation, updates, and capabilities
+        must still pass the core trust, permission, and sandbox boundaries before they become
+        reachable.
+      </p>
+      {error ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>Plugin configuration unavailable</strong>
+          <span className="muted">{error}</span>
+        </div>
+      ) : null}
+      {configuration === null ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading plugins</strong>
+          <span className="muted">Reading the local configuration store.</span>
+        </div>
+      ) : (
+        <div className="surface-grid">
+          <article className="surface-card">
+            <div className="task-header">
+              <strong>Configured plugins</strong>
+              <span className="task-status">{plugins.length}</span>
+            </div>
+            <p>
+              {plugins.length === 0
+                ? "No plugin records are configured. The runtime has no marketplace request pending."
+                : "Configured records remain subject to plugin discovery and permission checks."}
+            </p>
+          </article>
+          <article className="surface-card">
+            <strong>Safety boundary</strong>
+            <p>Plugins cannot bypass the Permission Manager, Tool Registry, or Verifier.</p>
+            <span className="muted">No plugin code executes from this editor.</span>
+          </article>
+          <article className="surface-card device-editor-card">
+            <label htmlFor="plugins-json">Plugin records (JSON array)</label>
+            <textarea
+              id="plugins-json"
+              rows={12}
+              value={pluginsText}
+              onChange={(event) => setPluginsText(event.target.value)}
+            />
+            <button type="button" onClick={() => void save()}>
+              Save plugin records
             </button>
             {status ? (
               <p className="muted" role="status">
