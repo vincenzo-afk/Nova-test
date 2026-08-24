@@ -30,7 +30,11 @@ describe("DevicePairingManager", () => {
       ok: true,
       value: { device_id: "android-1", state: "Trusted", runtime_mode: "Companion" },
     });
-    expect(verify).toHaveBeenCalledWith("primary-key", "nonce-1", "signature-1");
+    expect(verify).toHaveBeenCalledWith(
+      "primary-key",
+      JSON.stringify({ challenge: "nonce-1", runtime_mode: "Companion" }),
+      "signature-1",
+    );
   });
 
   it("rejects skipped confirmation, invalid signatures, mode mismatches, reuse, and expiry", () => {

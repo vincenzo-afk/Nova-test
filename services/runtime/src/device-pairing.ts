@@ -69,7 +69,11 @@ export class DevicePairingManager {
     if (request.runtime_mode !== offer.runtime_mode)
       return err(this.securityError("Paired devices disagree on runtime mode."));
     if (
-      !this.options.verifySignature(offer.primary_public_key, request.challenge, request.signature)
+      !this.options.verifySignature(
+        offer.primary_public_key,
+        JSON.stringify({ challenge: request.challenge, runtime_mode: request.runtime_mode }),
+        request.signature,
+      )
     ) {
       return err(this.securityError("Pairing challenge signature could not be verified."));
     }
