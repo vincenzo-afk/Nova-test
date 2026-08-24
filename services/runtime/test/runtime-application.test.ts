@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ok } from "@nova/shared";
+import type { MemoryStore } from "@nova/memory";
+import { KnowledgeGraph } from "../src/knowledge-graph.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
 import { TaskScheduler } from "../src/task-scheduler.js";
@@ -162,5 +164,93 @@ describe("RuntimeApplication", () => {
 
     expect(application.websocketUrl()).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/v1\/events$/);
     expect(token).toMatch(/^nova_/);
+  });
+
+  it("routes memory search, record lookup, and graph queries through the composed application", async () => {
+    const memoryStore = {
+      search: async () =>
+        ok([
+          {
+            record_id: "memory-1",
+            tier: "recent",
+            content_ref: "note://deployment",
+            confidence: 0.9,
+            schema_version: "1.0.0",
+            created_at: "2026-08-24T00:00:00.000Z",
+            lineage: [],
+          },
+        ]),
+      readRecord: async (recordId: string) =>
+        ok({
+          record_id: recordId,
+          tier: "recent",
+          content_ref: "note://deployment",
+          confidence: 0.9,
+          schema_version: "1.0.0",
+          created_at: "2026-08-24T00:00:00.000Z",
+          lineage: [],
+        }),
+    } as unknown as MemoryStore;
+    const graph = new KnowledgeGraph();
+    graph.addNode({
+      id: "project-1",
+      type: "Project",
+      name: "Nova",
+      properties: {},
+      active: true,
+    });
+    graph.addNode({
+      id: "file-1",
+      type: "File",
+      name: "README",
+      properties: {},
+      active: true,
+    });
+    graph.addEdge({
+      id: "edge-1",
+      type: "belongs_to",
+      from_node_id: "file-1",
+      to_node_id: "project-1",
+      weight: 1,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      memoryStore,
+      knowledgeGraph: graph,
+    });
+    applications.push(application);
+    await application.start();
+    const token = application.issueToken(["memory.read"]);
+
+    const search = await fetch(`${application.restUrl()}/v1/search`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ query: "deployment" }),
+    });
+    const record = await fetch(`${application.restUrl()}/v1/memory/memory-1`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const graphResponse = await fetch(`${application.restUrl()}/v1/graph/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ node_id: "file-1", direction: "out", depth: 1 }),
+    });
+
+    expect(search.status).toBe(200);
+    expect(await search.json()).toMatchObject({ results: [{ record_id: "memory-1" }] });
+    expect(record.status).toBe(200);
+    expect(await record.json()).toMatchObject({ record_id: "memory-1" });
+    expect(graphResponse.status).toBe(200);
+    expect(await graphResponse.json()).toMatchObject({
+      root: { id: "file-1" },
+      nodes: [{ id: "project-1" }],
+      edges: [{ id: "edge-1" }],
+    });
   });
 });

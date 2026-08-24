@@ -1,6 +1,57 @@
 import type { ConfigurationSectionName, NovaConfiguration } from "@nova/runtime";
 import type { PermissionGrant } from "./shell-model.js";
 
+interface DesktopMemorySearchInput {
+  query: string;
+  filters?: {
+    project?: string;
+    time_range?: { start: string; end: string };
+    entity_type?: string;
+  };
+}
+
+interface DesktopMemoryRecord {
+  record_id: string;
+  tier: "working" | "recent" | "long_term";
+  content_ref: string;
+  confidence?: number;
+  schema_version: string;
+  created_at: string;
+  status?: string;
+  lineage: Array<{ relation: string; source_record_id: string }>;
+}
+
+interface DesktopGraphQueryInput {
+  node_id: string;
+  direction: "in" | "out" | "both";
+  edge_type?: string;
+  depth: number;
+}
+
+interface DesktopGraphQueryResult {
+  root: {
+    id: string;
+    type: string;
+    name: string;
+    properties: Record<string, string | number | boolean>;
+    active: boolean;
+  };
+  nodes: Array<{
+    id: string;
+    type: string;
+    name: string;
+    properties: Record<string, string | number | boolean>;
+    active: boolean;
+  }>;
+  edges: Array<{
+    id: string;
+    type: string;
+    from_node_id: string;
+    to_node_id: string;
+    weight: number;
+  }>;
+}
+
 declare global {
   interface Window {
     nova: {
@@ -15,6 +66,12 @@ declare global {
         has_more: boolean;
       }>;
       cancelTask: (taskId: string) => Promise<{ task_id: string; goal: string; state: string }>;
+      searchMemory: (input: DesktopMemorySearchInput) => Promise<{
+        results: DesktopMemoryRecord[];
+        query: string;
+      }>;
+      getMemoryRecord: (recordId: string) => Promise<DesktopMemoryRecord>;
+      queryGraph: (input: DesktopGraphQueryInput) => Promise<DesktopGraphQueryResult>;
       captureScreenshot: (request: {
         task_id: string;
         target: "screen" | "focused-window";

@@ -2,6 +2,9 @@ import type {
   ObservationIndexRequest,
   ObservationIndexResult,
   ObservationIndexer,
+  MemoryRecordSummary,
+  MemorySearchInput,
+  MemoryStore,
 } from "@nova/memory";
 import {
   InMemoryCommunicationBus,
@@ -39,8 +42,14 @@ import {
   type NotificationObserverState,
 } from "@nova/observers";
 import { WorldModel } from "@nova/state";
-import { LocalApiTokenIssuer, PublicApiServer, type PublicApiServerOptions } from "./rest-api.js";
+import {
+  LocalApiTokenIssuer,
+  PublicApiServer,
+  type GraphQueryInput as PublicGraphQueryInput,
+  type PublicApiServerOptions,
+} from "./rest-api.js";
 import { ConfigurationStore, type NovaConfiguration } from "./configuration-store.js";
+import { KnowledgeGraph, type GraphEdgeType, type GraphQueryResult } from "./knowledge-graph.js";
 import {
   RuntimeTaskCoordinator,
   type TaskCheckpointPersistence,
@@ -94,6 +103,8 @@ export interface RuntimeApplicationOptions {
   readonly mouseObserverBridge?: NativeMouseEventBridgeContract;
   readonly mouseIdleThresholdMs?: number;
   readonly observationIndexer?: ObservationIndexer;
+  readonly memoryStore?: MemoryStore;
+  readonly knowledgeGraph?: KnowledgeGraph;
   readonly registeredTools?: readonly RegisteredTool[];
   readonly logger?: StructuredLogger;
 }
@@ -117,12 +128,14 @@ export class RuntimeApplication {
   public readonly mouseObserver: MouseObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
+  public readonly knowledgeGraph: KnowledgeGraph;
   public readonly toolRegistry: ToolRegistry;
   private readonly executor: Executor;
   private readonly verifier: Verifier;
   private readonly optionsPersistence: RuntimeApplicationOptions["persistence"];
   private readonly dispose: RuntimeApplicationOptions["dispose"];
   private readonly logger: StructuredLogger | undefined;
+  private readonly memoryStore: MemoryStore | undefined;
 
   public constructor(options: RuntimeApplicationOptions) {
     this.optionsPersistence = options.persistence;
@@ -137,6 +150,8 @@ export class RuntimeApplication {
       if (!registration.ok) throw new Error(registration.error.message);
     }
     this.observationIndexer = options.observationIndexer;
+    this.memoryStore = options.memoryStore;
+    this.knowledgeGraph = options.knowledgeGraph ?? new KnowledgeGraph();
     this.tokenIssuer = new LocalApiTokenIssuer();
     this.tasks = options.taskManager ?? new TaskManager();
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -456,6 +471,39 @@ export class RuntimeApplication {
     return this.websocket.url();
   }
 
+  public async searchMemory(
+    input: MemorySearchInput,
+  ): Promise<Result<readonly MemoryRecordSummary[]>> {
+    if (!this.memoryStore) {
+      return err({
+        code: "NOVA-MEM001",
+        message: "Nova memory store is not ready.",
+        retryable: true,
+      });
+    }
+    return await this.memoryStore.search(input);
+  }
+
+  public async getMemoryRecord(input: string): Promise<Result<MemoryRecordSummary>> {
+    if (!this.memoryStore) {
+      return err({
+        code: "NOVA-MEM001",
+        message: "Nova memory store is not ready.",
+        retryable: true,
+      });
+    }
+    return await this.memoryStore.readRecord(input);
+  }
+
+  public queryGraph(input: PublicGraphQueryInput): Result<GraphQueryResult> {
+    return this.knowledgeGraph.query({
+      node_id: input.node_id,
+      direction: input.direction,
+      depth: input.depth,
+      ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
+    });
+  }
+
   private restOptions(options: RuntimeApplicationOptions): PublicApiServerOptions {
     return {
       tokenIssuer: this.tokenIssuer,
@@ -478,6 +526,27 @@ export class RuntimeApplication {
           return result.ok ? result.value : undefined;
         },
         listTasks: async () => this.tasks.list(),
+        search: async (input) => {
+          const result = await this.searchMemory(input);
+          if (!result.ok) throw new Error(result.error.message);
+          return { results: result.value, query: input.query };
+        },
+        getMemoryRecord: async (recordId) => {
+          const result = await this.getMemoryRecord(recordId);
+          if (!result.ok) {
+            if (result.error.code === "NOVA-MEM003") return undefined;
+            throw new Error(result.error.message);
+          }
+          return result.value;
+        },
+        queryGraph: async (input) => {
+          const result = this.queryGraph(input);
+          if (!result.ok) {
+            if (result.error.code === "NOVA-MEM003") return undefined;
+            throw new Error(result.error.message);
+          }
+          return result.value;
+        },
         listPermissions: async () => this.permissions.list(),
         updatePermission: async (grantId, patch) => {
           const result = this.permissions.update(grantId, patch.granted);

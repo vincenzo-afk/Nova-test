@@ -28,6 +28,33 @@ interface LongTermPromotionInput {
   readonly verified: boolean;
 }
 
+export type MemoryTier = "working" | "recent" | "long_term";
+
+export interface MemorySearchInput {
+  readonly query: string;
+  readonly filters?: {
+    readonly project?: string;
+    readonly time_range?: { readonly start: string; readonly end: string };
+    readonly entity_type?: string;
+  };
+}
+
+export interface MemoryLineage {
+  readonly relation: "derived_from" | "derived_from_task";
+  readonly source_record_id: string;
+}
+
+export interface MemoryRecordSummary {
+  readonly record_id: string;
+  readonly tier: MemoryTier;
+  readonly content_ref: string;
+  readonly confidence?: number;
+  readonly schema_version: string;
+  readonly created_at: string;
+  readonly status?: string;
+  readonly lineage: readonly MemoryLineage[];
+}
+
 export class MemoryStore {
   constructor(
     private readonly client: PrismaClient,
@@ -176,6 +203,90 @@ export class MemoryStore {
     }
   }
 
+  async search(input: MemorySearchInput): Promise<Result<readonly MemoryRecordSummary[]>> {
+    if (input.query.trim().length === 0) {
+      return err(this.invalidInput("Memory search query is required."));
+    }
+    const start = input.filters?.time_range?.start;
+    const end = input.filters?.time_range?.end;
+    if (
+      (start !== undefined && Number.isNaN(Date.parse(start))) ||
+      (end !== undefined && Number.isNaN(Date.parse(end))) ||
+      (start !== undefined && end !== undefined && Date.parse(start) > Date.parse(end))
+    ) {
+      return err(this.invalidInput("Memory search time range is invalid."));
+    }
+
+    try {
+      const [working, recent, longTerm] = await Promise.all([
+        this.client.workingMemoryEntry.findMany({ where: { workspaceId: this.workspaceId } }),
+        this.client.recentMemoryEntry.findMany({ where: { workspaceId: this.workspaceId } }),
+        this.client.longTermMemoryEntry.findMany({ where: { workspaceId: this.workspaceId } }),
+      ]);
+      const records = [
+        ...working.map((row) => this.toWorkingSummary(row)),
+        ...recent.map((row) => this.toRecentSummary(row)),
+        ...longTerm.map((row) => this.toLongTermSummary(row)),
+      ];
+      const query = input.query.trim().toLocaleLowerCase();
+      const project = input.filters?.project?.trim().toLocaleLowerCase();
+      const entityType = input.filters?.entity_type?.trim().toLocaleLowerCase();
+      const filtered = records
+        .filter((record) => record.content_ref.toLocaleLowerCase().includes(query))
+        .filter(
+          (record) =>
+            project === undefined || record.content_ref.toLocaleLowerCase().includes(project),
+        )
+        .filter(
+          (record) =>
+            entityType === undefined || record.content_ref.toLocaleLowerCase().includes(entityType),
+        )
+        .filter((record) => {
+          const createdAt = Date.parse(record.created_at);
+          return (
+            (start === undefined || createdAt >= Date.parse(start)) &&
+            (end === undefined || createdAt <= Date.parse(end))
+          );
+        })
+        .sort((left, right) => {
+          const byDate = Date.parse(right.created_at) - Date.parse(left.created_at);
+          if (byDate !== 0) return byDate;
+          return left.record_id.localeCompare(right.record_id);
+        });
+      return ok(filtered);
+    } catch (cause) {
+      return err(this.storageError(cause));
+    }
+  }
+
+  async readRecord(id: string): Promise<Result<MemoryRecordSummary>> {
+    if (id.trim().length === 0) return err(this.invalidInput("Memory record id is required."));
+    try {
+      const [working, recent, longTerm] = await Promise.all([
+        this.client.workingMemoryEntry.findFirst({
+          where: { id, workspaceId: this.workspaceId },
+        }),
+        this.client.recentMemoryEntry.findFirst({
+          where: { id, workspaceId: this.workspaceId },
+        }),
+        this.client.longTermMemoryEntry.findFirst({
+          where: { id, workspaceId: this.workspaceId },
+        }),
+      ]);
+      if (working) return ok(this.toWorkingSummary(working));
+      if (recent) return ok(this.toRecentSummary(recent));
+      if (longTerm) return ok(this.toLongTermSummary(longTerm));
+      return err({
+        code: "NOVA-MEM003",
+        message: "Memory record is not available in this workspace.",
+        retryable: false,
+        details: { id },
+      });
+    } catch (cause) {
+      return err(this.storageError(cause));
+    }
+  }
+
   async readRecent(
     id: string,
   ): Promise<Result<Awaited<ReturnType<PrismaClient["recentMemoryEntry"]["findFirst"]>>>> {
@@ -233,6 +344,57 @@ export class MemoryStore {
     }
   }
 
+  private toWorkingSummary(
+    row: Awaited<ReturnType<PrismaClient["workingMemoryEntry"]["findFirst"]>> & object,
+  ): MemoryRecordSummary {
+    this.assertChecksum(row.contentRef, row.contentChecksum);
+    return {
+      record_id: row.id,
+      tier: "working",
+      content_ref: row.contentRef,
+      schema_version: row.schemaVersion,
+      created_at: row.createdAt.toISOString(),
+      lineage: [{ relation: "derived_from_task", source_record_id: row.taskId }],
+    };
+  }
+
+  private toRecentSummary(
+    row: Awaited<ReturnType<PrismaClient["recentMemoryEntry"]["findFirst"]>> & object,
+  ): MemoryRecordSummary {
+    this.assertChecksum(row.contentRef, row.contentChecksum);
+    return {
+      record_id: row.id,
+      tier: "recent",
+      content_ref: row.contentRef,
+      confidence: row.confidence,
+      schema_version: row.schemaVersion,
+      created_at: row.createdAt.toISOString(),
+      status: row.status,
+      lineage: [{ relation: "derived_from_task", source_record_id: row.sourceTaskId }],
+    };
+  }
+
+  private toLongTermSummary(
+    row: Awaited<ReturnType<PrismaClient["longTermMemoryEntry"]["findFirst"]>> & object,
+  ): MemoryRecordSummary {
+    this.assertChecksum(row.contentRef, row.contentChecksum);
+    return {
+      record_id: row.id,
+      tier: "long_term",
+      content_ref: row.contentRef,
+      confidence: row.confidence,
+      schema_version: row.schemaVersion,
+      created_at: row.verifiedAt.toISOString(),
+      lineage: [{ relation: "derived_from", source_record_id: row.sourceLineageId }],
+    };
+  }
+
+  private assertChecksum(contentRef: string, contentChecksum: string): void {
+    if (checksum(contentRef) !== contentChecksum) {
+      throw new MemoryStoreFailure("NOVA-MEM001", "Memory checksum mismatch detected.");
+    }
+  }
+
   private invalidInput(message: string): ErrorInfo {
     return { code: "NOVA-CFG001", message, retryable: false };
   }
@@ -255,7 +417,7 @@ export class MemoryStore {
 
 class MemoryStoreFailure extends Error {
   constructor(
-    readonly code: "NOVA-MEM003",
+    readonly code: "NOVA-MEM001" | "NOVA-MEM003",
     message: string,
   ) {
     super(message);

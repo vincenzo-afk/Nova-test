@@ -116,6 +116,7 @@ export async function createDesktopRuntime(
     ),
     verifier: new Verifier(logger),
     persistence: persistence.checkpointStore,
+    memoryStore: persistence.memoryStore,
     dispose: persistence.close,
     logger,
     ...(options.windowObserverBridge === undefined

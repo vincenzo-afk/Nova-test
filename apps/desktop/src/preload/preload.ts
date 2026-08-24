@@ -6,6 +6,10 @@ const novaApi = {
   listTasks: (limit?: number, cursor?: string) =>
     ipcRenderer.invoke("nova:task:list", { limit, cursor }),
   cancelTask: (taskId: string) => ipcRenderer.invoke("nova:task:cancel", { task_id: taskId }),
+  searchMemory: (input: unknown) => ipcRenderer.invoke("nova:memory:search", input),
+  getMemoryRecord: (recordId: string) =>
+    ipcRenderer.invoke("nova:memory:record", { record_id: recordId }),
+  queryGraph: (input: unknown) => ipcRenderer.invoke("nova:graph:query", input),
   captureScreenshot: (request: unknown) => ipcRenderer.invoke("nova:desktop:screenshot", request),
   executeUiAction: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-action", request),
   readAccessibilityState: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-read", request),

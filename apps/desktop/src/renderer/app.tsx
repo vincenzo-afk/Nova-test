@@ -33,7 +33,10 @@ interface TaskListPage {
   readonly has_more: boolean;
 }
 
-type SurfaceView = Exclude<DesktopView, "permissions" | "chat" | "tasks">;
+type SurfaceMetaView = Exclude<DesktopView, "permissions" | "chat" | "tasks">;
+type SurfaceView = Exclude<SurfaceMetaView, "memory" | "graph">;
+type DesktopMemoryRecord = Awaited<ReturnType<typeof window.nova.searchMemory>>["results"][number];
+type DesktopGraphResult = Awaited<ReturnType<typeof window.nova.queryGraph>>;
 
 const actionPermissionSources = new Set(["screen", "desktop_control"]);
 const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
@@ -96,7 +99,7 @@ const isSufficientObserverGrant = (
 
 const surfaceMeta: Readonly<
   Record<
-    SurfaceView,
+    SurfaceMetaView,
     { readonly purpose: string; readonly items: readonly string[]; readonly state: string }
   >
 > = {
@@ -377,6 +380,10 @@ export const App = () => {
               error={configurationError}
               onUpdate={updateConfiguration}
             />
+          ) : view === "memory" ? (
+            <MemoryView />
+          ) : view === "graph" ? (
+            <GraphView />
           ) : (
             <SurfaceView view={view} />
           )}
@@ -988,6 +995,332 @@ const SettingsView = ({
           )}
         </article>
       </div>
+    </section>
+  );
+};
+
+const MemoryView = () => {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<readonly DesktopMemoryRecord[]>([]);
+  const [selected, setSelected] = useState<DesktopMemoryRecord | null>(null);
+  const [state, setState] = useState<
+    "idle" | "loading" | "populated" | "empty" | "error" | "offline" | "permission"
+  >("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const search = async () => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setState("loading");
+    setError(null);
+    setSelected(null);
+    try {
+      const response = await window.nova.searchMemory({ query: trimmed });
+      setResults(response.results);
+      setState(response.results.length > 0 ? "populated" : "empty");
+    } catch (cause: unknown) {
+      const message = cause instanceof Error ? cause.message : "Memory search failed.";
+      setError(message);
+      const normalized = message.toLocaleLowerCase();
+      setState(
+        normalized.includes("permission")
+          ? "permission"
+          : normalized.includes("offline") || normalized.includes("not ready")
+            ? "offline"
+            : "error",
+      );
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="memory-title">
+      <div className="section-kicker">Memory / Grounded records</div>
+      <h1 id="memory-title">Find what NOVA remembers.</h1>
+      <p className="lede">
+        Search workspace-scoped records across Working, Recent, and Long-term Memory. Each result
+        keeps its tier, confidence, checksum-verified reference, and lineage visible.
+      </p>
+      <div className="surface-card memory-search-card">
+        <label htmlFor="memory-query">Search memory</label>
+        <div className="inline-form">
+          <input
+            id="memory-query"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void search();
+            }}
+            placeholder="Try: deployment or latest decision"
+          />
+          <button
+            disabled={!query.trim() || state === "loading"}
+            onClick={() => void search()}
+            type="button"
+          >
+            {state === "loading" ? "Searching…" : "Search"}
+          </button>
+        </div>
+      </div>
+      {state === "idle" ? (
+        <div className="empty-state">
+          <span className="empty-glyph">M</span>
+          <strong>Memory is ready to search.</strong>
+          <span className="muted">Enter a grounded term above to browse workspace records.</span>
+        </div>
+      ) : state === "loading" ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading memory</strong>
+          <span className="muted">
+            Checking the local workspace store and verifying record checksums.
+          </span>
+        </div>
+      ) : state === "error" || state === "offline" || state === "permission" ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>
+            {state === "permission"
+              ? "Memory permission denied"
+              : state === "offline"
+                ? "Memory is offline"
+                : "Memory search failed"}
+          </strong>
+          <span className="muted">{error}</span>
+          <span className="muted">Try again when the local runtime is available.</span>
+        </div>
+      ) : state === "empty" ? (
+        <div className="empty-state">
+          <span className="empty-glyph">?</span>
+          <strong>No memory matched “{query.trim()}”.</strong>
+          <span className="muted">
+            Try a shorter term or search a task, decision, or project reference.
+          </span>
+        </div>
+      ) : (
+        <div className="memory-results" aria-live="polite">
+          <div className="results-heading">
+            <strong>
+              {results.length} grounded record{results.length === 1 ? "" : "s"}
+            </strong>
+            <span className="muted">Complete local result set</span>
+          </div>
+          <div className="memory-list">
+            {results.map((record) => (
+              <article className="memory-card" key={record.record_id}>
+                <div className="task-header">
+                  <div>
+                    <span className="memory-tier">{record.tier.replace("_", " ")}</span>
+                    <h2>{record.content_ref}</h2>
+                  </div>
+                  {record.confidence !== undefined ? (
+                    <span className="task-status">
+                      {Math.round(record.confidence * 100)}% confidence
+                    </span>
+                  ) : null}
+                </div>
+                <div className="memory-meta">
+                  <code>{record.record_id}</code>
+                  <span>{new Date(record.created_at).toLocaleString()}</span>
+                  {record.status ? <span>{record.status}</span> : null}
+                </div>
+                <button
+                  className="secondary-button"
+                  onClick={() => setSelected(record)}
+                  type="button"
+                >
+                  View lineage
+                </button>
+              </article>
+            ))}
+          </div>
+          {selected ? (
+            <article className="surface-card lineage-card" aria-labelledby="lineage-title">
+              <div className="task-header">
+                <strong id="lineage-title">Lineage for {selected.record_id}</strong>
+                <button
+                  className="secondary-button"
+                  onClick={() => setSelected(null)}
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+              {selected.lineage.length === 0 ? (
+                <p className="muted">This record is an origin record with no stored predecessor.</p>
+              ) : (
+                <ul className="lineage-list">
+                  {selected.lineage.map((entry) => (
+                    <li key={`${entry.relation}-${entry.source_record_id}`}>
+                      <span>{entry.relation.replaceAll("_", " ")}</span>
+                      <code>{entry.source_record_id}</code>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+};
+
+const GraphView = () => {
+  const [nodeId, setNodeId] = useState("");
+  const [direction, setDirection] = useState<"in" | "out" | "both">("both");
+  const [depth, setDepth] = useState(1);
+  const [result, setResult] = useState<DesktopGraphResult | null>(null);
+  const [state, setState] = useState<
+    "idle" | "loading" | "populated" | "empty" | "error" | "offline" | "permission"
+  >("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const query = async () => {
+    const trimmed = nodeId.trim();
+    if (!trimmed) return;
+    setState("loading");
+    setError(null);
+    try {
+      const response = await window.nova.queryGraph({
+        node_id: trimmed,
+        direction,
+        depth,
+      });
+      setResult(response);
+      setState(response.nodes.length > 0 ? "populated" : "empty");
+    } catch (cause: unknown) {
+      const message = cause instanceof Error ? cause.message : "Graph query failed.";
+      setError(message);
+      const normalized = message.toLocaleLowerCase();
+      setState(
+        normalized.includes("permission")
+          ? "permission"
+          : normalized.includes("offline") || normalized.includes("not ready")
+            ? "offline"
+            : "error",
+      );
+    }
+  };
+
+  return (
+    <section className="content-column" aria-labelledby="graph-title">
+      <div className="section-kicker">Knowledge Graph / Relationships</div>
+      <h1 id="graph-title">Explore workspace connections.</h1>
+      <p className="lede">
+        Query a bounded neighborhood around an entity. Traversal depth is limited to three hops and
+        the fixed ontology keeps relationships auditable.
+      </p>
+      <div className="surface-card graph-query-card">
+        <label htmlFor="graph-node">Root node id</label>
+        <div className="inline-form graph-form">
+          <input
+            id="graph-node"
+            value={nodeId}
+            onChange={(event) => setNodeId(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void query();
+            }}
+            placeholder="project-1 or task-123"
+          />
+          <select
+            aria-label="Graph traversal direction"
+            value={direction}
+            onChange={(event) => setDirection(event.target.value as typeof direction)}
+          >
+            <option value="both">Both directions</option>
+            <option value="out">Outgoing</option>
+            <option value="in">Incoming</option>
+          </select>
+          <select
+            aria-label="Graph traversal depth"
+            value={depth}
+            onChange={(event) => setDepth(Number(event.target.value))}
+          >
+            <option value={1}>1 hop</option>
+            <option value={2}>2 hops</option>
+            <option value={3}>3 hops</option>
+          </select>
+          <button
+            disabled={!nodeId.trim() || state === "loading"}
+            onClick={() => void query()}
+            type="button"
+          >
+            {state === "loading" ? "Loading…" : "Query graph"}
+          </button>
+        </div>
+      </div>
+      {state === "idle" ? (
+        <div className="empty-state">
+          <span className="empty-glyph">G</span>
+          <strong>Knowledge Graph is ready.</strong>
+          <span className="muted">Enter a root node id to inspect its bounded relationships.</span>
+        </div>
+      ) : state === "loading" ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading graph neighborhood</strong>
+          <span className="muted">
+            Validating the node, ontology, direction, and traversal bound.
+          </span>
+        </div>
+      ) : state === "error" || state === "offline" || state === "permission" ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>
+            {state === "permission"
+              ? "Graph permission denied"
+              : state === "offline"
+                ? "Graph is offline"
+                : "Graph query failed"}
+          </strong>
+          <span className="muted">{error}</span>
+          <span className="muted">Check the node id and try again.</span>
+        </div>
+      ) : state === "empty" && result ? (
+        <div className="state-strip" role="status">
+          <strong>Root found; no neighboring nodes matched.</strong>
+          <span className="muted">
+            {result.root.name} is available, but this bounded query returned no connected records.
+          </span>
+        </div>
+      ) : result ? (
+        <div className="graph-results" aria-live="polite">
+          <article className="surface-card">
+            <div className="task-header">
+              <div>
+                <span className="memory-tier">Root · {result.root.type}</span>
+                <h2>{result.root.name}</h2>
+              </div>
+              <span className="task-status">{result.nodes.length} neighbors</span>
+            </div>
+            <code>{result.root.id}</code>
+          </article>
+          <div className="surface-grid">
+            {result.nodes.map((node) => (
+              <article className="surface-card" key={node.id}>
+                <div className="task-header">
+                  <strong>{node.name}</strong>
+                  <span className="task-status">{node.type}</span>
+                </div>
+                <p>{node.id}</p>
+                <span className="muted">{node.active ? "Active entity" : "Inactive entity"}</span>
+              </article>
+            ))}
+          </div>
+          <article className="surface-card">
+            <div className="task-header">
+              <strong>Edges in this query</strong>
+              <span className="task-status">{result.edges.length}</span>
+            </div>
+            <ul className="lineage-list">
+              {result.edges.map((edge) => (
+                <li key={edge.id}>
+                  <span>{edge.type.replaceAll("_", " ")}</span>
+                  <code>
+                    {edge.from_node_id} → {edge.to_node_id}
+                  </code>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
+      ) : null}
     </section>
   );
 };

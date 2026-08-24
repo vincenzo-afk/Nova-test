@@ -126,6 +126,74 @@ describe("MemoryStore", () => {
     expect(stored.status).toBe("SUPERSEDED");
     expect(stored.supersededById).toBe(replacement.id);
   });
+
+  it("searches all memory tiers within the workspace and returns stable record summaries", async () => {
+    const working = unwrap(
+      await store.writeWorking({
+        taskId: "task-1",
+        contentRef: "deployment decision",
+        schemaVersion: "1.0.0",
+      }),
+    );
+    const recent = unwrap(
+      await store.promoteWorkingToRecent({
+        workingId: working.id,
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        confidence: 0.82,
+      }),
+    );
+    unwrap(
+      await store.writeRecent({
+        identityId: "identity-2",
+        sourceTaskId: "task-2",
+        contentRef: "unrelated note",
+        confidence: 0.4,
+        schemaVersion: "1.0.0",
+      }),
+    );
+
+    const results = unwrap(await store.search({ query: "DEPLOYMENT" }));
+
+    expect(results).toHaveLength(2);
+    expect(results.map((result) => result.record_id)).toEqual([recent.id, working.id]);
+    expect(results[0]).toMatchObject({
+      tier: "recent",
+      content_ref: "deployment decision",
+      confidence: 0.82,
+      lineage: [{ relation: "derived_from_task", source_record_id: "task-1" }],
+    });
+  });
+
+  it("reads any tier by id and exposes long-term source lineage", async () => {
+    const working = unwrap(
+      await store.writeWorking({
+        taskId: "task-1",
+        contentRef: "verified deployment",
+        schemaVersion: "1.0.0",
+      }),
+    );
+    const recent = unwrap(
+      await store.promoteWorkingToRecent({
+        workingId: working.id,
+        identityId: "identity-1",
+        sourceTaskId: "task-1",
+        confidence: 0.9,
+      }),
+    );
+    const longTerm = unwrap(
+      await store.promoteRecentToLongTerm({ recentId: recent.id, verified: true }),
+    );
+
+    const result = unwrap(await store.readRecord(longTerm.id));
+
+    expect(result).toMatchObject({
+      record_id: longTerm.id,
+      tier: "long_term",
+      content_ref: "verified deployment",
+      lineage: [{ relation: "derived_from", source_record_id: recent.id }],
+    });
+  });
 });
 
 describe("MemoryVersioning", () => {

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import type { MemorySearchInput } from "@nova/memory";
 import {
   ApiGateway,
   type ConfigurationSectionName,
@@ -8,6 +9,7 @@ import {
   type ExecutionStep,
   type PermissionGrant,
   type RuntimeApplication,
+  type GraphQueryInput,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -133,6 +135,15 @@ ipcMain.handle(
 ipcMain.handle("nova:task:cancel", (_event, payload: { readonly task_id: string }) =>
   requestGateway<TaskSnapshot>("task.cancel", { task_id: payload.task_id }),
 );
+ipcMain.handle("nova:memory:search", (_event, payload: MemorySearchInput) =>
+  requestGateway("memory.search", payload),
+);
+ipcMain.handle("nova:memory:record", (_event, payload: { readonly record_id: string }) =>
+  requestGateway("memory.record", payload),
+);
+ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
+  requestGateway("graph.query", payload),
+);
 ipcMain.handle("nova:desktop:screenshot", (_event, payload: ScreenshotRequest) =>
   requestGateway("desktop.screenshot", payload),
 );
@@ -229,6 +240,34 @@ const startGateway = async (): Promise<void> => {
     if (!payload.task_id) throw new Error("Task ID is required.");
     const result = runtimeApplication?.tasks.get(payload.task_id);
     if (!result?.ok) throw new Error(result?.error.message ?? "Task lookup failed.");
+    return result.value;
+  });
+  gateway.register("memory.search", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as MemorySearchInput;
+    const result = await runtimeApplication.searchMemory(payload);
+    if (!result.ok) throw new Error(result.error.message);
+    return { results: result.value, query: payload.query };
+  });
+  gateway.register("memory.record", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly record_id?: string };
+    if (!payload.record_id) throw new Error("Memory record ID is required.");
+    const result = await runtimeApplication.getMemoryRecord(payload.record_id);
+    if (!result.ok) {
+      if (result.error.code === "NOVA-MEM003") throw new Error("Memory record not found.");
+      throw new Error(result.error.message);
+    }
+    return result.value;
+  });
+  gateway.register("graph.query", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as GraphQueryInput;
+    const result = runtimeApplication.queryGraph(payload);
+    if (!result.ok) {
+      if (result.error.code === "NOVA-MEM003") throw new Error("Graph node not found.");
+      throw new Error(result.error.message);
+    }
     return result.value;
   });
   gateway.register("task.list", async (data) => {

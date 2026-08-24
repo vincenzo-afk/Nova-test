@@ -21,5 +21,14 @@ export * from "./plugin-discovery.js";
 export * from "./groq-provider.js";
 export * from "./system-inventory.js";
 export * from "./configuration-store.js";
+export {
+  KnowledgeGraph,
+  type GraphEdge,
+  type GraphEdgeType,
+  type GraphNode,
+  type GraphNodeType,
+  type GraphQueryResult,
+  type RetrievalCandidate,
+} from "./knowledge-graph.js";
 export * from "./workspace-code-executor.js";
 export * from "./tool-registry.js";
