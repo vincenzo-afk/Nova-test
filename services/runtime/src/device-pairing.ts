@@ -54,8 +54,15 @@ export class DevicePairingManager {
     readonly runtime_mode: DeviceRuntimeMode;
     readonly primary_public_key: string;
   }): Result<PairingOffer> {
+    const code = this.options.codeFactory();
+    const existing = this.offers.get(code);
+    if (existing) {
+      if (this.now() < existing.expires_at)
+        return err(this.securityError("Pairing offer code is already active."));
+      this.offers.delete(code);
+    }
     const offer: PairingOffer = {
-      code: this.options.codeFactory(),
+      code,
       channel_token: this.options.tokenFactory(),
       primary_public_key: input.primary_public_key,
       runtime_mode: input.runtime_mode,

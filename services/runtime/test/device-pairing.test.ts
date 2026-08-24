@@ -151,6 +151,35 @@ describe("DevicePairingManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("rejects a colliding live offer code without overwriting the original offer", () => {
+    let now = 1000;
+    const manager = new DevicePairingManager({
+      now: () => now,
+      codeFactory: () => "PAIR-COLLISION",
+      tokenFactory: () => "token",
+      verifySignature: () => true,
+    });
+
+    expect(
+      manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary-1" }),
+    ).toMatchObject({
+      ok: true,
+    });
+    expect(
+      manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary-2" }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    now = 31_001;
+    expect(
+      manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary-3" }),
+    ).toMatchObject({
+      ok: true,
+      value: { primary_public_key: "primary-3" },
+    });
+  });
+
   it("requires explicit unpair before replacing an existing device identity", () => {
     let offerNumber = 0;
     const manager = new DevicePairingManager({
