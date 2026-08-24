@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
+import {
+  err,
+  ok,
+  type ErrorDetailValue,
+  type ErrorInfo,
+  type Result,
+  type StructuredLogger,
+} from "@nova/shared";
 
 export const PLUGIN_PERMISSION_SCOPES = [
   "memory.read",
@@ -46,6 +53,13 @@ export interface PluginPermissionReviewRequest {
 export interface PluginProcess {
   start(): Promise<void>;
   stop(): Promise<void>;
+}
+
+export interface PluginDisableOptions {
+  readonly force?: boolean;
+  readonly confirmDependents?: (
+    dependentPluginIds: readonly string[],
+  ) => Promise<boolean> | boolean;
 }
 
 export interface PluginManagerOptions {
@@ -147,7 +161,7 @@ function satisfiesRange(version: string, range: string): boolean {
 
 const configurationFailure = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-CFG001" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -155,7 +169,7 @@ const configurationFailure = (
 
 const dependencyFailure = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG001" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -163,7 +177,7 @@ const dependencyFailure = (
 
 const pluginCrash = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG002" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -171,7 +185,7 @@ const pluginCrash = (
 
 const compatibilityFailure = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG004" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -179,7 +193,7 @@ const compatibilityFailure = (
 
 const lifecycleFailure = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG005" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -187,7 +201,7 @@ const lifecycleFailure = (
 
 const sandboxFailure = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG006" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -195,7 +209,7 @@ const sandboxFailure = (
 
 const verificationFailure = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-SEC002" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -203,7 +217,7 @@ const verificationFailure = (
 
 const permissionMismatch = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG003" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -211,7 +225,7 @@ const permissionMismatch = (
 
 const authorizationDenied = (
   message: string,
-  details?: Readonly<Record<string, string | number | boolean>>,
+  details?: Readonly<Record<string, ErrorDetailValue>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-SEC004" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
@@ -422,7 +436,10 @@ export class PluginManager {
     return ok(this.publicRecord(record));
   }
 
-  public async disable(pluginId: string): Promise<Result<PluginRecord>> {
+  public async disable(
+    pluginId: string,
+    options: PluginDisableOptions = {},
+  ): Promise<Result<PluginRecord>> {
     const record = this.plugins.get(pluginId);
     if (!record) return err(lifecycleFailure("Plugin is not installed.", { pluginId }));
     if (record.state === "Disabled" || record.state === "Failed")
@@ -430,29 +447,52 @@ export class PluginManager {
     if (record.state === "Uninstalled")
       return err(lifecycleFailure("Plugin has been uninstalled.", { pluginId }));
 
-    try {
-      if (record.process) await record.process.stop();
-      await this.options.deregisterTools?.(record.manifest.provided_tools);
-      record.process = undefined;
-      record.grantedPermissions.clear();
-      record.state = "Disabled";
-      return ok(this.publicRecord(record));
-    } catch (cause) {
-      record.state = "Failed";
-      return err(
-        pluginCrash("Plugin process failed while disabling.", {
-          pluginId,
-          cause: cause instanceof Error ? cause.message : String(cause),
-        }),
-      );
+    const dependentPluginIds = this.enabledDependents(pluginId);
+    if (dependentPluginIds.length > 0) {
+      const confirmed =
+        options.force === true && options.confirmDependents !== undefined
+          ? await options.confirmDependents(dependentPluginIds)
+          : false;
+      if (!confirmed) {
+        this.options.logger?.warning("plugin.disable.blocked", {
+          plugin_id: pluginId,
+          dependent_count: dependentPluginIds.length,
+          reason: options.force === true ? "cascade_not_confirmed" : "enabled_dependents",
+        });
+        return err(
+          lifecycleFailure(
+            "Plugin has enabled dependents and requires an explicit cascade confirmation.",
+            {
+              pluginId,
+              dependent_plugin_ids: dependentPluginIds,
+            },
+          ),
+        );
+      }
+      this.options.logger?.info("plugin.disable.cascade_confirmed", {
+        plugin_id: pluginId,
+        dependent_count: dependentPluginIds.length,
+      });
+      for (const dependentPluginId of [...dependentPluginIds].reverse()) {
+        const disabled = await this.disable(dependentPluginId, {
+          force: true,
+          confirmDependents: () => true,
+        });
+        if (!disabled.ok) return err(disabled.error);
+      }
     }
+
+    return this.disableSingle(record);
   }
 
-  public async uninstall(pluginId: string): Promise<Result<void>> {
+  public async uninstall(
+    pluginId: string,
+    options: PluginDisableOptions = {},
+  ): Promise<Result<void>> {
     const record = this.plugins.get(pluginId);
     if (!record) return err(lifecycleFailure("Plugin is not installed.", { pluginId }));
     if (record.state === "Enabled" || record.state === "Deprecated") {
-      const disabled = await this.disable(pluginId);
+      const disabled = await this.disable(pluginId, options);
       if (!disabled.ok) return err(disabled.error);
     }
     if (record.state !== "Disabled" && record.state !== "Failed") {
@@ -468,11 +508,48 @@ export class PluginManager {
     return ok(undefined);
   }
 
+  private async disableSingle(record: MutablePluginRecord): Promise<Result<PluginRecord>> {
+    try {
+      if (record.process) await record.process.stop();
+      await this.options.deregisterTools?.(record.manifest.provided_tools);
+      record.process = undefined;
+      record.grantedPermissions.clear();
+      record.state = "Disabled";
+      return ok(this.publicRecord(record));
+    } catch (cause) {
+      record.state = "Failed";
+      return err(
+        pluginCrash("Plugin process failed while disabling.", {
+          pluginId: record.manifest.plugin_id,
+          cause: cause instanceof Error ? cause.message : String(cause),
+        }),
+      );
+    }
+  }
+
   public get(pluginId: string): Result<PluginRecord> {
     const record = this.plugins.get(pluginId);
     return record
       ? ok(this.publicRecord(record))
       : err(lifecycleFailure("Plugin is not installed.", { pluginId }));
+  }
+
+  private enabledDependents(pluginId: string): string[] {
+    const dependentPluginIds = new Set<string>();
+    const visit = (dependencyId: string): void => {
+      for (const candidate of this.plugins.values()) {
+        const isEnabled = candidate.state === "Enabled" || candidate.state === "Deprecated";
+        const dependsOnTarget = candidate.manifest.dependencies.some(
+          (dependency) => dependency.plugin_id === dependencyId,
+        );
+        if (isEnabled && dependsOnTarget && !dependentPluginIds.has(candidate.manifest.plugin_id)) {
+          dependentPluginIds.add(candidate.manifest.plugin_id);
+          visit(candidate.manifest.plugin_id);
+        }
+      }
+    };
+    visit(pluginId);
+    return [...dependentPluginIds];
   }
 
   private async reviewDeclaredPermissions(manifest: PluginManifest): Promise<Set<string>> {

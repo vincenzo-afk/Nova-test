@@ -51,6 +51,14 @@ the user — this prevents silently breaking a dependent plugin's tools
 mid-use. An explicit "force disable, also disable dependents" option is
 available but requires confirmation naming every affected dependent.
 
+## Runtime behavior
+
+The Plugin Manager computes the transitive set of currently enabled dependents before disabling or uninstalling a plugin. A normal disable or uninstall is rejected when that set is non-empty, and the returned lifecycle error includes the explicit dependent plugin identifiers in bounded structured error details so the user can see exactly what would be affected.
+
+A forced operation is valid only when the caller supplies both `force: true` and a confirmation callback. The callback receives the complete dependent identifier list and must confirm that exact set. If confirmation is absent or denied, no plugin state is changed. After confirmation, dependents are disabled from the leaves toward the requested plugin, so no enabled dependent is left pointing at a disabled dependency. The same option is accepted by uninstall; uninstall removes only the requested plugin after its confirmed cascade has completed.
+
+Cascade blocks and confirmations emit local structured diagnostics containing only plugin identifiers, dependent counts, and bounded reasons. Plugin descriptions, code, credentials, tool arguments, and arbitrary plugin payloads are never logged.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-19-plugin-ecosystem.md` — failure modes for this subsystem

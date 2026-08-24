@@ -173,6 +173,132 @@ describe("PluginManager", () => {
     expect(deregisterTools).toHaveBeenCalledWith(["tool.reader"]);
   });
 
+  it("blocks disabling a plugin with enabled dependents and lists every affected plugin", async () => {
+    const sink = new MemoryLogSink();
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => true,
+      processFactory: () => process(),
+      logger: new StructuredLogger({ service: "runtime.plugins", sink }),
+    });
+    manager.install(manifest({ plugin_id: "plugin.base", provided_tools: ["tool.base"] }));
+    manager.install(
+      manifest({
+        plugin_id: "plugin.dependent",
+        provided_tools: ["tool.dependent"],
+        dependencies: [{ plugin_id: "plugin.base", version_range: ">=1.0.0" }],
+      }),
+    );
+    await manager.enable("plugin.base");
+    await manager.enable("plugin.dependent");
+
+    const blocked = await manager.disable("plugin.base");
+
+    expect(blocked).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-PLG005", details: { dependent_plugin_ids: ["plugin.dependent"] } },
+    });
+    expect(manager.get("plugin.base")).toMatchObject({ value: { state: "Enabled" } });
+    expect(manager.get("plugin.dependent")).toMatchObject({ value: { state: "Enabled" } });
+    expect(sink.records().at(-1)?.event).toBe("plugin.disable.blocked");
+    expect(sink.records().at(-1)?.details).toMatchObject({
+      plugin_id: "plugin.base",
+      dependent_count: 1,
+      reason: "enabled_dependents",
+    });
+  });
+
+  it("requires explicit confirmation before a forced dependent cascade", async () => {
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => true,
+      processFactory: () => process(),
+    });
+    manager.install(manifest({ plugin_id: "plugin.base", provided_tools: ["tool.base"] }));
+    manager.install(
+      manifest({
+        plugin_id: "plugin.dependent",
+        provided_tools: ["tool.dependent"],
+        dependencies: [{ plugin_id: "plugin.base", version_range: ">=1.0.0" }],
+      }),
+    );
+    await manager.enable("plugin.base");
+    await manager.enable("plugin.dependent");
+
+    const unconfirmed = await manager.disable("plugin.base", { force: true });
+
+    expect(unconfirmed).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-PLG005", details: { dependent_plugin_ids: ["plugin.dependent"] } },
+    });
+  });
+
+  it("force-disables every affected dependent only after naming and confirming the cascade", async () => {
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => true,
+      processFactory: () => process(),
+    });
+    manager.install(manifest({ plugin_id: "plugin.base", provided_tools: ["tool.base"] }));
+    manager.install(
+      manifest({
+        plugin_id: "plugin.dependent",
+        provided_tools: ["tool.dependent"],
+        dependencies: [{ plugin_id: "plugin.base", version_range: ">=1.0.0" }],
+      }),
+    );
+    await manager.enable("plugin.base");
+    await manager.enable("plugin.dependent");
+    const confirmDependents = vi.fn(async (dependentIds: readonly string[]) => {
+      expect(dependentIds).toEqual(["plugin.dependent"]);
+      return true;
+    });
+
+    const disabled = await manager.disable("plugin.base", {
+      force: true,
+      confirmDependents,
+    });
+
+    expect(disabled).toMatchObject({ ok: true, value: { state: "Disabled" } });
+    expect(confirmDependents).toHaveBeenCalledOnce();
+    expect(manager.get("plugin.base")).toMatchObject({ value: { state: "Disabled" } });
+    expect(manager.get("plugin.dependent")).toMatchObject({ value: { state: "Disabled" } });
+  });
+
+  it("blocks uninstall while enabled dependents exist and supports the same confirmed cascade", async () => {
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => true,
+      processFactory: () => process(),
+    });
+    manager.install(manifest({ plugin_id: "plugin.base", provided_tools: ["tool.base"] }));
+    manager.install(
+      manifest({
+        plugin_id: "plugin.dependent",
+        provided_tools: ["tool.dependent"],
+        dependencies: [{ plugin_id: "plugin.base", version_range: ">=1.0.0" }],
+      }),
+    );
+    await manager.enable("plugin.base");
+    await manager.enable("plugin.dependent");
+
+    expect(await manager.uninstall("plugin.base")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-PLG005", details: { dependent_plugin_ids: ["plugin.dependent"] } },
+    });
+    expect(
+      await manager.uninstall("plugin.base", {
+        force: true,
+        confirmDependents: async () => true,
+      }),
+    ).toMatchObject({ ok: true });
+    expect(manager.get("plugin.base")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-PLG005" },
+    });
+    expect(manager.get("plugin.dependent")).toMatchObject({ value: { state: "Disabled" } });
+  });
+
   it("reviews each declared permission independently and keeps only granted scopes", async () => {
     const review = vi.fn(
       async ({ permission }: { readonly permission: string }) => permission === "files.read",

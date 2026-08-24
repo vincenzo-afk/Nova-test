@@ -31,11 +31,13 @@ export const stableErrorCodeSchema = z.enum([
 
 export type StableErrorCode = z.infer<typeof stableErrorCodeSchema>;
 
+export type ErrorDetailValue = string | number | boolean | readonly string[];
+
 export interface ErrorInfo {
   readonly code: StableErrorCode;
   readonly message: string;
   readonly retryable: boolean;
-  readonly details?: Readonly<Record<string, string | number | boolean>>;
+  readonly details?: Readonly<Record<string, ErrorDetailValue>>;
 }
 
 export type Result<TValue, TError extends ErrorInfo = ErrorInfo> =
