@@ -1,5 +1,25 @@
 import { z } from "zod";
-import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
+
+export const PLUGIN_PERMISSION_SCOPES = [
+  "memory.read",
+  "memory.write",
+  "tools.read",
+  "tools.register",
+  "files.read",
+  "files.write",
+  "tools.invoke:read_only",
+  "tools.invoke:reversible_write",
+  "tools.invoke:destructive_irreversible",
+  "task.submit",
+  "task.read",
+  "task.cancel",
+  "config.read",
+  "config.write",
+  "network.external",
+] as const;
+
+export type PluginPermissionScope = (typeof PLUGIN_PERMISSION_SCOPES)[number];
 
 export interface PluginManifest {
   readonly plugin_id: string;
@@ -9,11 +29,18 @@ export interface PluginManifest {
   readonly description: string;
   readonly provided_tools: readonly string[];
   readonly required_permissions: readonly string[];
+  readonly optional_permissions?: readonly string[];
   readonly dependencies: readonly {
     readonly plugin_id: string;
     readonly version_range: string;
   }[];
   readonly entry_point: string;
+}
+
+export interface PluginPermissionReviewRequest {
+  readonly plugin_id: string;
+  readonly permission: string;
+  readonly required: boolean;
 }
 
 export interface PluginProcess {
@@ -27,6 +54,9 @@ export interface PluginManagerOptions {
   readonly sandbox?: (manifest: PluginManifest) => Promise<boolean> | boolean;
   readonly processFactory?: (manifest: PluginManifest) => PluginProcess;
   readonly deregisterTools?: (toolIds: readonly string[]) => Promise<void> | void;
+  readonly reviewPermission?:
+    ((request: PluginPermissionReviewRequest) => Promise<boolean> | boolean) | undefined;
+  readonly logger?: StructuredLogger | undefined;
 }
 
 export type PluginState =
@@ -35,11 +65,13 @@ export type PluginState =
 export interface PluginRecord {
   readonly manifest: PluginManifest;
   readonly state: PluginState;
+  readonly granted_permissions: readonly string[];
 }
 
 type MutablePluginRecord = {
   manifest: PluginManifest;
   state: PluginState;
+  grantedPermissions: Set<string>;
   process?: PluginProcess | undefined;
 };
 
@@ -52,6 +84,7 @@ const manifestSchema = z.object({
   description: z.string(),
   provided_tools: z.array(z.string().min(1)),
   required_permissions: z.array(z.string().min(1)),
+  optional_permissions: z.array(z.string().min(1)).default([]),
   dependencies: z.array(
     z.object({
       plugin_id: z.string().min(1),
@@ -112,7 +145,15 @@ function satisfiesRange(version: string, range: string): boolean {
   });
 }
 
-const failure = (
+const configurationFailure = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-CFG001" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const dependencyFailure = (
   message: string,
   details?: Readonly<Record<string, string | number | boolean>>,
 ): ErrorInfo => {
@@ -120,13 +161,63 @@ const failure = (
   return details === undefined ? base : { ...base, details };
 };
 
-const compatibilityFailure = (
+const pluginCrash = (
   message: string,
   details?: Readonly<Record<string, string | number | boolean>>,
 ): ErrorInfo => {
   const base = { code: "NOVA-PLG002" as const, message, retryable: false as const };
   return details === undefined ? base : { ...base, details };
 };
+
+const compatibilityFailure = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-PLG004" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const lifecycleFailure = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-PLG005" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const sandboxFailure = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-PLG006" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const verificationFailure = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-SEC002" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const permissionMismatch = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-PLG003" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const authorizationDenied = (
+  message: string,
+  details?: Readonly<Record<string, string | number | boolean>>,
+): ErrorInfo => {
+  const base = { code: "NOVA-SEC004" as const, message, retryable: false as const };
+  return details === undefined ? base : { ...base, details };
+};
+
+const knownPermissionScopes = new Set<string>(PLUGIN_PERMISSION_SCOPES);
 
 export class PluginManager {
   private readonly plugins = new Map<string, MutablePluginRecord>();
@@ -141,28 +232,52 @@ export class PluginManager {
     const parsed = manifestSchema.safeParse(input);
     if (!parsed.success) {
       return err(
-        failure("Plugin manifest is invalid.", { issueCount: parsed.error.issues.length }),
+        configurationFailure("Plugin manifest is invalid.", {
+          issueCount: parsed.error.issues.length,
+        }),
+      );
+    }
+
+    const optionalPermissions = input.optional_permissions ?? [];
+    const declaredPermissions = [...input.required_permissions, ...optionalPermissions];
+    const duplicatePermissions = declaredPermissions.filter(
+      (permission, index) => declaredPermissions.indexOf(permission) !== index,
+    );
+    const invalidPermission = declaredPermissions.find(
+      (permission) => !knownPermissionScopes.has(permission),
+    );
+    if (invalidPermission || duplicatePermissions.length > 0) {
+      return err(
+        configurationFailure("Plugin manifest declares invalid or duplicate permissions.", {
+          invalidPermission: invalidPermission ?? "",
+          duplicatePermission: duplicatePermissions[0] ?? "",
+        }),
       );
     }
     if (this.plugins.has(input.plugin_id)) {
       return err(
-        failure("A plugin with this identifier is already installed.", {
+        lifecycleFailure("A plugin with this identifier is already installed.", {
           pluginId: input.plugin_id,
         }),
       );
     }
-    const record: MutablePluginRecord = { manifest: input, state: "Installed" };
+    const manifest: PluginManifest = { ...input, optional_permissions: optionalPermissions };
+    const record: MutablePluginRecord = {
+      manifest,
+      state: "Installed",
+      grantedPermissions: new Set<string>(),
+    };
     this.plugins.set(input.plugin_id, record);
     return ok(this.publicRecord(record));
   }
 
   public async enable(pluginId: string): Promise<Result<PluginRecord>> {
     const record = this.plugins.get(pluginId);
-    if (!record) return err(failure("Plugin is not installed.", { pluginId }));
+    if (!record) return err(lifecycleFailure("Plugin is not installed.", { pluginId }));
     if (record.state === "Enabled" || record.state === "Deprecated")
       return ok(this.publicRecord(record));
     if (record.state === "Uninstalled")
-      return err(failure("Plugin has been uninstalled.", { pluginId }));
+      return err(lifecycleFailure("Plugin has been uninstalled.", { pluginId }));
 
     const dependencyError = this.validateDependencies(pluginId, new Set<string>());
     if (dependencyError) {
@@ -184,15 +299,18 @@ export class PluginManager {
       if (this.options.verify && !(await this.options.verify(record.manifest))) {
         record.state = "Failed";
         return err(
-          failure("Plugin verification failed before sandbox provisioning.", { pluginId }),
+          verificationFailure("Plugin verification failed before sandbox provisioning.", {
+            pluginId,
+          }),
         );
       }
       if (this.options.sandbox && !(await this.options.sandbox(record.manifest))) {
         record.state = "Failed";
         return err(
-          failure("Plugin sandbox provisioning failed before code loading.", { pluginId }),
+          sandboxFailure("Plugin sandbox provisioning failed before code loading.", { pluginId }),
         );
       }
+
       record.process = (
         this.options.processFactory ??
         (() => ({
@@ -201,12 +319,13 @@ export class PluginManager {
         }))
       )(record.manifest);
       await record.process.start();
+      record.grantedPermissions = await this.reviewDeclaredPermissions(record.manifest);
       record.state = "Enabled";
       return ok(this.publicRecord(record));
     } catch (cause) {
       record.state = "Failed";
       return err(
-        failure("Plugin process failed during enablement.", {
+        pluginCrash("Plugin process failed during enablement.", {
           pluginId,
           cause: cause instanceof Error ? cause.message : String(cause),
         }),
@@ -214,24 +333,114 @@ export class PluginManager {
     }
   }
 
+  public authorizeToolInvocation(
+    pluginId: string,
+    toolId: string,
+    permissionScope: string,
+  ): Result<void> {
+    const record = this.plugins.get(pluginId);
+    if (!record || (record.state !== "Enabled" && record.state !== "Deprecated")) {
+      return err(
+        permissionMismatch(
+          "Plugin tool invocation is unavailable because the plugin is not enabled.",
+          { pluginId, toolId },
+        ),
+      );
+    }
+    if (!record.manifest.provided_tools.includes(toolId)) {
+      this.options.logger?.warning("plugin.invocation.blocked", {
+        plugin_id: pluginId,
+        tool_id: toolId,
+        reason: "tool_not_declared",
+      });
+      return err(
+        permissionMismatch("Plugin attempted to invoke a tool outside its declared manifest.", {
+          pluginId,
+          toolId,
+        }),
+      );
+    }
+    const declaredPermissions = [
+      ...record.manifest.required_permissions,
+      ...(record.manifest.optional_permissions ?? []),
+    ];
+    if (!declaredPermissions.includes(permissionScope)) {
+      this.options.logger?.warning("plugin.invocation.blocked", {
+        plugin_id: pluginId,
+        tool_id: toolId,
+        permission_scope: permissionScope,
+        reason: "permission_not_declared",
+      });
+      return err(
+        permissionMismatch(
+          "Plugin attempted to access a permission outside its declared manifest.",
+          {
+            pluginId,
+            toolId,
+            permissionScope,
+          },
+        ),
+      );
+    }
+    if (!record.grantedPermissions.has(permissionScope)) {
+      this.options.logger?.warning("plugin.invocation.blocked", {
+        plugin_id: pluginId,
+        tool_id: toolId,
+        permission_scope: permissionScope,
+        reason: "permission_not_granted",
+      });
+      return err(
+        authorizationDenied(
+          "Plugin tool invocation is outside the currently granted permission scope.",
+          { pluginId, toolId, permissionScope },
+        ),
+      );
+    }
+    return ok(undefined);
+  }
+
+  public revokePermission(pluginId: string, permissionScope: string): Result<PluginRecord> {
+    const record = this.plugins.get(pluginId);
+    if (!record) return err(lifecycleFailure("Plugin is not installed.", { pluginId }));
+    const optionalPermissions = record.manifest.optional_permissions ?? [];
+    if (
+      !record.manifest.required_permissions.includes(permissionScope) &&
+      !optionalPermissions.includes(permissionScope)
+    ) {
+      return err(
+        permissionMismatch("Permission is not declared by the plugin manifest.", {
+          pluginId,
+          permissionScope,
+        }),
+      );
+    }
+    record.grantedPermissions.delete(permissionScope);
+    this.options.logger?.info("plugin.permission.revoked", {
+      plugin_id: pluginId,
+      permission_scope: permissionScope,
+    });
+    return ok(this.publicRecord(record));
+  }
+
   public async disable(pluginId: string): Promise<Result<PluginRecord>> {
     const record = this.plugins.get(pluginId);
-    if (!record) return err(failure("Plugin is not installed.", { pluginId }));
+    if (!record) return err(lifecycleFailure("Plugin is not installed.", { pluginId }));
     if (record.state === "Disabled" || record.state === "Failed")
       return ok(this.publicRecord(record));
     if (record.state === "Uninstalled")
-      return err(failure("Plugin has been uninstalled.", { pluginId }));
+      return err(lifecycleFailure("Plugin has been uninstalled.", { pluginId }));
 
     try {
       if (record.process) await record.process.stop();
       await this.options.deregisterTools?.(record.manifest.provided_tools);
       record.process = undefined;
+      record.grantedPermissions.clear();
       record.state = "Disabled";
       return ok(this.publicRecord(record));
     } catch (cause) {
       record.state = "Failed";
       return err(
-        failure("Plugin process failed while disabling.", {
+        pluginCrash("Plugin process failed while disabling.", {
           pluginId,
           cause: cause instanceof Error ? cause.message : String(cause),
         }),
@@ -241,14 +450,17 @@ export class PluginManager {
 
   public async uninstall(pluginId: string): Promise<Result<void>> {
     const record = this.plugins.get(pluginId);
-    if (!record) return err(failure("Plugin is not installed.", { pluginId }));
+    if (!record) return err(lifecycleFailure("Plugin is not installed.", { pluginId }));
     if (record.state === "Enabled" || record.state === "Deprecated") {
       const disabled = await this.disable(pluginId);
       if (!disabled.ok) return err(disabled.error);
     }
     if (record.state !== "Disabled" && record.state !== "Failed") {
       return err(
-        failure("Plugin must be disabled before uninstalling.", { pluginId, state: record.state }),
+        lifecycleFailure("Plugin must be disabled before uninstalling.", {
+          pluginId,
+          state: record.state,
+        }),
       );
     }
     record.state = "Uninstalled";
@@ -260,26 +472,62 @@ export class PluginManager {
     const record = this.plugins.get(pluginId);
     return record
       ? ok(this.publicRecord(record))
-      : err(failure("Plugin is not installed.", { pluginId }));
+      : err(lifecycleFailure("Plugin is not installed.", { pluginId }));
+  }
+
+  private async reviewDeclaredPermissions(manifest: PluginManifest): Promise<Set<string>> {
+    const granted = new Set<string>();
+    const review = this.options.reviewPermission ?? (() => false);
+    const optionalPermissions = manifest.optional_permissions ?? [];
+
+    for (const permission of manifest.required_permissions) {
+      const approved = await review({
+        plugin_id: manifest.plugin_id,
+        permission,
+        required: true,
+      });
+      this.options.logger?.info("plugin.permission.reviewed", {
+        plugin_id: manifest.plugin_id,
+        permission_scope: permission,
+        required: true,
+        granted: approved,
+      });
+      if (approved) granted.add(permission);
+    }
+    for (const permission of optionalPermissions) {
+      const approved = await review({
+        plugin_id: manifest.plugin_id,
+        permission,
+        required: false,
+      });
+      this.options.logger?.info("plugin.permission.reviewed", {
+        plugin_id: manifest.plugin_id,
+        permission_scope: permission,
+        required: false,
+        granted: approved,
+      });
+      if (approved) granted.add(permission);
+    }
+    return granted;
   }
 
   private validateDependencies(pluginId: string, visiting: Set<string>): ErrorInfo | undefined {
     if (visiting.has(pluginId)) {
-      return compatibilityFailure("Plugin dependency cycle detected.", { pluginId });
+      return dependencyFailure("Plugin dependency cycle detected.", { pluginId });
     }
     const record = this.plugins.get(pluginId);
-    if (!record) return compatibilityFailure("Plugin dependency is not installed.", { pluginId });
+    if (!record) return dependencyFailure("Plugin dependency is not installed.", { pluginId });
     visiting.add(pluginId);
     for (const dependency of record.manifest.dependencies) {
       const dependencyRecord = this.plugins.get(dependency.plugin_id);
       if (!dependencyRecord || dependencyRecord.state !== "Enabled") {
-        return compatibilityFailure("Plugin dependency is missing or not enabled.", {
+        return dependencyFailure("Plugin dependency is missing or not enabled.", {
           pluginId,
           dependencyId: dependency.plugin_id,
         });
       }
       if (!satisfiesRange(dependencyRecord.manifest.version, dependency.version_range)) {
-        return compatibilityFailure("Plugin dependency version is incompatible.", {
+        return dependencyFailure("Plugin dependency version is incompatible.", {
           pluginId,
           dependencyId: dependency.plugin_id,
           requiredRange: dependency.version_range,
@@ -293,6 +541,10 @@ export class PluginManager {
   }
 
   private publicRecord(record: MutablePluginRecord): PluginRecord {
-    return { manifest: record.manifest, state: record.state };
+    return {
+      manifest: record.manifest,
+      state: record.state,
+      granted_permissions: [...record.grantedPermissions],
+    };
   }
 }

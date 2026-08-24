@@ -74,6 +74,14 @@ behavior — the plugin's affected tools are deregistered or restricted
 without requiring the plugin itself to be disabled entirely, where the
 plugin registers multiple tools with independently scoped permissions.
 
+## Runtime enforcement contract
+
+The Plugin Manager owns the live grant set for each installed plugin. Enablement invokes an individual review callback once for every declared required and optional scope. A missing review callback is safe by default: every scope is denied, while the plugin may still reach `Enabled` with its restricted capability set. Denying a required scope therefore does not abort installation or process startup; every affected tool invocation is blocked at the execution boundary.
+
+Before a plugin-provided tool is invoked, the manager checks that the plugin is enabled, the tool is listed in `provided_tools`, the requested scope is declared in either `required_permissions` or `optional_permissions`, and that scope is currently granted. A declared-but-revoked scope returns the security authorization code `NOVA-SEC004`; an undeclared tool or scope returns the plugin manifest-mismatch code `NOVA-PLG003`. The check is performed against live in-memory state, so revocation does not wait for process restart or a later task boundary. Disabling a plugin also clears its live grants after deregistering its tools.
+
+Permission review, blocked invocation, and revocation diagnostics are structured and local. They contain only plugin identifier, tool identifier where relevant, permission scope, required/optional status, grant result, and bounded reason metadata; plugin descriptions, code, credentials, arguments, and arbitrary payloads are never logged.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-19-plugin-ecosystem.md` — failure modes for this subsystem

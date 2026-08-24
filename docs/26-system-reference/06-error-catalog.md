@@ -56,6 +56,9 @@ catalog itself drifting).
 | `NOVA-PLG001` | Plugin dependency unresolved at enable time | Plugins | Block enable, surface diagnostic | `FM-19-003` |
 | `NOVA-PLG002` | Plugin crashed during execution | Plugins | Restart sandbox in isolation | `FM-19-002` |
 | `NOVA-PLG003` | Plugin accessed resource outside declared manifest | Plugins | Block access, flag for review | `FM-19-007`, `FM-12-007` |
+| `NOVA-PLG004` | Plugin API compatibility mismatch | Plugins | Keep disabled and surface the required compatibility range | `FM-19-009` |
+| `NOVA-PLG005` | Plugin lifecycle state violation | Plugins | Reject the transition and leave state unchanged | `FM-19-010` |
+| `NOVA-PLG006` | Plugin sandbox provisioning failure | Plugins | Keep failed/disabled; do not load plugin code | `FM-19-011` |
 | `NOVA-NET001` | External API contract mismatch (unexpected response shape) | Network | Schema-validate, treat as failure not silent pass | `FM-11-012` |
 | `NOVA-NET002` | Rate limit exceeded | Network | Respect `Retry-After`, back off | `FM-11-007` |
 | `NOVA-NET003` | Credential expired or revoked | Network | Prompt for re-authentication | `FM-11-009` |

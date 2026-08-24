@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import { PluginManager, type PluginManifest, type PluginProcess } from "../src/plugin-manager.js";
 
 const manifest = (overrides: Partial<PluginManifest> = {}): PluginManifest => ({
@@ -8,7 +9,8 @@ const manifest = (overrides: Partial<PluginManifest> = {}): PluginManifest => ({
   display_name: "Reader",
   description: "Reads documents",
   provided_tools: ["tool.reader"],
-  required_permissions: ["filesystem.read"],
+  required_permissions: ["files.read"],
+  optional_permissions: [],
   dependencies: [],
   entry_point: "plugin.js",
   ...overrides,
@@ -51,11 +53,24 @@ describe("PluginManager", () => {
     const manager = new PluginManager({ novaApiVersion: "1.1.0" });
     const invalid = { ...manifest(), version: "not-semver", provided_tools: [""] };
 
-    expect(manager.install(invalid)).toMatchObject({ ok: false, error: { code: "NOVA-PLG001" } });
+    expect(manager.install(invalid)).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
     expect(manager.get("com.example.reader")).toMatchObject({
       ok: false,
-      error: { code: "NOVA-PLG001" },
+      error: { code: "NOVA-PLG005" },
     });
+  });
+
+  it("rejects permission scopes outside the canonical vocabulary and duplicate declarations", () => {
+    const manager = new PluginManager({ novaApiVersion: "1.1.0" });
+
+    expect(
+      manager.install(
+        manifest({
+          required_permissions: ["files.read", "files.read"],
+          optional_permissions: ["not-a-real-scope"],
+        }),
+      ),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
   });
 
   it("rejects incompatible SDK ranges before sandboxing", async () => {
@@ -65,7 +80,7 @@ describe("PluginManager", () => {
 
     const result = await manager.enable("com.example.reader");
 
-    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-PLG002" } });
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-PLG004" } });
     expect(sandbox).not.toHaveBeenCalled();
   });
 
@@ -80,7 +95,7 @@ describe("PluginManager", () => {
 
     expect(await manager.enable("plugin.a")).toMatchObject({
       ok: false,
-      error: { code: "NOVA-PLG002" },
+      error: { code: "NOVA-PLG001" },
     });
 
     const cycleManager = new PluginManager({ novaApiVersion: "1.1.0" });
@@ -99,7 +114,7 @@ describe("PluginManager", () => {
 
     expect(await cycleManager.enable("plugin.a")).toMatchObject({
       ok: false,
-      error: { code: "NOVA-PLG002" },
+      error: { code: "NOVA-PLG001" },
     });
   });
 
@@ -116,7 +131,7 @@ describe("PluginManager", () => {
 
     const result = await manager.enable("com.example.reader");
 
-    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-PLG001" } });
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-SEC002" } });
     expect(sandbox).not.toHaveBeenCalled();
     expect(processFactory).not.toHaveBeenCalled();
     expect(manager.get("com.example.reader")).toMatchObject({
@@ -136,7 +151,7 @@ describe("PluginManager", () => {
 
     const result = await manager.enable("com.example.reader");
 
-    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-PLG001" } });
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-PLG006" } });
     expect(processFactory).not.toHaveBeenCalled();
   });
 
@@ -158,6 +173,108 @@ describe("PluginManager", () => {
     expect(deregisterTools).toHaveBeenCalledWith(["tool.reader"]);
   });
 
+  it("reviews each declared permission independently and keeps only granted scopes", async () => {
+    const review = vi.fn(
+      async ({ permission }: { readonly permission: string }) => permission === "files.read",
+    );
+    const manager = new PluginManager({ novaApiVersion: "1.1.0", reviewPermission: review });
+    manager.install(
+      manifest({
+        required_permissions: ["files.read"],
+        optional_permissions: ["network.external"],
+      }),
+    );
+
+    const enabled = await manager.enable("com.example.reader");
+
+    expect(enabled).toMatchObject({
+      ok: true,
+      value: { state: "Enabled", granted_permissions: ["files.read"] },
+    });
+    expect(review).toHaveBeenCalledTimes(2);
+    expect(review).toHaveBeenNthCalledWith(1, {
+      plugin_id: "com.example.reader",
+      permission: "files.read",
+      required: true,
+    });
+    expect(review).toHaveBeenNthCalledWith(2, {
+      plugin_id: "com.example.reader",
+      permission: "network.external",
+      required: false,
+    });
+  });
+
+  it("keeps a plugin enabled when a required scope is denied but blocks its invocation", async () => {
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => false,
+    });
+    manager.install(manifest({ required_permissions: ["files.read"] }));
+    await manager.enable("com.example.reader");
+
+    expect(
+      manager.authorizeToolInvocation("com.example.reader", "tool.reader", "files.read"),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC004" },
+    });
+  });
+
+  it("revokes a granted scope immediately and blocks undeclared scope access", async () => {
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => true,
+    });
+    manager.install(manifest({ required_permissions: ["files.read"] }));
+    await manager.enable("com.example.reader");
+
+    expect(
+      manager.authorizeToolInvocation("com.example.reader", "tool.reader", "files.read"),
+    ).toMatchObject({ ok: true });
+    expect(manager.revokePermission("com.example.reader", "files.read")).toMatchObject({
+      ok: true,
+    });
+    expect(
+      manager.authorizeToolInvocation("com.example.reader", "tool.reader", "files.read"),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC004" },
+    });
+    expect(
+      manager.authorizeToolInvocation("com.example.reader", "tool.reader", "network.external"),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-PLG003" },
+    });
+  });
+
+  it("emits bounded structured permission diagnostics without sensitive manifest content", async () => {
+    const sink = new MemoryLogSink();
+    const manager = new PluginManager({
+      novaApiVersion: "1.1.0",
+      reviewPermission: async () => false,
+      logger: new StructuredLogger({ service: "runtime.plugins", sink }),
+    });
+    manager.install(
+      manifest({
+        description: "secret token should never be logged",
+        required_permissions: ["files.read"],
+      }),
+    );
+    await manager.enable("com.example.reader");
+    manager.authorizeToolInvocation("com.example.reader", "tool.reader", "files.read");
+    manager.revokePermission("com.example.reader", "files.read");
+
+    const serialized = JSON.stringify(sink.records());
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "plugin.permission.reviewed",
+      "plugin.invocation.blocked",
+      "plugin.permission.revoked",
+    ]);
+    expect(serialized).not.toContain("secret token should never be logged");
+    expect(serialized).not.toMatch(/token|password|credential|api[_-]?key/i);
+  });
+
   it("uninstalls only after disable cleanup and removes the record", async () => {
     const pluginProcess = process();
     const deregisterTools = vi.fn(async () => undefined);
@@ -174,7 +291,7 @@ describe("PluginManager", () => {
     expect(deregisterTools).toHaveBeenCalledWith(["tool.reader"]);
     expect(manager.get("com.example.reader")).toMatchObject({
       ok: false,
-      error: { code: "NOVA-PLG001" },
+      error: { code: "NOVA-PLG005" },
     });
   });
 });

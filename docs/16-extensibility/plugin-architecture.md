@@ -39,6 +39,7 @@ not a trust escalation mechanism.
   "description": "string",
   "provided_tools": ["array of tool_id values this plugin registers"],
   "required_permissions": ["array, per docs/10-security/authorization.md scopes"],
+  "optional_permissions": ["array, per docs/10-security/authorization.md scopes; capability may degrade without these"],
   "dependencies": [{ "plugin_id": "string", "version_range": "semver range" }],
   "entry_point": "string, path to the plugin's executable/module"
 }
