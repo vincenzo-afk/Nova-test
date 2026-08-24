@@ -7,6 +7,7 @@ import { RemoteControlManager } from "../src/remote-control.js";
 import { EmailAssistant, type EmailDraft } from "../src/email-assistant.js";
 import { CalendarAssistant, type CalendarDraft } from "../src/calendar-assistant.js";
 import { ChannelManager, type ChannelAdapter } from "../src/channel-adapter.js";
+import { BackgroundAssistant } from "../src/background-assistant.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -244,6 +245,49 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { images: true, audio: false, files: true },
     });
+  });
+
+  it("routes explicit background briefing generation and delivery through the composed runtime", async () => {
+    const destination = { deliver: async () => undefined };
+    const background = new BackgroundAssistant(
+      [
+        {
+          source_id: "tasks",
+          collect: async () => [
+            {
+              title: "Open task",
+              summary: "One task remains.",
+              source_id: "tasks",
+              requires_confirmation: true,
+            },
+          ],
+        },
+      ],
+      destination,
+      { enabled: true },
+    );
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      backgroundAssistant: background,
+    });
+    applications.push(application);
+
+    const briefing = await application.generateBackgroundBriefing("explicit-request");
+    expect(briefing).toMatchObject({
+      ok: true,
+      value: { trigger: "explicit-request", items: [{ source_id: "tasks" }] },
+    });
+    expect(
+      await application.deliverBackgroundBriefing(
+        briefing.ok ? briefing.value : { trigger: "explicit-request", items: [] },
+      ),
+    ).toMatchObject({ ok: true });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

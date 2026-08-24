@@ -169,6 +169,33 @@ declare global {
         value?: { images: boolean; audio: boolean; files: boolean };
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      generateBackgroundBriefing: (
+        trigger: "time-based" | "event-based" | "explicit-request",
+      ) => Promise<{
+        ok: boolean;
+        value?: {
+          trigger: "time-based" | "event-based" | "explicit-request";
+          items: readonly {
+            title: string;
+            summary: string;
+            source_id: string;
+            requires_confirmation: boolean;
+          }[];
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      deliverBackgroundBriefing: (briefing: {
+        trigger: "time-based" | "event-based" | "explicit-request";
+        items: readonly {
+          title: string;
+          summary: string;
+          source_id: string;
+          requires_confirmation: boolean;
+        }[];
+      }) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

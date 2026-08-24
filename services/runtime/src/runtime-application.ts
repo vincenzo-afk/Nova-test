@@ -93,6 +93,7 @@ import type {
   InboundMessage,
   MediaCapabilities,
 } from "./channel-adapter.js";
+import type { BackgroundAssistant, Briefing, BriefingTrigger } from "./background-assistant.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -150,6 +151,7 @@ export interface RuntimeApplicationOptions {
   readonly emailAssistant?: EmailAssistant;
   readonly calendarAssistant?: CalendarAssistant;
   readonly channelManager?: ChannelManager;
+  readonly backgroundAssistant?: BackgroundAssistant;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -183,6 +185,7 @@ export class RuntimeApplication {
   public readonly emailAssistant: EmailAssistant | undefined;
   public readonly calendarAssistant: CalendarAssistant | undefined;
   public readonly channelManager: ChannelManager | undefined;
+  public readonly backgroundAssistant: BackgroundAssistant | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -218,6 +221,7 @@ export class RuntimeApplication {
     this.emailAssistant = options.emailAssistant;
     this.calendarAssistant = options.calendarAssistant;
     this.channelManager = options.channelManager;
+    this.backgroundAssistant = options.backgroundAssistant;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -586,6 +590,28 @@ export class RuntimeApplication {
       });
     }
     return this.androidCompanionManager.use(capability);
+  }
+
+  public async generateBackgroundBriefing(trigger: BriefingTrigger): Promise<Result<Briefing>> {
+    if (!this.backgroundAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Background assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.backgroundAssistant.generate(trigger);
+  }
+
+  public async deliverBackgroundBriefing(briefing: Briefing): Promise<Result<void>> {
+    if (!this.backgroundAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Background assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.backgroundAssistant.deliver(briefing);
   }
 
   public async sendChannelMessage(

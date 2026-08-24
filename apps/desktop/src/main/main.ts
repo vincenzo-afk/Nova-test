@@ -17,6 +17,8 @@ import {
   type EmailQuery,
   type CalendarDraft,
   type InboundMessage,
+  type Briefing,
+  type BriefingTrigger,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -77,6 +79,40 @@ const parseCalendarDraft = (data: unknown): CalendarDraft => {
     owner: draft.owner,
   } satisfies CalendarDraft;
 };
+const parseBriefingTrigger = (value: unknown): BriefingTrigger => {
+  if (value === "time-based" || value === "event-based" || value === "explicit-request")
+    return value;
+  throw new Error("Briefing trigger is invalid.");
+};
+
+const parseBriefing = (data: unknown): Briefing => {
+  const briefing = data as { readonly trigger?: unknown; readonly items?: unknown };
+  if (!Array.isArray(briefing.items)) throw new Error("Briefing items are required.");
+  const items = briefing.items.map((item) => {
+    const value = item as {
+      readonly title?: unknown;
+      readonly summary?: unknown;
+      readonly source_id?: unknown;
+      readonly requires_confirmation?: unknown;
+    };
+    if (
+      typeof value.title !== "string" ||
+      typeof value.summary !== "string" ||
+      typeof value.source_id !== "string" ||
+      typeof value.requires_confirmation !== "boolean"
+    ) {
+      throw new Error("Briefing item fields are invalid.");
+    }
+    return {
+      title: value.title,
+      summary: value.summary,
+      source_id: value.source_id,
+      requires_confirmation: value.requires_confirmation,
+    };
+  });
+  return { trigger: parseBriefingTrigger(briefing.trigger), items } satisfies Briefing;
+};
+
 let gatewayBus: NamedPipeCommunicationBus | undefined;
 let runtimeApplication: RuntimeApplication | undefined;
 let desktopAgent: DesktopAgentController | undefined;
@@ -226,7 +262,13 @@ ipcMain.handle(
   ) => requestGateway("channel.receive", payload),
 );
 ipcMain.handle("nova:channel:media", (_event, channelId: string) =>
-  requestGateway("channel.media", { channel_id: channelId }),
+  requestGateway("channel.media", channelId),
+);
+ipcMain.handle("nova:background:generate", (_event, trigger: BriefingTrigger) =>
+  requestGateway("background.generate", { trigger }),
+);
+ipcMain.handle("nova:background:deliver", (_event, briefing: Briefing) =>
+  requestGateway("background.deliver", briefing),
 );
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
@@ -405,6 +447,21 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("background.generate", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly trigger?: unknown };
+    const result = await runtimeApplication.generateBackgroundBriefing(
+      parseBriefingTrigger(payload.trigger),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("background.deliver", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.deliverBackgroundBriefing(parseBriefing(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -37,6 +37,10 @@ const novaApi = {
     ipcRenderer.invoke("nova:channel:receive", { channel_id: channelId, message }),
   getChannelMediaCapabilities: (channelId: string) =>
     ipcRenderer.invoke("nova:channel:media", channelId),
+  generateBackgroundBriefing: (trigger: string) =>
+    ipcRenderer.invoke("nova:background:generate", trigger),
+  deliverBackgroundBriefing: (briefing: unknown) =>
+    ipcRenderer.invoke("nova:background:deliver", briefing),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
