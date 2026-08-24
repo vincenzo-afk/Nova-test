@@ -497,6 +497,17 @@ declare global {
         reason: "scheduled" | "pre-update";
       }>;
       restoreBackup: (snapshotId: string) => Promise<unknown>;
+      prepareRestore: (snapshotId: string) => Promise<{
+        verified: true;
+        staging: unknown;
+      }>;
+      applyPreparedRestore: (
+        prepared: { verified: true; staging: unknown },
+        confirmed: boolean,
+      ) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

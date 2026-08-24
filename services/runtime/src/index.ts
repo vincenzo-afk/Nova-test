@@ -26,6 +26,7 @@ export * from "./adaptive-personalization.js";
 export * from "./incident-lifecycle.js";
 export * from "./runbook-manager.js";
 export * from "./backup-manager.js";
+export * from "./restore-manager.js";
 export * from "./job-scheduler.js";
 export * from "./background-assistant.js";
 export * from "./plugin-discovery.js";

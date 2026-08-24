@@ -19,6 +19,7 @@ import type { HardwareProfile } from "../src/hardware-detection.js";
 import { VoicePipeline } from "../src/voice-pipeline.js";
 import { PluginDiscovery, type PluginIndexEntry } from "../src/plugin-discovery.js";
 import { BackupManager, type BackupBackend } from "../src/backup-manager.js";
+import { RestoreManager } from "../src/restore-manager.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -669,6 +670,46 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { theme: "dark" },
     });
+  });
+
+  it("stages restores and requires explicit confirmation before applying live state", async () => {
+    let liveState: unknown = { theme: "light" };
+    const restore = new RestoreManager(
+      { load: async () => ({ theme: "dark" }) },
+      {
+        read: async () => liveState,
+        swap: async (state) => {
+          liveState = state;
+        },
+      },
+    );
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      restoreManager: restore,
+    });
+    applications.push(application);
+
+    const prepared = await application.prepareRestore("snapshot-1");
+    expect(prepared).toMatchObject({
+      ok: true,
+      value: { verified: true, staging: { theme: "dark" } },
+    });
+    if (!prepared.ok) throw new Error("Expected restore preparation to succeed.");
+    expect(await application.applyPreparedRestore(prepared.value, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(liveState).toEqual({ theme: "light" });
+    expect(await application.applyPreparedRestore(prepared.value, true)).toMatchObject({
+      ok: true,
+    });
+    expect(liveState).toEqual({ theme: "dark" });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

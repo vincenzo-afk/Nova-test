@@ -35,6 +35,7 @@ import {
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
   type SnapshotMetadata,
+  type PreparedRestore,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -110,6 +111,13 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parsePreparedRestore = (value: unknown): PreparedRestore => {
+  const prepared = value as { readonly verified?: unknown; readonly staging?: unknown };
+  if (prepared.verified !== true || prepared.staging === undefined)
+    throw new Error("Prepared restore is invalid or unverified.");
+  return prepared as PreparedRestore;
 };
 
 const parseSnapshotId = (value: unknown): string => {
@@ -611,6 +619,14 @@ ipcMain.handle("nova:backup:pre-update", (_event, state: unknown) =>
 ipcMain.handle("nova:backup:restore", (_event, snapshotId: string) =>
   requestGateway("backup.restore", { snapshot_id: snapshotId }),
 );
+ipcMain.handle("nova:restore:prepare", (_event, snapshotId: string) =>
+  requestGateway("restore.prepare", { snapshot_id: snapshotId }),
+);
+ipcMain.handle(
+  "nova:restore:apply",
+  (_event, payload: { readonly prepared: PreparedRestore; readonly confirmed: boolean }) =>
+    requestGateway("restore.apply", payload),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1030,6 +1046,23 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.restoreBackup(parseSnapshotId(payload.snapshot_id));
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
+  });
+  gateway.register("restore.prepare", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly snapshot_id?: unknown };
+    const result = await runtimeApplication.prepareRestore(parseSnapshotId(payload.snapshot_id));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies PreparedRestore;
+  });
+  gateway.register("restore.apply", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly prepared?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean") throw new Error("Restore confirmation is invalid.");
+    const result = await runtimeApplication.applyPreparedRestore(
+      parsePreparedRestore(payload.prepared),
+      payload.confirmed,
+    );
+    return result;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

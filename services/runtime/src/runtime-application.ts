@@ -125,6 +125,7 @@ import type {
   PluginDiscoveryResult,
 } from "./plugin-discovery.js";
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
+import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -192,6 +193,7 @@ export interface RuntimeApplicationOptions {
   readonly voicePipeline?: VoicePipeline;
   readonly pluginDiscovery?: PluginDiscovery;
   readonly backupManager?: BackupManager;
+  readonly restoreManager?: RestoreManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -235,6 +237,7 @@ export class RuntimeApplication {
   public readonly voicePipeline: VoicePipeline | undefined;
   public readonly pluginDiscovery: PluginDiscovery | undefined;
   public readonly backupManager: BackupManager | undefined;
+  public readonly restoreManager: RestoreManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -300,6 +303,7 @@ export class RuntimeApplication {
     this.voicePipeline = options.voicePipeline;
     this.pluginDiscovery = options.pluginDiscovery;
     this.backupManager = options.backupManager;
+    this.restoreManager = options.restoreManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -694,6 +698,19 @@ export class RuntimeApplication {
     return this.localModelManager?.discover(hardware) ?? [];
   }
 
+  public async prepareRestore(snapshotId: string): Promise<Result<PreparedRestore>> {
+    if (!this.restoreManager) return err(this.restoreUnavailableError());
+    return await this.restoreManager.prepare(snapshotId);
+  }
+
+  public async applyPreparedRestore(
+    prepared: PreparedRestore,
+    confirmed: boolean,
+  ): Promise<Result<void>> {
+    if (!this.restoreManager) return err(this.restoreUnavailableError());
+    return await this.restoreManager.apply(prepared, confirmed);
+  }
+
   public createBackup<T>(state: T): Result<SnapshotMetadata> {
     if (!this.backupManager) return err(this.backupUnavailableError());
     return this.backupManager.create(state);
@@ -1086,6 +1103,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private restoreUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Restore manager is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private backupUnavailableError(): {

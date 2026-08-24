@@ -94,6 +94,9 @@ const novaApi = {
   createBackup: (state: unknown) => ipcRenderer.invoke("nova:backup:create", state),
   preUpdateBackup: (state: unknown) => ipcRenderer.invoke("nova:backup:pre-update", state),
   restoreBackup: (snapshotId: string) => ipcRenderer.invoke("nova:backup:restore", snapshotId),
+  prepareRestore: (snapshotId: string) => ipcRenderer.invoke("nova:restore:prepare", snapshotId),
+  applyPreparedRestore: (prepared: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:restore:apply", { prepared, confirmed }),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
