@@ -151,6 +151,20 @@ describe("DevicePairingManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("rejects invalid pairing TTL configuration before issuing an offer", () => {
+    for (const ttlMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+      const manager = new DevicePairingManager({
+        ttlMs,
+        codeFactory: () => "PAIR-TTL",
+        tokenFactory: () => "token",
+        verifySignature: () => true,
+      });
+      expect(
+        manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary" }),
+      ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    }
+  });
+
   it("rejects a colliding live offer code without overwriting the original offer", () => {
     let now = 1000;
     const manager = new DevicePairingManager({

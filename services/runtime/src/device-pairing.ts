@@ -54,6 +54,9 @@ export class DevicePairingManager {
     readonly runtime_mode: DeviceRuntimeMode;
     readonly primary_public_key: string;
   }): Result<PairingOffer> {
+    const ttlMs = this.options.ttlMs ?? 30_000;
+    if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0)
+      return err(this.securityError("Pairing offer TTL must be a positive safe integer."));
     const code = this.options.codeFactory();
     const existing = this.offers.get(code);
     if (existing) {
@@ -66,7 +69,7 @@ export class DevicePairingManager {
       channel_token: this.options.tokenFactory(),
       primary_public_key: input.primary_public_key,
       runtime_mode: input.runtime_mode,
-      expires_at: this.now() + (this.options.ttlMs ?? 30_000),
+      expires_at: this.now() + ttlMs,
     };
     if (
       !hasText(offer.code) ||
