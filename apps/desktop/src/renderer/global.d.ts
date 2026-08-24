@@ -519,6 +519,17 @@ declare global {
         applied: readonly string[];
         reported: readonly { issue_id: string; kind: string; safe: boolean }[];
       }>;
+      acquireResources: (
+        taskId: string,
+        resources: readonly string[],
+      ) => Promise<{
+        status: "granted" | "queued";
+        task_id: string;
+        resources: readonly string[];
+      }>;
+      releaseResources: (taskId: string) => Promise<readonly string[]>;
+      resourceHolder: (resource: string) => Promise<{ task_id: string | null }>;
+      expireResourceLocks: () => Promise<readonly string[]>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

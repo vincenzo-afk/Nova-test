@@ -22,6 +22,7 @@ import { BackupManager, type BackupBackend } from "../src/backup-manager.js";
 import { RestoreManager } from "../src/restore-manager.js";
 import { UpgradeManager, type UpgradeAdapter } from "../src/upgrade-manager.js";
 import { RepairManager } from "../src/repair-manager.js";
+import { ResourceManager } from "../src/resource-manager.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -798,6 +799,36 @@ describe("RuntimeApplication", () => {
       value: { applied: ["safe-1"], reported: [{ issue_id: "unsafe-1" }] },
     });
     expect(fixed).toEqual(["safe-1"]);
+  });
+
+  it("delegates bounded resource locking, release, and expiry", () => {
+    let now = 100;
+    const resources = new ResourceManager({ maxLockDurationMs: 10, now: () => now });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      resourceManager: resources,
+    });
+    applications.push(application);
+
+    expect(application.acquireResources("task-1", ["gpu", "gpu"])).toMatchObject({
+      ok: true,
+      value: { status: "granted", resources: ["gpu"] },
+    });
+    expect(application.acquireResources("task-2", ["gpu"])).toMatchObject({
+      ok: true,
+      value: { status: "queued", task_id: "task-2" },
+    });
+    expect(application.releaseResources("task-1")).toMatchObject({ ok: true, value: ["task-2"] });
+    expect(application.resourceHolder("gpu")).toBe("task-2");
+    now = 110;
+    expect(application.expireResourceLocks()).toEqual(["task-2"]);
+    expect(application.resourceHolder("gpu")).toBeUndefined();
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

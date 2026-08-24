@@ -128,6 +128,7 @@ import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
 import type { RepairManager, RepairRequest, RepairResult } from "./repair-manager.js";
+import type { LockGrant, ResourceManager } from "./resource-manager.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -198,6 +199,7 @@ export interface RuntimeApplicationOptions {
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
   readonly repairManager?: RepairManager;
+  readonly resourceManager?: ResourceManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -244,6 +246,7 @@ export class RuntimeApplication {
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
   public readonly repairManager: RepairManager | undefined;
+  public readonly resourceManager: ResourceManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -312,6 +315,7 @@ export class RuntimeApplication {
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
     this.repairManager = options.repairManager;
+    this.resourceManager = options.resourceManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -704,6 +708,24 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public acquireResources(taskId: string, resources: readonly string[]): Result<LockGrant> {
+    if (!this.resourceManager) return err(this.resourceUnavailableError());
+    return this.resourceManager.acquire(taskId, resources);
+  }
+
+  public releaseResources(taskId: string): Result<readonly string[]> {
+    if (!this.resourceManager) return err(this.resourceUnavailableError());
+    return this.resourceManager.release(taskId);
+  }
+
+  public resourceHolder(resource: string): string | undefined {
+    return this.resourceManager?.holder(resource);
+  }
+
+  public expireResourceLocks(): readonly string[] {
+    return this.resourceManager?.expireLocks() ?? [];
   }
 
   public async repairRuntime(
@@ -1133,6 +1155,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private resourceUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Resource manager is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private repairUnavailableError(): {

@@ -100,6 +100,11 @@ const novaApi = {
   upgradeRuntime: (request: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:upgrade:run", { request, confirmed }),
   repairRuntime: (request?: { apply: boolean }) => ipcRenderer.invoke("nova:repair:run", request),
+  acquireResources: (taskId: string, resources: readonly string[]) =>
+    ipcRenderer.invoke("nova:resources:acquire", { task_id: taskId, resources }),
+  releaseResources: (taskId: string) => ipcRenderer.invoke("nova:resources:release", taskId),
+  resourceHolder: (resource: string) => ipcRenderer.invoke("nova:resources:holder", resource),
+  expireResourceLocks: () => ipcRenderer.invoke("nova:resources:expire"),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

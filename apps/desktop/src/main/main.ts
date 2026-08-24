@@ -117,6 +117,27 @@ const parseIncidentDetail = (value: unknown): string => {
   return value;
 };
 
+const parseResourceTaskId = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "")
+    throw new Error("Resource task ID is required.");
+  return value;
+};
+
+const parseResourceName = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "")
+    throw new Error("Resource name is required.");
+  return value;
+};
+
+const parseResourceList = (value: unknown): readonly string[] => {
+  if (
+    !Array.isArray(value) ||
+    value.some((resource) => typeof resource !== "string" || resource.trim() === "")
+  )
+    throw new Error("Resource list is invalid.");
+  return value;
+};
+
 const parseRepairRequest = (value: unknown): RepairRequest => {
   if (value === undefined) return { apply: false };
   const request = value as { readonly apply?: unknown };
@@ -663,6 +684,18 @@ ipcMain.handle(
 ipcMain.handle("nova:repair:run", (_event, request?: RepairRequest) =>
   requestGateway("repair.run", request),
 );
+ipcMain.handle(
+  "nova:resources:acquire",
+  (_event, payload: { readonly task_id: string; readonly resources: readonly string[] }) =>
+    requestGateway("resources.acquire", payload),
+);
+ipcMain.handle("nova:resources:release", (_event, taskId: string) =>
+  requestGateway("resources.release", { task_id: taskId }),
+);
+ipcMain.handle("nova:resources:holder", (_event, resource: string) =>
+  requestGateway("resources.holder", { resource }),
+);
+ipcMain.handle("nova:resources:expire", () => requestGateway("resources.expire", undefined));
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1116,6 +1149,34 @@ const startGateway = async (): Promise<void> => {
     const result = await runtimeApplication.repairRuntime(parseRepairRequest(data));
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies RepairResult;
+  });
+  gateway.register("resources.acquire", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly task_id?: unknown; readonly resources?: unknown };
+    const result = runtimeApplication.acquireResources(
+      parseResourceTaskId(payload.task_id),
+      parseResourceList(payload.resources),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("resources.release", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly task_id?: unknown };
+    const result = runtimeApplication.releaseResources(parseResourceTaskId(payload.task_id));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("resources.holder", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly resource?: unknown };
+    return {
+      task_id: runtimeApplication.resourceHolder(parseResourceName(payload.resource)) ?? null,
+    };
+  });
+  gateway.register("resources.expire", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.expireResourceLocks();
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
