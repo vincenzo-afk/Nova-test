@@ -16,6 +16,11 @@ import {
   type NativeBrowserEvent,
   type NativeBrowserEventBridgeContract,
   type BrowserObserverState,
+  KeyboardObserver,
+  NativeKeyboardEventBridge,
+  type KeyboardHotkeyRegistration,
+  type NativeKeyboardEventBridgeContract,
+  type KeyboardObserverState,
   ClipboardObserver,
   NativeClipboardEventBridge,
   type NativeClipboardEventBridgeContract,
@@ -80,6 +85,8 @@ export interface RuntimeApplicationOptions {
   readonly notificationObserverBridge?: NativeNotificationEventBridgeContract;
   readonly browserObserverBridge?: NativeBrowserEventBridgeContract;
   readonly browserExcludedDomains?: readonly string[];
+  readonly keyboardObserverBridge?: NativeKeyboardEventBridgeContract;
+  readonly keyboardHotkeys?: readonly KeyboardHotkeyRegistration[];
   readonly observationIndexer?: ObservationIndexer;
   readonly registeredTools?: readonly RegisteredTool[];
   readonly logger?: StructuredLogger;
@@ -100,6 +107,7 @@ export class RuntimeApplication {
   public readonly clipboardObserver: ClipboardObserver;
   public readonly notificationObserver: NotificationObserver;
   public readonly browserObserver: BrowserObserver;
+  public readonly keyboardObserver: KeyboardObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -137,7 +145,7 @@ export class RuntimeApplication {
           };
     this.configuration = new ConfigurationStore({ initial: initialConfiguration });
     this.events = new CommunicationBusEventJournal(bus);
-    this.worldModel = new WorldModel();
+    this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
     this.windowsObserver = new WindowsApplicationObserver({
       permissions: this.permissions,
@@ -159,6 +167,14 @@ export class RuntimeApplication {
       bridge: options.browserObserverBridge ?? new NativeBrowserEventBridge(),
       bus,
       excludedDomains: this.configuration.snapshot().permissions.browser_excluded_domains ?? [],
+      ...(this.logger === undefined ? {} : { logger: this.logger }),
+    });
+    this.keyboardObserver = new KeyboardObserver({
+      permissions: this.permissions,
+      bridge: options.keyboardObserverBridge ?? new NativeKeyboardEventBridge(),
+      bus,
+      hotkeys: options.keyboardHotkeys ?? [],
+      ...(this.logger === undefined ? {} : { logger: this.logger }),
     });
     this.configuration.subscribe((configuration) => {
       this.browserObserver.setExcludedDomains(
@@ -226,6 +242,7 @@ export class RuntimeApplication {
       if (this.notificationObserver.state() !== "Disabled")
         await this.notificationObserver.revoke();
       if (this.browserObserver.state() !== "Disabled") await this.browserObserver.revoke();
+      if (this.keyboardObserver.state() !== "Disabled") await this.keyboardObserver.revoke();
       this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
@@ -320,6 +337,8 @@ export class RuntimeApplication {
   }
 
   public async syncObservers(): Promise<Result<WindowsObserverState>> {
+    const keyboard = await this.syncKeyboardObserver();
+    if (!keyboard.ok) return err(keyboard.error);
     const browser = await this.syncBrowserObserver();
     if (!browser.ok) return err(browser.error);
     const clipboard = await this.syncClipboardObserver();
@@ -361,6 +380,18 @@ export class RuntimeApplication {
     if (this.notificationObserver.state() === "Disabled")
       return await this.notificationObserver.enable();
     return ok(this.notificationObserver.state());
+  }
+
+  public async syncKeyboardObserver(): Promise<Result<KeyboardObserverState>> {
+    const activityGranted = this.permissions
+      .list()
+      .some((grant) => grant.source === "keyboard_activity" && grant.granted);
+    if (!activityGranted) {
+      if (this.keyboardObserver.state() !== "Disabled") return await this.keyboardObserver.revoke();
+      return ok("Disabled");
+    }
+    if (this.keyboardObserver.state() === "Disabled") return await this.keyboardObserver.enable();
+    return ok(this.keyboardObserver.state());
   }
 
   public async syncBrowserObserver(): Promise<Result<BrowserObserverState>> {

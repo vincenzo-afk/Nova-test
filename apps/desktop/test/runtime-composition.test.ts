@@ -173,6 +173,37 @@ describe("desktop runtime composition", () => {
     expect(bridge.stop).toHaveBeenCalledOnce();
   });
 
+  it("starts keyboard activity observation only after permission and stops on revocation", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-keyboard-"));
+    temporaryDirectories.push(userDataPath);
+    const bridge = {
+      start: vi.fn(async () => undefined),
+      stop: vi.fn(async () => undefined),
+    };
+    const runtime = await createDesktopRuntime({
+      userDataPath,
+      keyboardObserverBridge: bridge,
+      keyboardHotkeys: [{ id: "command_palette", modifiers: ["Control", "Shift"], key: "Space" }],
+    });
+    runtimes.push(runtime);
+    await runtime.start();
+
+    expect(runtime.keyboardObserver.state()).toBe("Disabled");
+    runtime.permissions.update("keyboard_activity", true);
+    await runtime.syncObservers();
+    expect(runtime.keyboardObserver.state()).toBe("Active");
+    expect(bridge.start).toHaveBeenCalledWith(
+      expect.any(Function),
+      [{ id: "command_palette", modifiers: ["Control", "Shift"], key: "Space" }],
+      120_000,
+    );
+
+    runtime.permissions.update("keyboard_activity", false);
+    await runtime.syncObservers();
+    expect(runtime.keyboardObserver.state()).toBe("Disabled");
+    expect(bridge.stop).toHaveBeenCalledOnce();
+  });
+
   it("hot-reloads browser excluded domains before event-journal publication", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-browser-config-"));
     temporaryDirectories.push(userDataPath);
@@ -374,6 +405,7 @@ describe("desktop runtime composition", () => {
       { source: "screen", granted: false },
       { source: "desktop_control", granted: false },
       { source: "browser_metadata", granted: false },
+      { source: "keyboard_activity", granted: false },
       { source: "clipboard_metadata", granted: false },
       { source: "clipboard_content", granted: false },
       { source: "notifications_metadata", granted: false },

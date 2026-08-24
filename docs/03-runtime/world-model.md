@@ -137,6 +137,21 @@ true, and triggers an active re-check (via State Manager,
 `docs/03-runtime/state-manager.md`) before that entry is relied upon by
 a pending task.
 
+## Implemented keyboard engagement state
+
+The current World Model consumes `observer.keyboard.activity` and exposes an
+ephemeral `engagement()` snapshot containing only `keyboard_state`, bounded
+`idle_ms`, `updated_at`, confidence, and the source correlation ID. Activity
+updates are accepted continuously through the event bus and retained only as
+the latest current state; hotkey-trigger events remain transitions and do not
+persist key combinations or entered text. Invalid activity payloads are
+ignored without mutating the model. Runtime diagnostics record only the new
+state and idle duration, never the source event payload.
+
+This state is not written to Memory or the Knowledge Graph automatically. Any
+future promotion of a verified engagement summary must follow the memory
+promotion rules and remain separate from raw keyboard observation.
+
 ## Relationship to Knowledge Graph
 
 The World Model is ephemeral and does not persist beyond the current

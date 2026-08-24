@@ -42,6 +42,43 @@ keyloggers from a threat-model perspective, and no stated use case in
 explicit hotkey registration serve every legitimate use case this
 observer needs to support.
 
+## Implemented metadata-only surface
+
+The current implementation is `services/observers/src/keyboard-observer.ts` and
+uses the off-by-default `keyboard_activity` permission. While disabled, it
+cannot start the native bridge or publish activity. Granting the permission
+starts the bridge with the host-provided list of explicit hotkey registrations;
+revocation stops the bridge immediately and causes subsequent signals to be
+rejected. The observer validates every native event, rejects unknown fields and
+unregistered hotkey IDs, bounds idle duration to 24 hours, and publishes only
+these topics:
+
+| Topic | Payload |
+|---|---|
+| `observer.keyboard.activity` | `{ state: "active" | "idle", idle_ms: integer }` |
+| `observer.keyboard.hotkey_triggered` | `{ hotkey_id: bounded registered identifier }` |
+
+The event envelope carries the normal schema version, source service,
+correlation ID, message ID, and timestamp. No key combination, modifier list,
+key code, entered text, application text, or raw native message is included in
+an emitted event. The hotkey registration itself is passed to the Windows host
+only so it can call `RegisterHotKey`; the host emits the configured identifier
+when Windows reports `WM_HOTKEY`, never the underlying key content.
+
+The Windows bridge uses `GetLastInputInfo` for activity/idle state and samples
+that duration every five seconds, emitting only state transitions. The default
+idle threshold is 120 seconds and the runtime injection point permits a bounded
+host override. Native bridge startup and registration failures produce a
+retryable observer failure and are recorded through Nova's structured logger;
+permission denials, malformed signals, accepted events, publication failures,
+and revocation are also logged with stable codes and metadata only. On
+non-Windows hosts the native bridge refuses to start; this repository therefore
+has structural and sandbox evidence but no live Windows validation.
+
+This implementation deliberately does not add raw keyboard input APIs such as
+`GetAsyncKeyState`, `GetKeyboardState`, `ToUnicode`, or console key reads. It
+must never be extended into a keystroke logger, even behind a new permission.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-10-desktop-android-distributed-sync.md` — failure modes for this subsystem

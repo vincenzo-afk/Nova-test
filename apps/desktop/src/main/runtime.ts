@@ -27,6 +27,7 @@ const desktopPermissions = [
   { source: "screen", granted: false },
   { source: "desktop_control", granted: false },
   { source: "browser_metadata", granted: false },
+  { source: "keyboard_activity", granted: false },
   { source: "clipboard_metadata", granted: false },
   { source: "clipboard_content", granted: false },
   { source: "notifications_metadata", granted: false },
@@ -54,6 +55,8 @@ export interface DesktopRuntimeOptions {
   readonly notificationObserverBridge?: RuntimeApplicationOptions["notificationObserverBridge"];
   readonly browserObserverBridge?: RuntimeApplicationOptions["browserObserverBridge"];
   readonly browserExcludedDomains?: RuntimeApplicationOptions["browserExcludedDomains"];
+  readonly keyboardObserverBridge?: RuntimeApplicationOptions["keyboardObserverBridge"];
+  readonly keyboardHotkeys?: RuntimeApplicationOptions["keyboardHotkeys"];
   readonly observationIndexer?: RuntimeApplicationOptions["observationIndexer"];
   readonly desktopAgent?: () => DesktopAgentController | undefined;
   readonly logger?: StructuredLogger;
@@ -121,6 +124,10 @@ export async function createDesktopRuntime(
     ...(options.browserExcludedDomains === undefined
       ? {}
       : { browserExcludedDomains: options.browserExcludedDomains }),
+    ...(options.keyboardObserverBridge === undefined
+      ? {}
+      : { keyboardObserverBridge: options.keyboardObserverBridge }),
+    ...(options.keyboardHotkeys === undefined ? {} : { keyboardHotkeys: options.keyboardHotkeys }),
     observationIndexer:
       options.observationIndexer ?? new ObservationIndexer(persistence.memoryStore),
     registeredTools: [

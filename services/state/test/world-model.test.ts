@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryCommunicationBus, createMessage } from "@nova/shared";
+import {
+  InMemoryCommunicationBus,
+  createMessage,
+  MemoryLogSink,
+  StructuredLogger,
+} from "@nova/shared";
 import { WorldModel } from "../src/world-model.js";
 
 const windowPayload = (overrides: Record<string, unknown> = {}) => ({
@@ -25,6 +30,57 @@ const message = (topic: string, payload: unknown, timestamp: string, correlation
 });
 
 describe("WorldModel focus state", () => {
+  it("tracks ephemeral keyboard engagement without recording key content", async () => {
+    const bus = new InMemoryCommunicationBus();
+    const model = new WorldModel();
+    model.attach(bus);
+
+    await bus.publish(
+      message(
+        "observer.keyboard.activity",
+        { state: "idle", idle_ms: 90_000 },
+        "2026-08-24T00:00:00.000Z",
+        "00000000-0000-4000-8000-000000000003",
+      ),
+    );
+
+    expect(model.engagement()).toEqual({
+      keyboard_state: "idle",
+      idle_ms: 90_000,
+      updated_at: "2026-08-24T00:00:00.000Z",
+      confidence: 1,
+      correlation_id: "00000000-0000-4000-8000-000000000003",
+    });
+    expect(model.engagement()).not.toHaveProperty("key");
+    expect(model.engagement()).not.toHaveProperty("text");
+  });
+
+  it("logs engagement updates without recording key content", async () => {
+    const bus = new InMemoryCommunicationBus();
+    const sink = new MemoryLogSink();
+    const model = new WorldModel({
+      logger: new StructuredLogger({ service: "state.world-model", sink }),
+    });
+    model.attach(bus);
+
+    await bus.publish(
+      message(
+        "observer.keyboard.activity",
+        { state: "active", idle_ms: 0, text: "must-not-log" },
+        "2026-08-24T00:00:00.000Z",
+        "00000000-0000-4000-8000-000000000004",
+      ),
+    );
+
+    expect(sink.records()).toHaveLength(1);
+    expect(sink.records()[0]).toMatchObject({
+      event: "world_model.engagement.updated",
+      correlation_id: "00000000-0000-4000-8000-000000000004",
+      details: { keyboard_state: "active", idle_ms: 0 },
+    });
+    expect(JSON.stringify(sink.records())).not.toContain("must-not-log");
+  });
+
   it("consumes focused window events into an application-to-window hierarchy", async () => {
     const bus = new InMemoryCommunicationBus();
     const model = new WorldModel({ now: () => "2026-08-23T00:00:01.000Z" });

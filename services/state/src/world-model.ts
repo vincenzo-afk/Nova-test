@@ -1,4 +1,4 @@
-import type { CommunicationBus, MessageEnvelope } from "@nova/shared";
+import type { CommunicationBus, MessageEnvelope, StructuredLogger } from "@nova/shared";
 
 export interface WorldModelApplication {
   readonly application_name: string;
@@ -23,6 +23,14 @@ export interface WorldModelFocusState {
   readonly correlation_id: string;
 }
 
+export interface WorldModelEngagementState {
+  readonly keyboard_state: "active" | "idle";
+  readonly idle_ms: number;
+  readonly updated_at: string;
+  readonly confidence: number;
+  readonly correlation_id: string;
+}
+
 export interface WorldModelTransition {
   readonly topic: string;
   readonly observed_at: string;
@@ -32,6 +40,7 @@ export interface WorldModelTransition {
 export interface WorldModelOptions {
   readonly now?: () => string;
   readonly maxTransitions?: number;
+  readonly logger?: StructuredLogger;
 }
 
 const topics = [
@@ -41,6 +50,8 @@ const topics = [
   "observer.window.closed",
   "observer.window.focused",
   "observer.window.title_changed",
+  "observer.keyboard.activity",
+  "observer.keyboard.hotkey_triggered",
 ] as const;
 
 type ApplicationPayload = WorldModelApplication;
@@ -51,12 +62,15 @@ export class WorldModel {
   private readonly transitions: WorldModelTransition[] = [];
   private readonly now: () => string;
   private readonly maxTransitions: number;
+  private readonly logger: StructuredLogger | undefined;
   private focusState: WorldModelFocusState | null = null;
+  private engagementState: WorldModelEngagementState | null = null;
   private unsubscribe: (() => void) | undefined;
 
   public constructor(options: WorldModelOptions = {}) {
     this.now = options.now ?? (() => new Date().toISOString());
     this.maxTransitions = Math.max(1, Math.floor(options.maxTransitions ?? 100));
+    this.logger = options.logger;
   }
 
   public attach(bus: CommunicationBus): () => void {
@@ -81,6 +95,10 @@ export class WorldModel {
     return this.focusState ? clone(this.focusState) : null;
   }
 
+  public engagement(): WorldModelEngagementState | null {
+    return this.engagementState ? clone(this.engagementState) : null;
+  }
+
   public runningApplications(): readonly WorldModelApplication[] {
     return [...this.applications.values()].map((application) => clone(application));
   }
@@ -96,6 +114,24 @@ export class WorldModel {
       correlation_id: message.correlation_id,
     });
     while (this.transitions.length > this.maxTransitions) this.transitions.shift();
+
+    if (message.topic === "observer.keyboard.activity") {
+      const engagement = parseEngagement(message.payload);
+      if (engagement) {
+        this.engagementState = {
+          ...engagement,
+          updated_at: message.timestamp || this.now(),
+          confidence: 1,
+          correlation_id: message.correlation_id,
+        };
+        this.logger?.info(
+          "world_model.engagement.updated",
+          { keyboard_state: engagement.keyboard_state, idle_ms: engagement.idle_ms },
+          message.correlation_id,
+        );
+      }
+      return;
+    }
 
     if (message.topic === "observer.application.launched") {
       const application = parseApplication(message.payload);
@@ -154,6 +190,23 @@ export class WorldModel {
       correlation_id: message.correlation_id,
     };
   }
+}
+
+function parseEngagement(
+  payload: unknown,
+): Pick<WorldModelEngagementState, "keyboard_state" | "idle_ms"> | null {
+  if (!isRecord(payload)) return null;
+  const idleMs = payload.idle_ms;
+  if (
+    (payload.state !== "active" && payload.state !== "idle") ||
+    typeof idleMs !== "number" ||
+    !Number.isInteger(idleMs) ||
+    idleMs < 0 ||
+    idleMs > 24 * 60 * 60 * 1_000
+  ) {
+    return null;
+  }
+  return { keyboard_state: payload.state, idle_ms: idleMs };
 }
 
 function parseApplication(payload: unknown): ApplicationPayload | null {

@@ -40,6 +40,7 @@ Every feature here must trace to a capability in `product-specification.md` and 
 | Application/window observation | 1 |
 | Git repository observation | 1 |
 | Browser activity observation | 1 |
+| Keyboard activity observation (activity/idle and registered hotkey signals; never keystrokes) | 1 |
 | Clipboard observation | 1 |
 | Terminal history observation | 1 |
 | Container observation | 2 |

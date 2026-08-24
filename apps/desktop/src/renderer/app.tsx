@@ -52,7 +52,9 @@ const permissionLabel = (source: string): string =>
               ? "Notification content"
               : source === "browser_metadata"
                 ? "Browser metadata"
-                : source;
+                : source === "keyboard_activity"
+                  ? "Keyboard activity"
+                  : source;
 const permissionDescription = (source: string): string => {
   if (source === "filesystem") return "Scoped folders only";
   if (source === "screen") return "One-shot task-bound screenshots; not continuously recorded";
@@ -67,6 +69,8 @@ const permissionDescription = (source: string): string => {
     return "Eligible notification bodies; messaging and authentication sources are always excluded";
   if (source === "browser_metadata")
     return "Tab open/close/navigation metadata only; no page content, forms, passwords, or automation";
+  if (source === "keyboard_activity")
+    return "Activity/idle and registered hotkey triggers only; never keystroke content";
   return "Metadata only until expanded";
 };
 
