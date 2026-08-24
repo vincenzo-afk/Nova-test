@@ -767,3 +767,65 @@ h2 {
   font-size: 11px;
   font-weight: 700;
 }
+
+.trusted-devices-card,
+.presence-card {
+  min-height: 0;
+}
+.trusted-device-list,
+.presence-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.trusted-device-row,
+.presence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #2b3653;
+  border-radius: 10px;
+  background: rgba(13, 19, 37, 0.62);
+}
+.trusted-device-row .muted,
+.presence-row .muted {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+}
+.presence-badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid #40506f;
+  border-radius: 999px;
+  color: #c7d2e9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.presence-online,
+.presence-idle {
+  border-color: #48612c;
+  color: #cbed97;
+}
+.presence-busy,
+.presence-syncing {
+  border-color: #755d2a;
+  color: #f3d58c;
+}
+.presence-offline,
+.presence-sleeping,
+.presence-updating {
+  border-color: #6a3f4b;
+  color: #f2aabd;
+}
+@media (max-width: 680px) {
+  .trusted-device-row,
+  .presence-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -27,6 +27,34 @@ describe("SessionContinuityManager", () => {
     expect(manager.presence("phone")).toBe("Offline");
   });
 
+  it("lists current presence and capabilities with stale devices marked Offline", () => {
+    let now = 1000;
+    const manager = new SessionContinuityManager({ now: () => now, heartbeatIntervalMs: 5000 });
+    manager.registerDevice("phone", [
+      { capability_id: "camera", status: "Supported" },
+      { capability_id: "microphone", status: "Permission denied" },
+    ]);
+    manager.heartbeat("phone", "Busy");
+    manager.registerDevice("desktop", ["filesystem"]);
+    now = 7000;
+
+    expect(manager.listDevices()).toEqual([
+      {
+        device_id: "phone",
+        presence: "Offline",
+        capabilities: [
+          { capability_id: "camera", status: "Supported" },
+          { capability_id: "microphone", status: "Permission denied" },
+        ],
+      },
+      {
+        device_id: "desktop",
+        presence: "Offline",
+        capabilities: [{ capability_id: "filesystem", status: "Supported" }],
+      },
+    ]);
+  });
+
   it("distinguishes supported, not-supported, and permission-denied capabilities", () => {
     const manager = new SessionContinuityManager({ now: () => 1000 });
     const capabilities: DeviceCapability[] = [

@@ -44,6 +44,7 @@ type DesktopUpdateInfo = Awaited<ReturnType<typeof window.nova.getUpdateInfo>>;
 type DesktopWorkflowDraft = Parameters<typeof window.nova.validateWorkflow>[0];
 type DesktopWorkflowValidation = Awaited<ReturnType<typeof window.nova.validateWorkflow>>;
 type DesktopTrustedDevice = Awaited<ReturnType<typeof window.nova.getTrustedDevices>>[number];
+type DesktopDeviceSnapshot = Awaited<ReturnType<typeof window.nova.getDeviceSnapshots>>[number];
 
 const actionPermissionSources = new Set(["screen", "desktop_control"]);
 const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
@@ -2038,6 +2039,9 @@ const DevicesView = ({
   const [trustedDevices, setTrustedDevices] = useState<readonly DesktopTrustedDevice[]>([]);
   const [trustedState, setTrustedState] = useState<"loading" | "ready" | "error">("loading");
   const [trustedError, setTrustedError] = useState<string | null>(null);
+  const [deviceSnapshots, setDeviceSnapshots] = useState<readonly DesktopDeviceSnapshot[]>([]);
+  const [snapshotState, setSnapshotState] = useState<"loading" | "ready" | "error">("loading");
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [devicesText, setDevicesText] = useState(JSON.stringify(devices, null, 2));
   const [status, setStatus] = useState<string | null>(null);
 
@@ -2059,6 +2063,27 @@ const DevicesView = ({
         setTrustedState("error");
         setTrustedError(
           cause instanceof Error ? cause.message : "Trusted devices are unavailable.",
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void window.nova
+      .getDeviceSnapshots()
+      .then((next) => {
+        if (!active) return;
+        setDeviceSnapshots(next);
+        setSnapshotState("ready");
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setSnapshotState("error");
+        setSnapshotError(
+          cause instanceof Error ? cause.message : "Device presence is unavailable.",
         );
       });
     return () => {
@@ -2145,6 +2170,35 @@ const DevicesView = ({
                     <strong>{device.device_id}</strong>
                     <span className="muted">
                       {device.runtime_mode} · {device.state}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+          <article className="surface-card presence-card">
+            <div className="task-header">
+              <strong>Presence and capabilities</strong>
+              {snapshotState === "ready" ? (
+                <span className="task-status">{deviceSnapshots.length}</span>
+              ) : null}
+            </div>
+            {snapshotState === "loading" ? (
+              <span className="muted">Loading heartbeat status…</span>
+            ) : snapshotState === "error" ? (
+              <span className="muted">{snapshotError}</span>
+            ) : deviceSnapshots.length === 0 ? (
+              <span className="muted">No registered device presence is available.</span>
+            ) : (
+              <div className="presence-list">
+                {deviceSnapshots.map((device) => (
+                  <div className="presence-row" key={device.device_id}>
+                    <div>
+                      <strong>{device.device_id}</strong>
+                      <span className="muted">{device.capabilities.length} capabilities</span>
+                    </div>
+                    <span className={`presence-badge presence-${device.presence.toLowerCase()}`}>
+                      {device.presence}
                     </span>
                   </div>
                 ))}

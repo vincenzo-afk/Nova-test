@@ -68,6 +68,7 @@ import type {
 import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
 import type { DevicePairingManager, TrustedDevice } from "./device-pairing.js";
+import type { DeviceSnapshot, SessionContinuityManager } from "./session-continuity.js";
 import {
   DistributedTaskCoordinator,
   type DistributedPlacementInput,
@@ -113,6 +114,7 @@ export interface RuntimeApplicationOptions {
   readonly knowledgeGraph?: KnowledgeGraph;
   readonly distributedTaskCoordinator?: DistributedTaskCoordinator;
   readonly devicePairingManager?: DevicePairingManager;
+  readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
   readonly logger?: StructuredLogger;
 }
@@ -139,6 +141,7 @@ export class RuntimeApplication {
   public readonly knowledgeGraph: KnowledgeGraph;
   public readonly distributedTaskCoordinator: DistributedTaskCoordinator;
   public readonly devicePairingManager: DevicePairingManager | undefined;
+  public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
   private readonly executor: Executor;
   private readonly verifier: Verifier;
@@ -167,6 +170,7 @@ export class RuntimeApplication {
     this.distributedTaskCoordinator =
       options.distributedTaskCoordinator ?? new DistributedTaskCoordinator(this.tasks);
     this.devicePairingManager = options.devicePairingManager;
+    this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
     const initialConfiguration =
       options.browserExcludedDomains === undefined
@@ -478,6 +482,10 @@ export class RuntimeApplication {
 
   public listTrustedDevices(): readonly TrustedDevice[] {
     return this.devicePairingManager?.listTrusted() ?? [];
+  }
+
+  public listDeviceSnapshots(): readonly DeviceSnapshot[] {
+    return this.sessionContinuityManager?.listDevices() ?? [];
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {

@@ -81,6 +81,16 @@ declare global {
           paired_at: number;
         }>
       >;
+      getDeviceSnapshots: () => Promise<
+        Array<{
+          device_id: string;
+          presence: "Online" | "Idle" | "Busy" | "Sleeping" | "Offline" | "Syncing" | "Updating";
+          capabilities: Array<{
+            capability_id: string;
+            status: "Supported" | "Not supported" | "Permission denied" | "Degraded";
+          }>;
+        }>
+      >;
       getDiagnostics: () => Promise<{
         collected_at: string;
         partial: boolean;

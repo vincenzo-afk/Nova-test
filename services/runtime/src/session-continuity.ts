@@ -14,6 +14,12 @@ export interface SessionState {
   readonly active_device_id: string;
 }
 
+export interface DeviceSnapshot {
+  readonly device_id: string;
+  readonly presence: PresenceState;
+  readonly capabilities: readonly DeviceCapability[];
+}
+
 export interface SessionContinuityOptions {
   readonly now?: () => number;
   readonly heartbeatIntervalMs?: number;
@@ -68,6 +74,17 @@ export class SessionContinuityManager {
     return this.now() - device.lastHeartbeat > this.options.heartbeatIntervalMs
       ? "Offline"
       : device.presence;
+  }
+
+  public listDevices(): readonly DeviceSnapshot[] {
+    return [...this.devices.values()].map((device) => ({
+      device_id: device.device_id,
+      presence: this.presence(device.device_id),
+      capabilities: [...device.capabilities.entries()].map(([capability_id, status]) => ({
+        capability_id,
+        status,
+      })),
+    }));
   }
 
   public receiveMessage(sessionId: string, deviceId: string): Result<SessionState> {
