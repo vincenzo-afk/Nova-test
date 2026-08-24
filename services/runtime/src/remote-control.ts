@@ -44,6 +44,9 @@ export interface RemoteExecutionReceipt {
   readonly audit_origin: "remote";
 }
 
+const hasText = (value: unknown): value is string =>
+  typeof value === "string" && value.trim() !== "";
+
 export class RemoteControlManager {
   private readonly sessions = new Map<string, Session>();
   private readonly preapprovals = new Map<string, number>();
@@ -64,6 +67,13 @@ export class RemoteControlManager {
   }
 
   public requestSession(request: RemoteSessionRequest): Result<RemoteSessionView> {
+    if (
+      !hasText(request.session_id) ||
+      !hasText(request.initiator_device_id) ||
+      !hasText(request.signature)
+    ) {
+      return err(this.securityError("Remote session fields are invalid."));
+    }
     if (this.revokedDevices.has(request.initiator_device_id))
       return err(this.securityError("Remote-control trust has been revoked for this device."));
     if (!this.transport.verify(request))
@@ -105,6 +115,8 @@ export class RemoteControlManager {
     sessionId: string,
     command: RemoteCommand,
   ): Promise<Result<RemoteExecutionReceipt>> {
+    if (!hasText(sessionId) || !hasText(command.command_id) || !hasText(command.content))
+      return err(this.securityError("Remote command fields are invalid."));
     const session = this.sessions.get(sessionId);
     if (!session || session.state !== "Active" || this.expired(session))
       return err(this.securityError("Remote session is expired, revoked, or not approved."));

@@ -65,6 +65,41 @@ describe("RemoteControlManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("rejects blank session and command fields before remote work", async () => {
+    const manager = new RemoteControlManager({
+      verify: () => true,
+      send: async () => undefined,
+    });
+
+    expect(
+      manager.requestSession({ session_id: "", initiator_device_id: "phone", signature: "sig" }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(
+      manager.requestSession({ session_id: "session", initiator_device_id: "", signature: "sig" }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(
+      manager.requestSession({
+        session_id: "session",
+        initiator_device_id: "phone",
+        signature: " ",
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+
+    const valid = manager.requestSession({
+      session_id: "session",
+      initiator_device_id: "phone",
+      signature: "sig",
+    });
+    expect(valid).toMatchObject({ ok: true, value: { state: "AwaitingApproval" } });
+    manager.approve("session");
+    expect(
+      await manager.execute("session", { command_id: "", content: "list", destructive: false }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(
+      await manager.execute("session", { command_id: "command", content: " ", destructive: false }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+  });
+
   it("rejects unsigned requests, destructive commands without confirmation, and expired sessions", async () => {
     let now = 1000;
     const manager = new RemoteControlManager(
