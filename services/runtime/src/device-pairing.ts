@@ -92,6 +92,8 @@ export class DevicePairingManager {
       return err(this.securityError("Pairing requires explicit user confirmation."));
     if (request.runtime_mode !== offer.runtime_mode)
       return err(this.securityError("Paired devices disagree on runtime mode."));
+    if (this.trusted.has(request.device_id))
+      return err(this.securityError("Device is already trusted; unpair before re-pairing."));
     if (
       !this.options.verifySignature(
         offer.primary_public_key,

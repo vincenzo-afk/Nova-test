@@ -151,6 +151,46 @@ describe("DevicePairingManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("requires explicit unpair before replacing an existing device identity", () => {
+    let offerNumber = 0;
+    const manager = new DevicePairingManager({
+      codeFactory: () => `PAIR-${++offerNumber}`,
+      tokenFactory: () => "token",
+      verifySignature: () => true,
+    });
+    const firstOffer = manager.createOffer({
+      runtime_mode: "Companion",
+      primary_public_key: "primary",
+    });
+    expect(firstOffer.ok).toBe(true);
+    expect(
+      manager.completePairing("PAIR-1", {
+        device_id: "android-1",
+        device_public_key: "old-key",
+        challenge: "challenge-1",
+        signature: "signature-1",
+        runtime_mode: "Companion",
+        confirmed: true,
+      }),
+    ).toMatchObject({ ok: true });
+    expect(
+      manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary" }),
+    ).toMatchObject({
+      ok: true,
+    });
+
+    expect(
+      manager.completePairing("PAIR-2", {
+        device_id: "android-1",
+        device_public_key: "new-key",
+        challenge: "challenge-2",
+        signature: "signature-2",
+        runtime_mode: "Companion",
+        confirmed: true,
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+  });
+
   it("lists trusted devices without exposing pairing channel secrets", () => {
     const manager = new DevicePairingManager({
       codeFactory: () => "PAIR",
