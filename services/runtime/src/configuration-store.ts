@@ -1,4 +1,4 @@
-import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
 
 export type ConfiguredRoutingPolicy =
   "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
@@ -67,6 +67,7 @@ export interface ImportResult {
 export interface ConfigurationStoreOptions {
   readonly initial: NovaConfiguration;
   readonly availableProviderIds?: ReadonlySet<string>;
+  readonly logger?: StructuredLogger;
 }
 
 type ConfigurationListener = (configuration: NovaConfiguration) => void;
@@ -87,10 +88,12 @@ export class ConfigurationStore {
   private configuration: NovaConfiguration;
   private readonly listeners = new Set<ConfigurationListener>();
   private readonly availableProviderIds: ReadonlySet<string>;
+  private readonly logger: StructuredLogger | undefined;
 
   public constructor(options: ConfigurationStoreOptions) {
     this.availableProviderIds = options.availableProviderIds ?? new Set<string>();
     this.configuration = clone(options.initial);
+    this.logger = options.logger;
   }
 
   public snapshot(): NovaConfiguration {
@@ -107,10 +110,17 @@ export class ConfigurationStore {
     value: NovaConfiguration[TSection],
   ): Result<void> {
     const validation = this.validateSection(section, value);
-    if (!validation.ok) return validation;
+    if (!validation.ok) {
+      this.logger?.warning("configuration.update.rejected", {
+        section,
+        error_code: validation.error.code,
+      });
+      return validation;
+    }
     this.configuration = { ...this.configuration, [section]: clone(value) } as NovaConfiguration;
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
+    this.logger?.info("configuration.updated", { section });
     return ok(undefined);
   }
 
@@ -119,7 +129,13 @@ export class ConfigurationStore {
     const preferences = preferenceId
       ? current.filter((preference) => preference.id !== preferenceId)
       : [];
-    return this.update("personalization", { preferences });
+    const result = this.update("personalization", { preferences });
+    if (result.ok) {
+      this.logger?.info("configuration.personalization.reset", {
+        scope: preferenceId === undefined ? "all" : "single",
+      });
+    }
+    return result;
   }
 
   public export(): string {
@@ -178,6 +194,10 @@ export class ConfigurationStore {
     this.configuration = next;
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
+    this.logger?.info("configuration.imported", {
+      schema_version: next.schema_version,
+      warning_count: warnings.length,
+    });
     return ok({ warnings });
   }
 

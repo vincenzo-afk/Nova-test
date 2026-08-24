@@ -150,7 +150,10 @@ export class RuntimeApplication {
               browser_excluded_domains: options.browserExcludedDomains,
             },
           };
-    this.configuration = new ConfigurationStore({ initial: initialConfiguration });
+    this.configuration = new ConfigurationStore({
+      initial: initialConfiguration,
+      ...(this.logger === undefined ? {} : { logger: this.logger }),
+    });
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);

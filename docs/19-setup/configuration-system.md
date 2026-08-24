@@ -72,6 +72,12 @@ against the current schema version and flags any section referencing a
 provider or plugin not installed on the target device, rather than
 silently dropping it.
 
+## Audit and change propagation
+
+Configuration writes are validated before mutation. A successful section write updates the live store and notifies subscribers for new requests; a rejected write leaves the previous snapshot unchanged. The runtime emits local structured audit events for successful updates, rejected updates, personalization resets, and validated imports. These events contain only the section or operation name, stable error code, schema version, and warning count. Credential values, vault references, preference values, provider prompts, and arbitrary configuration payloads are never included in diagnostics.
+
+The Setup Wizard and the ongoing Settings surface use the same ConfigurationStore instance, and RuntimeApplication supplies its existing structured logger to that store. This keeps setup and post-setup changes on one observable, local-first path without introducing a second configuration model.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-20-deployment-and-evolution.md` — failure modes for this subsystem

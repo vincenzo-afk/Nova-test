@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import { ConfigurationStore, type NovaConfiguration } from "../src/configuration-store.js";
 
 const capability = () => ({
@@ -60,6 +61,47 @@ describe("ConfigurationStore", () => {
     expect(changed).toHaveBeenCalledOnce();
   });
 
+  it("audits valid writes with bounded metadata and never logs configuration payloads", () => {
+    const sink = new MemoryLogSink();
+    const store = new ConfigurationStore({
+      initial: base(),
+      logger: new StructuredLogger({ service: "runtime.configuration", sink }),
+    });
+
+    expect(
+      store.update("channels", [{ credential: { vault_reference: "vault://mail-token" } }]),
+    ).toMatchObject({
+      ok: true,
+    });
+
+    const record = sink.records().at(-1);
+    expect(record?.event).toBe("configuration.updated");
+    expect(record?.details).toMatchObject({ section: "channels" });
+    expect(JSON.stringify(sink.records())).not.toContain("vault://mail-token");
+  });
+
+  it("audits rejected writes without logging invalid values", () => {
+    const sink = new MemoryLogSink();
+    const store = new ConfigurationStore({
+      initial: base(),
+      logger: new StructuredLogger({ service: "runtime.configuration", sink }),
+    });
+
+    expect(
+      store.update("channels", [{ credential: { token: "super-secret-value" } }]),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+
+    expect(sink.records().at(-1)?.event).toBe("configuration.update.rejected");
+    expect(sink.records().at(-1)?.details).toMatchObject({
+      section: "channels",
+      error_code: "NOVA-CFG001",
+    });
+    expect(JSON.stringify(sink.records())).not.toContain("super-secret-value");
+  });
+
   it("rejects invalid updates with field-level errors without partial mutation", () => {
     const store = new ConfigurationStore({
       initial: base(),
@@ -113,6 +155,26 @@ describe("ConfigurationStore", () => {
     expect(
       store.update("channels", [{ channel_id: "mail", credential: { token: "secret-value" } }]),
     ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+  });
+
+  it("audits personalization resets and imports with bounded metadata", () => {
+    const sink = new MemoryLogSink();
+    const store = new ConfigurationStore({
+      initial: { ...base(), personalization: personalization() },
+      logger: new StructuredLogger({ service: "runtime.configuration", sink }),
+    });
+
+    expect(store.resetPersonalization("tone.concise")).toMatchObject({ ok: true });
+    expect(sink.records().at(-1)?.event).toBe("configuration.personalization.reset");
+    expect(sink.records().at(-1)?.details).toMatchObject({ scope: "single" });
+
+    const imported = store.import(JSON.stringify(base()));
+    expect(imported).toMatchObject({ ok: true });
+    expect(sink.records().at(-1)?.event).toBe("configuration.imported");
+    expect(sink.records().at(-1)?.details).toMatchObject({
+      schema_version: "1.0.0",
+      warning_count: 0,
+    });
   });
 
   it("exports without credential values and imports with missing-provider warnings", () => {
