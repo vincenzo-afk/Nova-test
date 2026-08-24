@@ -83,6 +83,16 @@ declare global {
           correlation_id?: string;
         }>;
       }>;
+      getUpdateInfo: () => Promise<{
+        checked_at: string;
+        current_version: string;
+        latest_version: string | null;
+        update_available: boolean;
+        rollback_available: boolean;
+        update_service: "not_configured";
+        changelog: Array<{ version: string; date: string }>;
+        partial: boolean;
+      }>;
       captureScreenshot: (request: {
         task_id: string;
         target: "screen" | "focused-window";

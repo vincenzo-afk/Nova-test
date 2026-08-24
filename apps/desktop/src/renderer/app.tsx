@@ -40,6 +40,7 @@ type DesktopGraphResult = Awaited<ReturnType<typeof window.nova.queryGraph>>;
 type DesktopDiagnosticRecord = Awaited<
   ReturnType<typeof window.nova.getDiagnostics>
 >["records"][number];
+type DesktopUpdateInfo = Awaited<ReturnType<typeof window.nova.getUpdateInfo>>;
 
 const actionPermissionSources = new Set(["screen", "desktop_control"]);
 const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
@@ -391,6 +392,8 @@ export const App = () => {
             <DiagnosticsView />
           ) : view === "logs" ? (
             <LogsView />
+          ) : view === "updates" ? (
+            <UpdatesView />
           ) : (
             <SurfaceView view={view} />
           )}
@@ -1583,6 +1586,117 @@ const LogsView = () => {
           )}
         </div>
       )}
+    </section>
+  );
+};
+
+const UpdatesView = () => {
+  const [info, setInfo] = useState<DesktopUpdateInfo | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "empty" | "degraded" | "error">(
+    "loading",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setState("loading");
+    setError(null);
+    try {
+      const snapshot = await window.nova.getUpdateInfo();
+      setInfo(snapshot);
+      setState(snapshot.partial ? "degraded" : snapshot.changelog.length > 0 ? "ready" : "empty");
+    } catch (cause: unknown) {
+      setState("error");
+      setError(cause instanceof Error ? cause.message : "Update information is unavailable.");
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  return (
+    <section className="content-column" aria-labelledby="updates-title">
+      <div className="section-kicker">Updates / Release readiness</div>
+      <div className="task-header diagnostics-heading">
+        <div>
+          <h1 id="updates-title">Keep NOVA current.</h1>
+          <p className="lede">
+            Review the local version, release notes, and update controls. This source checkout does
+            not silently contact a hosted update service or claim rollback readiness.
+          </p>
+        </div>
+        <button
+          className="secondary-button"
+          disabled={state === "loading"}
+          onClick={() => void refresh()}
+          type="button"
+        >
+          {state === "loading" ? "Checking…" : "Refresh"}
+        </button>
+      </div>
+      {state === "loading" ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading release metadata</strong>
+          <span className="muted">Reading the local package version and changelog.</span>
+        </div>
+      ) : state === "error" ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>Update information unavailable</strong>
+          <span className="muted">{error}</span>
+        </div>
+      ) : info ? (
+        <div className="release-content">
+          <div className="surface-grid">
+            <SurfaceCard
+              title="Current version"
+              detail="Installed local desktop version."
+              state={info.current_version}
+            />
+            <SurfaceCard
+              title="Update service"
+              detail="Remote update discovery status."
+              state="Not configured"
+            />
+            <SurfaceCard
+              title="Rollback"
+              detail="A verified rollback snapshot is not available from this source checkout."
+              state="Unavailable"
+            />
+          </div>
+          {state === "degraded" ? (
+            <div className="state-strip state-error" role="status">
+              <strong>Partial release metadata</strong>
+              <span className="muted">
+                Some local release files were unavailable; the values shown are incomplete.
+              </span>
+            </div>
+          ) : null}
+          {state === "empty" ? (
+            <div className="empty-state">
+              <span className="empty-glyph">U</span>
+              <strong>No changelog entries are available.</strong>
+              <span className="muted">
+                The local version is known, but release notes were not packaged with this build.
+              </span>
+            </div>
+          ) : (
+            <article className="surface-card release-card">
+              <div className="task-header">
+                <strong>Changelog</strong>
+                <span className="muted">Checked {new Date(info.checked_at).toLocaleString()}</span>
+              </div>
+              <div className="release-list">
+                {info.changelog.map((entry) => (
+                  <div className="release-row" key={`${entry.version}-${entry.date}`}>
+                    <strong>{entry.version}</strong>
+                    <time dateTime={entry.date}>{entry.date}</time>
+                  </div>
+                ))}
+              </div>
+            </article>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 };

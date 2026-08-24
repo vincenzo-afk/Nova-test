@@ -616,6 +616,30 @@ h2 {
   color: #ffadb6;
   background: rgba(255, 90, 108, 0.12);
 }
+.release-content {
+  display: grid;
+  gap: 18px;
+}
+.release-card {
+  min-height: 0;
+}
+.release-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+.release-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #27304a;
+  color: #cdd5e7;
+}
+.release-row time {
+  color: #7f8aa7;
+  font-size: 12px;
+}
 .graph-form select {
   flex: 0 0 auto;
   width: auto;

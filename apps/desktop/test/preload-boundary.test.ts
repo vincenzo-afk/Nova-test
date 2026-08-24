@@ -30,6 +30,7 @@ describe("Electron preload boundary", () => {
       "getMemoryRecord",
       "queryGraph",
       "getDiagnostics",
+      "getUpdateInfo",
       "captureScreenshot",
       "executeUiAction",
       "readAccessibilityState",
@@ -53,6 +54,7 @@ describe("Electron preload boundary", () => {
         getMemoryRecord: (recordId: string) => unknown;
         queryGraph: (input: unknown) => unknown;
         getDiagnostics: () => unknown;
+        getUpdateInfo: () => unknown;
         captureScreenshot: (request: unknown) => unknown;
         executeUiAction: (request: unknown) => unknown;
         readAccessibilityState: (request: unknown) => unknown;
@@ -71,6 +73,7 @@ describe("Electron preload boundary", () => {
     api.getMemoryRecord("memory-1");
     api.queryGraph({ node_id: "file-1", direction: "out", depth: 1 });
     api.getDiagnostics();
+    api.getUpdateInfo();
     api.captureScreenshot({ task_id: "task-1", target: "focused-window", max_bytes: 1048576 });
     api.executeUiAction({
       task_id: "task-1",
@@ -107,12 +110,13 @@ describe("Electron preload boundary", () => {
       depth: 1,
     });
     expect(invoke).toHaveBeenNthCalledWith(8, "nova:diagnostics:get");
-    expect(invoke).toHaveBeenNthCalledWith(9, "nova:desktop:screenshot", {
+    expect(invoke).toHaveBeenNthCalledWith(9, "nova:updates:get");
+    expect(invoke).toHaveBeenNthCalledWith(10, "nova:desktop:screenshot", {
       task_id: "task-1",
       target: "focused-window",
       max_bytes: 1048576,
     });
-    expect(invoke).toHaveBeenNthCalledWith(10, "nova:desktop:ui-action", {
+    expect(invoke).toHaveBeenNthCalledWith(11, "nova:desktop:ui-action", {
       task_id: "task-1",
       action_id: "save-note",
       action: "invoke",
@@ -120,18 +124,18 @@ describe("Electron preload boundary", () => {
       expected_window_id: "hwnd:2A",
       target: { name: "Save", control_type: "button" },
     });
-    expect(invoke).toHaveBeenNthCalledWith(11, "nova:desktop:ui-read", {
+    expect(invoke).toHaveBeenNthCalledWith(12, "nova:desktop:ui-read", {
       task_id: "task-1",
       expected_window_id: "hwnd:2A",
       target: { name: "Save", control_type: "button" },
     });
-    expect(invoke).toHaveBeenNthCalledWith(12, "nova:permissions:get");
-    expect(invoke).toHaveBeenNthCalledWith(13, "nova:permissions:set", {
+    expect(invoke).toHaveBeenNthCalledWith(13, "nova:permissions:get");
+    expect(invoke).toHaveBeenNthCalledWith(14, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(14, "nova:config:get");
-    expect(invoke).toHaveBeenNthCalledWith(15, "nova:config:update", {
+    expect(invoke).toHaveBeenNthCalledWith(15, "nova:config:get");
+    expect(invoke).toHaveBeenNthCalledWith(16, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
     });
