@@ -11,6 +11,7 @@ import { BackgroundAssistant } from "../src/background-assistant.js";
 import { AdaptivePersonalization } from "../src/adaptive-personalization.js";
 import { ConfigurationStore } from "../src/configuration-store.js";
 import { PersonalAnalytics, type AnalyticsInput } from "../src/personal-analytics.js";
+import { IncidentManager, type IncidentSeverity } from "../src/incident-lifecycle.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -373,6 +374,46 @@ describe("RuntimeApplication", () => {
       period: input.period,
       totals: { activity_duration_ms: 1_000 },
     });
+  });
+
+  it("delegates the ordered incident lifecycle and timeline through the composed runtime", () => {
+    const incidentManager = new IncidentManager({
+      owner: "desktop-runtime",
+      now: () => 1_724_572_800_000,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      incidentManager,
+    });
+    applications.push(application);
+
+    const detected = application.detectIncident("Provider unavailable.");
+    expect(detected).toMatchObject({ ok: true, value: { stage: "Detected" } });
+    expect(application.triageIncident("inc-1", "High" as IncidentSeverity)).toMatchObject({
+      ok: true,
+      value: { stage: "Triaged", severity: "High" },
+    });
+    expect(application.mitigateIncident("inc-1", "Switched to local provider.")).toMatchObject({
+      ok: true,
+      value: { stage: "Mitigated" },
+    });
+    expect(application.resolveIncident("inc-1", "Provider recovered.")).toMatchObject({
+      ok: true,
+      value: { stage: "Resolved" },
+    });
+    expect(application.postmortemIncident("inc-1", "Added a health-check fallback.")).toMatchObject(
+      {
+        ok: true,
+        value: { stage: "Postmortem" },
+      },
+    );
+    expect(application.incidentTimeline("inc-1")).toHaveLength(5);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

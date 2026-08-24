@@ -293,6 +293,68 @@ declare global {
           communication_messages: number;
         };
       };
+      detectIncident: (detail: string) => Promise<{
+        incident_id: string;
+        stage: "Detected" | "Triaged" | "Mitigated" | "Resolved" | "Postmortem";
+        owner: string;
+        timestamp: number;
+        detail: string;
+        severity?: "Low" | "Medium" | "High" | "Critical";
+      }>;
+      triageIncident: (
+        incidentId: string,
+        severity: "Low" | "Medium" | "High" | "Critical",
+      ) => Promise<{
+        incident_id: string;
+        stage: "Triaged";
+        owner: string;
+        timestamp: number;
+        detail: string;
+        severity: "Low" | "Medium" | "High" | "Critical";
+      }>;
+      mitigateIncident: (
+        incidentId: string,
+        detail: string,
+      ) => Promise<{
+        incident_id: string;
+        stage: "Mitigated";
+        owner: string;
+        timestamp: number;
+        detail: string;
+        severity?: "Low" | "Medium" | "High" | "Critical";
+      }>;
+      resolveIncident: (
+        incidentId: string,
+        detail: string,
+      ) => Promise<{
+        incident_id: string;
+        stage: "Resolved";
+        owner: string;
+        timestamp: number;
+        detail: string;
+        severity?: "Low" | "Medium" | "High" | "Critical";
+      }>;
+      postmortemIncident: (
+        incidentId: string,
+        detail: string,
+      ) => Promise<{
+        incident_id: string;
+        stage: "Postmortem";
+        owner: string;
+        timestamp: number;
+        detail: string;
+        severity?: "Low" | "Medium" | "High" | "Critical";
+      }>;
+      incidentTimeline: (incidentId: string) => Promise<
+        readonly {
+          incident_id: string;
+          stage: "Detected" | "Triaged" | "Mitigated" | "Resolved" | "Postmortem";
+          owner: string;
+          timestamp: number;
+          detail: string;
+          severity?: "Low" | "Medium" | "High" | "Critical";
+        }[]
+      >;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

@@ -23,6 +23,8 @@ import {
   type AdaptivePreferenceProposal,
   type AnalyticsInput,
   type AnalyticsReport,
+  type IncidentSeverity,
+  type IncidentEntry,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -87,6 +89,33 @@ const parseBriefingTrigger = (value: unknown): BriefingTrigger => {
   if (value === "time-based" || value === "event-based" || value === "explicit-request")
     return value;
   throw new Error("Briefing trigger is invalid.");
+};
+
+const parseIncidentId = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "") throw new Error("Incident ID is required.");
+  return value;
+};
+
+const parseIncidentDetail = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "")
+    throw new Error("Incident detail is required.");
+  return value;
+};
+
+const parseIncidentSeverity = (value: unknown): IncidentSeverity => {
+  if (value === "Low" || value === "Medium" || value === "High" || value === "Critical")
+    return value;
+  throw new Error("Incident severity is invalid.");
+};
+
+const unwrapIncident = (result: {
+  readonly ok: boolean;
+  readonly value?: IncidentEntry;
+  readonly error?: { readonly message: string };
+}): IncidentEntry => {
+  if (!result.ok || !result.value)
+    throw new Error(result.error?.message ?? "Incident operation failed.");
+  return result.value;
 };
 
 const parseAnalyticsInput = (data: unknown): AnalyticsInput => {
@@ -406,6 +435,32 @@ ipcMain.handle("nova:personalization:reset", (_event, preferenceId?: string) =>
 ipcMain.handle("nova:analytics:generate", (_event, input: AnalyticsInput) =>
   requestGateway("analytics.generate", input),
 );
+ipcMain.handle("nova:incident:detect", (_event, detail: string) =>
+  requestGateway("incident.detect", { detail }),
+);
+ipcMain.handle(
+  "nova:incident:triage",
+  (_event, payload: { readonly incident_id: string; readonly severity: IncidentSeverity }) =>
+    requestGateway("incident.triage", payload),
+);
+ipcMain.handle(
+  "nova:incident:mitigate",
+  (_event, payload: { readonly incident_id: string; readonly detail: string }) =>
+    requestGateway("incident.mitigate", payload),
+);
+ipcMain.handle(
+  "nova:incident:resolve",
+  (_event, payload: { readonly incident_id: string; readonly detail: string }) =>
+    requestGateway("incident.resolve", payload),
+);
+ipcMain.handle(
+  "nova:incident:postmortem",
+  (_event, payload: { readonly incident_id: string; readonly detail: string }) =>
+    requestGateway("incident.postmortem", payload),
+);
+ipcMain.handle("nova:incident:timeline", (_event, incidentId: string) =>
+  requestGateway("incident.timeline", { incident_id: incidentId }),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -641,6 +696,57 @@ const startGateway = async (): Promise<void> => {
     return runtimeApplication.generatePersonalAnalytics(
       parseAnalyticsInput(data),
     ) satisfies AnalyticsReport;
+  });
+  gateway.register("incident.detect", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly detail?: unknown };
+    return unwrapIncident(runtimeApplication.detectIncident(parseIncidentDetail(payload.detail)));
+  });
+  gateway.register("incident.triage", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly incident_id?: unknown; readonly severity?: unknown };
+    return unwrapIncident(
+      runtimeApplication.triageIncident(
+        parseIncidentId(payload.incident_id),
+        parseIncidentSeverity(payload.severity),
+      ),
+    );
+  });
+  gateway.register("incident.mitigate", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly incident_id?: unknown; readonly detail?: unknown };
+    return unwrapIncident(
+      runtimeApplication.mitigateIncident(
+        parseIncidentId(payload.incident_id),
+        parseIncidentDetail(payload.detail),
+      ),
+    );
+  });
+  gateway.register("incident.resolve", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly incident_id?: unknown; readonly detail?: unknown };
+    return unwrapIncident(
+      runtimeApplication.resolveIncident(
+        parseIncidentId(payload.incident_id),
+        parseIncidentDetail(payload.detail),
+      ),
+    );
+  });
+  gateway.register("incident.postmortem", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly incident_id?: unknown; readonly detail?: unknown };
+    return unwrapIncident(
+      runtimeApplication.postmortemIncident(
+        parseIncidentId(payload.incident_id),
+        parseIncidentDetail(payload.detail),
+      ),
+    );
+  });
+  gateway.register("incident.timeline", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly incident_id?: unknown };
+    const incidentId = parseIncidentId(payload.incident_id);
+    return runtimeApplication.incidentTimeline(incidentId);
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

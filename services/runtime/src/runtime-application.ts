@@ -104,6 +104,11 @@ import {
   type AnalyticsInput,
   type AnalyticsReport,
 } from "./personal-analytics.js";
+import {
+  IncidentManager,
+  type IncidentEntry,
+  type IncidentSeverity,
+} from "./incident-lifecycle.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -164,6 +169,7 @@ export interface RuntimeApplicationOptions {
   readonly backgroundAssistant?: BackgroundAssistant;
   readonly adaptivePersonalization?: AdaptivePersonalization;
   readonly personalAnalytics?: PersonalAnalytics;
+  readonly incidentManager?: IncidentManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -200,6 +206,7 @@ export class RuntimeApplication {
   public readonly backgroundAssistant: BackgroundAssistant | undefined;
   public readonly adaptivePersonalization: AdaptivePersonalization | undefined;
   public readonly personalAnalytics: PersonalAnalytics;
+  public readonly incidentManager: IncidentManager;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -257,6 +264,8 @@ export class RuntimeApplication {
       options.adaptivePersonalization ??
       new AdaptivePersonalization(this.configuration, undefined, this.logger);
     this.personalAnalytics = options.personalAnalytics ?? new PersonalAnalytics(this.logger);
+    this.incidentManager =
+      options.incidentManager ?? new IncidentManager({ owner: "desktop-runtime" });
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -634,6 +643,30 @@ export class RuntimeApplication {
 
   public generatePersonalAnalytics(input: AnalyticsInput): AnalyticsReport {
     return this.personalAnalytics.generate(input);
+  }
+
+  public detectIncident(detail: string): Result<IncidentEntry> {
+    return this.incidentManager.detect(detail);
+  }
+
+  public triageIncident(incidentId: string, severity: IncidentSeverity): Result<IncidentEntry> {
+    return this.incidentManager.triage(incidentId, severity);
+  }
+
+  public mitigateIncident(incidentId: string, detail: string): Result<IncidentEntry> {
+    return this.incidentManager.mitigate(incidentId, detail);
+  }
+
+  public resolveIncident(incidentId: string, detail: string): Result<IncidentEntry> {
+    return this.incidentManager.resolve(incidentId, detail);
+  }
+
+  public postmortemIncident(incidentId: string, detail: string): Result<IncidentEntry> {
+    return this.incidentManager.postmortem(incidentId, detail);
+  }
+
+  public incidentTimeline(incidentId: string): readonly IncidentEntry[] {
+    return this.incidentManager.timeline(incidentId);
   }
 
   public proposeAdaptivePreference(

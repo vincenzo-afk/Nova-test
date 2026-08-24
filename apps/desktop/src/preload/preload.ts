@@ -52,6 +52,17 @@ const novaApi = {
     ipcRenderer.invoke("nova:personalization:reset", preferenceId),
   generatePersonalAnalytics: (input: unknown) =>
     ipcRenderer.invoke("nova:analytics:generate", input),
+  detectIncident: (detail: string) => ipcRenderer.invoke("nova:incident:detect", detail),
+  triageIncident: (incidentId: string, severity: string) =>
+    ipcRenderer.invoke("nova:incident:triage", { incident_id: incidentId, severity }),
+  mitigateIncident: (incidentId: string, detail: string) =>
+    ipcRenderer.invoke("nova:incident:mitigate", { incident_id: incidentId, detail }),
+  resolveIncident: (incidentId: string, detail: string) =>
+    ipcRenderer.invoke("nova:incident:resolve", { incident_id: incidentId, detail }),
+  postmortemIncident: (incidentId: string, detail: string) =>
+    ipcRenderer.invoke("nova:incident:postmortem", { incident_id: incidentId, detail }),
+  incidentTimeline: (incidentId: string) =>
+    ipcRenderer.invoke("nova:incident:timeline", incidentId),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
