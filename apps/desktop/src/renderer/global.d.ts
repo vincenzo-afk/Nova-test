@@ -1,6 +1,9 @@
 import type {
   ConfigurationSectionName,
   DeviceRuntimeMode,
+  SetupStepId,
+  SetupState,
+  SetupStepPatch,
   NovaConfiguration,
   PairingRequest,
 } from "@nova/runtime";
@@ -556,6 +559,11 @@ declare global {
       reconnectOfflineActions: () => Promise<
         readonly { action_id: string; status: "completed" | "failed" }[]
       >;
+      startSetupWizard: () => Promise<SetupState>;
+      rerunSetupWizard: () => Promise<SetupState>;
+      completeSetupStep: (step: SetupStepId, patch?: SetupStepPatch) => Promise<SetupState>;
+      deferSetupStep: (step: SetupStepId) => Promise<SetupState>;
+      setupSummary: () => Promise<SetupState>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

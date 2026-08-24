@@ -44,6 +44,8 @@ import {
   type ResourceDecision,
   type OfflineAction,
   type OfflineActionResult,
+  type SetupStepId,
+  type SetupStepPatch,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -119,6 +121,35 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const setupSteps = [
+  "core-llm",
+  "perception",
+  "voice",
+  "devices",
+  "channels",
+  "plugins",
+  "routing",
+  "security",
+  "summary",
+] as const satisfies readonly SetupStepId[];
+const parseSetupStep = (value: unknown): SetupStepId => {
+  if (typeof value !== "string" || !setupSteps.includes(value as SetupStepId))
+    throw new Error("Setup step is invalid.");
+  return value as SetupStepId;
+};
+
+const parseSetupPatch = (value: unknown): SetupStepPatch | undefined => {
+  if (value === undefined) return undefined;
+  const patch = value as { readonly section?: unknown; readonly value?: unknown };
+  if (
+    typeof patch.section !== "string" ||
+    !configurationSections.has(patch.section) ||
+    patch.value === undefined
+  )
+    throw new Error("Setup patch is invalid.");
+  return patch as SetupStepPatch;
 };
 
 const parseOfflineAction = (value: unknown): OfflineAction => {
@@ -743,6 +774,17 @@ ipcMain.handle("nova:offline:submit", (_event, action: OfflineAction) =>
   requestGateway("offline.submit", action),
 );
 ipcMain.handle("nova:offline:reconnect", () => requestGateway("offline.reconnect", undefined));
+ipcMain.handle("nova:setup:start", () => requestGateway("setup.start", undefined));
+ipcMain.handle("nova:setup:rerun", () => requestGateway("setup.rerun", undefined));
+ipcMain.handle(
+  "nova:setup:complete",
+  (_event, payload: { readonly step: SetupStepId; readonly patch?: SetupStepPatch }) =>
+    requestGateway("setup.complete", payload),
+);
+ipcMain.handle("nova:setup:defer", (_event, step: SetupStepId) =>
+  requestGateway("setup.defer", { step }),
+);
+ipcMain.handle("nova:setup:summary", () => requestGateway("setup.summary", undefined));
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1256,6 +1298,41 @@ const startGateway = async (): Promise<void> => {
     const result = await runtimeApplication.reconnectOfflineActions();
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies readonly OfflineActionResult[];
+  });
+  gateway.register("setup.start", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.startSetupWizard();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("setup.rerun", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.rerunSetupWizard();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("setup.complete", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly step?: unknown; readonly patch?: unknown };
+    const result = runtimeApplication.completeSetupStep(
+      parseSetupStep(payload.step),
+      parseSetupPatch(payload.patch),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("setup.defer", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly step?: unknown };
+    const result = runtimeApplication.deferSetupStep(parseSetupStep(payload.step));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("setup.summary", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.setupSummary();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

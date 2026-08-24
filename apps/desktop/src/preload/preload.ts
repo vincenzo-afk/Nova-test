@@ -114,6 +114,12 @@ const novaApi = {
     }),
   submitOfflineAction: (action: unknown) => ipcRenderer.invoke("nova:offline:submit", action),
   reconnectOfflineActions: () => ipcRenderer.invoke("nova:offline:reconnect"),
+  startSetupWizard: () => ipcRenderer.invoke("nova:setup:start"),
+  rerunSetupWizard: () => ipcRenderer.invoke("nova:setup:rerun"),
+  completeSetupStep: (step: string, patch?: unknown) =>
+    ipcRenderer.invoke("nova:setup:complete", { step, patch }),
+  deferSetupStep: (step: string) => ipcRenderer.invoke("nova:setup:defer", step),
+  setupSummary: () => ipcRenderer.invoke("nova:setup:summary"),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

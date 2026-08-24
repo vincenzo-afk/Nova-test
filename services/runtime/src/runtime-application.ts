@@ -137,6 +137,7 @@ import type {
   ResourceDecision,
   ResourceRequest,
 } from "./resource-arbitration.js";
+import type { SetupStepId, SetupStepPatch, SetupState, SetupWizard } from "./setup-wizard.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -210,6 +211,7 @@ export interface RuntimeApplicationOptions {
   readonly resourceManager?: ResourceManager;
   readonly resourceArbitrator?: ResourceArbitrator;
   readonly offlineActionQueue?: OfflineActionQueue;
+  readonly setupWizard?: SetupWizard;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -259,6 +261,7 @@ export class RuntimeApplication {
   public readonly resourceManager: ResourceManager | undefined;
   public readonly resourceArbitrator: ResourceArbitrator | undefined;
   public readonly offlineActionQueue: OfflineActionQueue | undefined;
+  public readonly setupWizard: SetupWizard | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -330,6 +333,7 @@ export class RuntimeApplication {
     this.resourceManager = options.resourceManager;
     this.resourceArbitrator = options.resourceArbitrator;
     this.offlineActionQueue = options.offlineActionQueue;
+    this.setupWizard = options.setupWizard;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -722,6 +726,43 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public async startSetupWizard(): Promise<Result<SetupState>> {
+    if (!this.setupWizard) return err(this.setupUnavailableError());
+    try {
+      return ok(await this.setupWizard.start());
+    } catch {
+      return err(this.setupFailureError("Setup wizard could not start."));
+    }
+  }
+
+  public async rerunSetupWizard(): Promise<Result<SetupState>> {
+    if (!this.setupWizard) return err(this.setupUnavailableError());
+    try {
+      return ok(await this.setupWizard.rerun());
+    } catch {
+      return err(this.setupFailureError("Setup wizard could not rerun."));
+    }
+  }
+
+  public completeSetupStep(step: SetupStepId, patch?: SetupStepPatch): Result<SetupState> {
+    if (!this.setupWizard) return err(this.setupUnavailableError());
+    return this.setupWizard.complete(step, patch);
+  }
+
+  public deferSetupStep(step: SetupStepId): Result<SetupState> {
+    if (!this.setupWizard) return err(this.setupUnavailableError());
+    return this.setupWizard.defer(step);
+  }
+
+  public setupSummary(): Result<SetupState> {
+    if (!this.setupWizard) return err(this.setupUnavailableError());
+    try {
+      return ok(this.setupWizard.summary());
+    } catch {
+      return err(this.setupFailureError("Setup wizard has not been started."));
+    }
   }
 
   public async submitOfflineAction(
@@ -1197,6 +1238,26 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private setupUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Setup wizard is not configured for this runtime.",
+      retryable: true,
+    };
+  }
+
+  private setupFailureError(message: string): {
+    code: "NOVA-CFG001";
+    message: string;
+    retryable: false;
+  } {
+    return { code: "NOVA-CFG001", message, retryable: false };
   }
 
   private offlineUnavailableError(): {

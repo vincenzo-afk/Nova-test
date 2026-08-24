@@ -23,6 +23,8 @@ import { RestoreManager } from "../src/restore-manager.js";
 import { UpgradeManager, type UpgradeAdapter } from "../src/upgrade-manager.js";
 import { RepairManager } from "../src/repair-manager.js";
 import { ResourceManager } from "../src/resource-manager.js";
+import { HardwareDetector, type HardwareProbe } from "../src/hardware-detection.js";
+import { SetupWizard } from "../src/setup-wizard.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -905,6 +907,66 @@ describe("RuntimeApplication", () => {
       value: [{ action_id: "remote-1", status: "completed" }],
     });
     expect(executed).toEqual(["remote-1"]);
+  });
+
+  it("delegates setup-wizard start, deferral, and summary state", async () => {
+    const probe: HardwareProbe = {
+      cpu_architecture: "x86_64",
+      cpu_cores: 8,
+      avx2: true,
+      avx512: false,
+      gpu_vendor: null,
+      gpu_vram_gb: 0,
+      gpu_accelerator: null,
+      system_ram_gb: 8,
+      available_disk_gb: 100,
+      os: "linux",
+      battery_powered: false,
+    };
+    const configurationStore = new ConfigurationStore({ initial: configuration });
+    const wizard = new SetupWizard(configurationStore, new HardwareDetector(async () => probe));
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      setupWizard: wizard,
+    });
+    applications.push(application);
+
+    const started = await application.startSetupWizard();
+    expect(started).toMatchObject({ ok: true, value: { current_step: "core-llm" } });
+    expect(
+      application.completeSetupStep("core-llm", { section: "capabilities", value: {} }),
+    ).toMatchObject({
+      ok: true,
+      value: { current_step: "perception" },
+    });
+    expect(application.deferSetupStep("perception")).toMatchObject({
+      ok: true,
+      value: { current_step: "voice", deferred_steps: ["perception"] },
+    });
+    expect(application.setupSummary()).toMatchObject({
+      ok: true,
+      value: { current_step: "voice" },
+    });
+  });
+
+  it("fails closed when setup wizard hardware composition is unavailable", async () => {
+    const application = createApplication();
+    applications.push(application);
+
+    await expect(application.startSetupWizard()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001", retryable: true },
+    });
+    expect(application.setupSummary()).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001", retryable: true },
+    });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {
