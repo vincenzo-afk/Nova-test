@@ -1,3 +1,5 @@
+import type { StructuredLogger } from "@nova/shared";
+
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 
 export type SyncCategory =
@@ -23,6 +25,7 @@ export interface SyncTransport {
 
 export interface SyncOptions {
   readonly granted_partitions: ReadonlySet<string>;
+  readonly logger?: StructuredLogger;
 }
 
 export interface SyncResult {
@@ -65,7 +68,16 @@ export class CrossDeviceSyncManager {
     try {
       pulled = await this.transport.pull(this.checkpoint);
     } catch {
+      this.options.logger?.warning("sync.pull.failed", { reason: "transport_unavailable" });
       return err(this.eventError("Sync pull failed; local replica remains available."));
+    }
+    if (
+      !Number.isSafeInteger(pulled.next_clock) ||
+      pulled.next_clock < this.checkpoint ||
+      pulled.next_clock < 0
+    ) {
+      this.options.logger?.warning("sync.pull.rejected", { reason: "invalid_checkpoint" });
+      return err(this.eventError("Sync pull returned an invalid logical checkpoint."));
     }
     const changes: SyncChange[] = [];
     for (const envelope of pulled.envelopes) {
@@ -73,10 +85,13 @@ export class CrossDeviceSyncManager {
       try {
         parsed = JSON.parse(this.transport.decrypt(envelope));
       } catch {
+        this.options.logger?.warning("sync.pull.rejected", { reason: "decrypt_or_parse_failed" });
         return err(this.eventError("Sync envelope could not be decrypted or parsed."));
       }
-      if (!this.isChange(parsed))
+      if (!this.isChange(parsed)) {
+        this.options.logger?.warning("sync.pull.rejected", { reason: "schema_invalid" });
         return err(this.eventError("Sync envelope failed schema validation."));
+      }
       if (this.options.granted_partitions.has(parsed.partition)) changes.push(parsed);
     }
     changes.sort(
@@ -84,35 +99,72 @@ export class CrossDeviceSyncManager {
         priority[left.category] - priority[right.category] ||
         left.logical_clock - right.logical_clock,
     );
+    const filteredCount = pulled.envelopes.length - changes.length;
+    this.options.logger?.info("sync.pull.completed", {
+      checkpoint: pulled.next_clock,
+      envelope_count: pulled.envelopes.length,
+      filtered_count: filteredCount,
+    });
     const appliedChangeIds: string[] = [];
+    let duplicateCount = 0;
     for (const change of changes) {
-      if (this.applied.has(change.change_id)) continue;
+      if (this.applied.has(change.change_id)) {
+        duplicateCount += 1;
+        continue;
+      }
       this.apply(change);
       this.applied.add(change.change_id);
       this.appliedOrder.push(change.change_id);
       appliedChangeIds.push(change.change_id);
     }
-    this.checkpoint = Math.max(this.checkpoint, pulled.next_clock);
+    this.checkpoint = pulled.next_clock;
+    this.options.logger?.info("sync.changes.applied", {
+      checkpoint: this.checkpoint,
+      applied_count: appliedChangeIds.length,
+      duplicate_count: duplicateCount,
+      filtered_count: filteredCount,
+    });
     return ok({ checkpoint: this.checkpoint, applied_change_ids: appliedChangeIds });
   }
 
   public applyLocal(change: SyncChange): void {
     this.apply(change);
     this.pending.set(change.change_id, change);
+    this.options.logger?.info("sync.local.change.queued", {
+      category: change.category,
+      partition: change.partition,
+      queued_count: this.pending.size,
+    });
   }
 
   public async flush(): Promise<Result<FlushResult>> {
     const changes = [...this.pending.values()];
-    if (changes.length === 0) return ok({ pushed_change_ids: [] });
-    if (!this.transport.push)
+    if (changes.length === 0) {
+      this.options.logger?.info("sync.flush.skipped", { queued_count: 0 });
+      return ok({ pushed_change_ids: [] });
+    }
+    if (!this.transport.push) {
+      this.options.logger?.warning("sync.flush.rejected", {
+        reason: "push_unsupported",
+        queued_count: changes.length,
+      });
       return err(this.eventError("Sync transport does not support pushing local changes."));
+    }
     const envelopes = changes.map((change) => this.transport.encrypt(JSON.stringify(change)));
     try {
       await this.transport.push(envelopes);
     } catch {
+      this.options.logger?.warning("sync.flush.failed", {
+        reason: "transport_unavailable",
+        queued_count: changes.length,
+      });
       return err(this.eventError("Sync push failed; local changes remain queued."));
     }
     for (const change of changes) this.pending.delete(change.change_id);
+    this.options.logger?.info("sync.flush.completed", {
+      pushed_count: changes.length,
+      queued_count: this.pending.size,
+    });
     return ok({ pushed_change_ids: changes.map((change) => change.change_id) });
   }
 
@@ -131,6 +183,10 @@ export class CrossDeviceSyncManager {
 
   public appliedChangeIds(): readonly string[] {
     return [...this.appliedOrder];
+  }
+
+  public checkpointValue(): number {
+    return this.checkpoint;
   }
 
   private apply(change: SyncChange): void {
@@ -159,6 +215,8 @@ export class CrossDeviceSyncManager {
       typeof candidate.category === "string" &&
       candidate.category in priority &&
       typeof candidate.logical_clock === "number" &&
+      Number.isSafeInteger(candidate.logical_clock) &&
+      candidate.logical_clock >= 0 &&
       typeof candidate.partition === "string" &&
       typeof candidate.fields === "object" &&
       candidate.fields !== null &&

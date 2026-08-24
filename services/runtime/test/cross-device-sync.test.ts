@@ -1,3 +1,4 @@
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
   CrossDeviceSyncManager,
@@ -16,6 +17,55 @@ const change = (overrides: Partial<SyncChange> = {}): SyncChange => ({
 });
 
 describe("CrossDeviceSyncManager", () => {
+  it("emits bounded local sync diagnostics without logging change fields", async () => {
+    const sink = new MemoryLogSink();
+    const transport: SyncTransport = {
+      pull: async () => ({
+        next_clock: 1,
+        envelopes: [JSON.stringify(change({ fields: { body: "private-body" } }))],
+      }),
+      encrypt: (payload) => payload,
+      decrypt: (payload) => payload,
+    };
+    const manager = new CrossDeviceSyncManager(transport, {
+      granted_partitions: new Set(["personal"]),
+      logger: new StructuredLogger({ service: "runtime.sync", sink }),
+    });
+
+    expect(await manager.sync()).toMatchObject({ ok: true, value: { checkpoint: 1 } });
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "sync.pull.completed",
+      "sync.changes.applied",
+    ]);
+    expect(sink.records()[1]?.details).toMatchObject({
+      checkpoint: 1,
+      applied_count: 1,
+      filtered_count: 0,
+    });
+    expect(JSON.stringify(sink.records())).not.toContain("private-body");
+  });
+
+  it("rejects a regressing or malformed remote checkpoint without mutating local state", async () => {
+    const sink = new MemoryLogSink();
+    const transport: SyncTransport = {
+      pull: async () => ({ next_clock: -1, envelopes: [] }),
+      encrypt: (payload) => payload,
+      decrypt: (payload) => payload,
+    };
+    const manager = new CrossDeviceSyncManager(transport, {
+      granted_partitions: new Set(["personal"]),
+      logger: new StructuredLogger({ service: "runtime.sync", sink }),
+    });
+
+    expect(await manager.sync()).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-EVT001" },
+    });
+    expect(manager.checkpointValue()).toBe(0);
+    expect(sink.records().at(-1)?.event).toBe("sync.pull.rejected");
+    expect(sink.records().at(-1)?.details).toMatchObject({ reason: "invalid_checkpoint" });
+  });
+
   it("pulls encrypted envelopes from a logical checkpoint and resumes incrementally", async () => {
     const pull = vi
       .fn()
@@ -96,6 +146,7 @@ describe("CrossDeviceSyncManager", () => {
   });
 
   it("queues local changes offline and retries idempotently after reconnect", async () => {
+    const sink = new MemoryLogSink();
     let online = false;
     const push = vi.fn(async () => {
       if (!online) throw new Error("offline");
@@ -108,8 +159,9 @@ describe("CrossDeviceSyncManager", () => {
     };
     const manager = new CrossDeviceSyncManager(transport, {
       granted_partitions: new Set(["personal"]),
+      logger: new StructuredLogger({ service: "runtime.sync", sink }),
     });
-    manager.applyLocal(change({ change_id: "local-1" }));
+    manager.applyLocal(change({ change_id: "local-1", fields: { body: "private-body" } }));
 
     expect(await manager.flush()).toMatchObject({ ok: false, error: { code: "NOVA-EVT001" } });
     online = true;
@@ -118,5 +170,13 @@ describe("CrossDeviceSyncManager", () => {
       value: { pushed_change_ids: ["local-1"] },
     });
     expect(await manager.flush()).toMatchObject({ ok: true, value: { pushed_change_ids: [] } });
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "sync.local.change.queued",
+      "sync.flush.failed",
+      "sync.flush.completed",
+      "sync.flush.skipped",
+    ]);
+    expect(JSON.stringify(sink.records())).not.toContain("local-1");
+    expect(JSON.stringify(sink.records())).not.toContain("private-body");
   });
 });

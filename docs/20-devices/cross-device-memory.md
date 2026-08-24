@@ -65,6 +65,12 @@ receive it in sync, per the existing partitioning support in
 `docs/04-memory/memory-architecture.md` — multi-device sync respects
 existing memory partitions rather than flattening them.
 
+## Runtime observability and integrity bounds
+
+The sync manager validates every remote logical checkpoint before applying changes. A checkpoint must be a non-negative safe integer and must not move backward from the local checkpoint; invalid values fail the pull without mutating local state. Encrypted envelopes are decrypted and schema-validated before partition filtering, and the local checkpoint advances only after the validated pull has been processed.
+
+Local structured diagnostics cover pull failures, rejected envelopes, completed pulls, applied and duplicate counts, partition-filter counts, locally queued changes, and push outcomes. Diagnostics contain only bounded counts, checkpoint values, category/partition metadata, and stable reasons. Change identifiers, entity identifiers, field names, field values, plaintext envelopes, credentials, and encrypted payloads are excluded from logs.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-10-desktop-android-distributed-sync.md` — failure modes for this subsystem
