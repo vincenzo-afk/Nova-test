@@ -10,6 +10,8 @@ import {
   type PermissionGrant,
   type RuntimeApplication,
   type GraphQueryInput,
+  type DeviceRuntimeMode,
+  type PairingRequest,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -146,6 +148,18 @@ ipcMain.handle("nova:memory:record", (_event, payload: { readonly record_id: str
 );
 ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
   requestGateway("graph.query", payload),
+);
+ipcMain.handle(
+  "nova:devices:pairing-offer",
+  (
+    _event,
+    payload: { readonly runtime_mode: DeviceRuntimeMode; readonly primary_public_key: string },
+  ) => requestGateway("devices.pairing-offer", payload),
+);
+ipcMain.handle(
+  "nova:devices:pairing-complete",
+  (_event, payload: { readonly code: string; readonly request: PairingRequest }) =>
+    requestGateway("devices.pairing-complete", payload),
 );
 ipcMain.handle("nova:devices:revoke", (_event, payload: { readonly device_id: string }) =>
   requestGateway("devices.revoke", payload),
@@ -290,6 +304,36 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("devices.pairing-offer", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly runtime_mode?: DeviceRuntimeMode;
+      readonly primary_public_key?: string;
+    };
+    if (
+      (payload.runtime_mode !== "Full peer" && payload.runtime_mode !== "Companion") ||
+      !payload.primary_public_key
+    ) {
+      throw new Error("Pairing runtime mode and primary public key are required.");
+    }
+    const result = runtimeApplication.createPairingOffer(
+      payload as {
+        runtime_mode: DeviceRuntimeMode;
+        primary_public_key: string;
+      },
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("devices.pairing-complete", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly code?: string; readonly request?: PairingRequest };
+    if (!payload.code || !payload.request)
+      throw new Error("Pairing code and request are required.");
+    const result = runtimeApplication.completePairing(payload.code, payload.request);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("devices.revoke", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

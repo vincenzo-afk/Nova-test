@@ -67,7 +67,12 @@ import type {
 } from "./orchestration.js";
 import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
-import type { DevicePairingManager, TrustedDevice } from "./device-pairing.js";
+import type {
+  DevicePairingManager,
+  PairingOffer,
+  PairingRequest,
+  TrustedDevice,
+} from "./device-pairing.js";
 import type { DeviceSnapshot, SessionContinuityManager } from "./session-continuity.js";
 import {
   DistributedTaskCoordinator,
@@ -482,6 +487,30 @@ export class RuntimeApplication {
 
   public listTrustedDevices(): readonly TrustedDevice[] {
     return this.devicePairingManager?.listTrusted() ?? [];
+  }
+
+  public createPairingOffer(
+    input: Parameters<DevicePairingManager["createOffer"]>[0],
+  ): Result<PairingOffer> {
+    if (!this.devicePairingManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Device pairing is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.devicePairingManager.createOffer(input);
+  }
+
+  public completePairing(code: string, request: PairingRequest): Result<TrustedDevice> {
+    if (!this.devicePairingManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Device pairing is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.devicePairingManager.completePairing(code, request);
   }
 
   public listDeviceSnapshots(): readonly DeviceSnapshot[] {

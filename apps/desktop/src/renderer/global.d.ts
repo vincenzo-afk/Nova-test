@@ -1,4 +1,9 @@
-import type { ConfigurationSectionName, NovaConfiguration } from "@nova/runtime";
+import type {
+  ConfigurationSectionName,
+  DeviceRuntimeMode,
+  NovaConfiguration,
+  PairingRequest,
+} from "@nova/runtime";
 import type { PermissionGrant } from "./shell-model.js";
 
 interface DesktopMemorySearchInput {
@@ -72,6 +77,34 @@ declare global {
       }>;
       getMemoryRecord: (recordId: string) => Promise<DesktopMemoryRecord>;
       queryGraph: (input: DesktopGraphQueryInput) => Promise<DesktopGraphQueryResult>;
+      createPairingOffer: (input: {
+        runtime_mode: DeviceRuntimeMode;
+        primary_public_key: string;
+      }) => Promise<{
+        ok: boolean;
+        value?: {
+          code: string;
+          channel_token: string;
+          primary_public_key: string;
+          runtime_mode: DeviceRuntimeMode;
+          expires_at: number;
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      completePairing: (
+        code: string,
+        request: PairingRequest,
+      ) => Promise<{
+        ok: boolean;
+        value?: {
+          device_id: string;
+          device_public_key: string;
+          runtime_mode: DeviceRuntimeMode;
+          state: "Trusted";
+          paired_at: number;
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       revokeTrustedDevice: (deviceId: string) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };

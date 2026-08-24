@@ -224,6 +224,49 @@ describe("RuntimeApplication", () => {
     ]);
   });
 
+  it("routes pairing offer creation and completion through the composed runtime", () => {
+    const pairing = new DevicePairingManager({
+      codeFactory: () => "PAIR",
+      tokenFactory: () => "channel",
+      verifySignature: () => true,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      devicePairingManager: pairing,
+    });
+    applications.push(application);
+
+    const offer = application.createPairingOffer({
+      runtime_mode: "Companion",
+      primary_public_key: "primary",
+    });
+    expect(offer).toMatchObject({
+      ok: true,
+      value: {
+        code: "PAIR",
+        channel_token: "channel",
+        runtime_mode: "Companion",
+      },
+    });
+    if (!offer.ok) return;
+    expect(
+      application.completePairing(offer.value.code, {
+        device_id: "android-1",
+        device_public_key: "public-key",
+        challenge: "challenge",
+        signature: "signature",
+        runtime_mode: "Companion",
+        confirmed: true,
+      }),
+    ).toMatchObject({ ok: true, value: { device_id: "android-1", state: "Trusted" } });
+  });
+
   it("revokes trusted devices through the composed runtime", () => {
     const pairing = new DevicePairingManager({
       codeFactory: () => "PAIR",
