@@ -1,4 +1,4 @@
-import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
 
 export interface InboundMessage {
   readonly channel_id: string;
@@ -39,14 +39,20 @@ export type InboundHandler = (message: InboundMessage) => void;
 export class ChannelManager {
   private readonly adapters = new Map<string, ChannelAdapter>();
   private readonly handlers = new Set<InboundHandler>();
+  private readonly logger: StructuredLogger | undefined;
+
+  public constructor(logger?: StructuredLogger) {
+    this.logger = logger;
+  }
 
   public register(adapter: ChannelAdapter): Result<void> {
     if (this.adapters.has(adapter.channel_id))
       return err(this.error("Channel adapter is already registered."));
     this.adapters.set(adapter.channel_id, adapter);
     adapter.onMessage((message) => {
-      for (const handler of this.handlers) handler(this.normalize(adapter.channel_id, message));
+      this.dispatchInbound(adapter, message);
     });
+    this.logger?.info("channel.adapter.registered", { channel_id: adapter.channel_id });
     return ok(undefined);
   }
 
@@ -58,9 +64,7 @@ export class ChannelManager {
   public receive(channelId: string, message: Omit<InboundMessage, "channel_id">): Result<void> {
     const adapter = this.adapters.get(channelId);
     if (!adapter) return err(this.error("Channel adapter is unavailable."));
-    const normalized = this.normalize(channelId, message);
-    for (const handler of this.handlers) handler(normalized);
-    return ok(undefined);
+    return this.dispatchInbound(adapter, message);
   }
 
   public async send(
@@ -70,11 +74,25 @@ export class ChannelManager {
   ): Promise<Result<DeliveryReceipt>> {
     const adapter = this.adapters.get(channelId);
     if (!adapter) return err(this.error("Channel adapter is unavailable."));
-    if (!adapter.resolveIdentity(chatId).authorized)
+    if (!adapter.resolveIdentity(chatId).authorized) {
+      this.logger?.warning("channel.outbound.rejected", {
+        channel_id: channelId,
+        reason: "identity_unauthorized",
+      });
       return err(this.securityError("Channel identity is not authorized."));
+    }
     try {
-      return ok(await adapter.sendMessage(chatId, content));
+      const receipt = await adapter.sendMessage(chatId, content);
+      this.logger?.info("channel.outbound.sent", {
+        channel_id: channelId,
+        status: receipt.status,
+      });
+      return ok(receipt);
     } catch {
+      this.logger?.warning("channel.outbound.failed", {
+        channel_id: channelId,
+        reason: "delivery_failed",
+      });
       return err({ code: "NOVA-AI002", message: "Channel delivery failed.", retryable: true });
     }
   }
@@ -84,6 +102,26 @@ export class ChannelManager {
     return adapter
       ? ok(adapter.supportsMedia())
       : err(this.error("Channel adapter is unavailable."));
+  }
+
+  private dispatchInbound(
+    adapter: ChannelAdapter,
+    message: Omit<InboundMessage, "channel_id"> | InboundMessage,
+  ): Result<void> {
+    if (!adapter.resolveIdentity(message.sender_id).authorized) {
+      this.logger?.warning("channel.inbound.rejected", {
+        channel_id: adapter.channel_id,
+        reason: "identity_unauthorized",
+      });
+      return err(this.securityError("Channel identity is not authorized."));
+    }
+    const normalized = this.normalize(adapter.channel_id, message);
+    for (const handler of this.handlers) handler(normalized);
+    this.logger?.info("channel.inbound.accepted", {
+      channel_id: adapter.channel_id,
+      attachment_count: normalized.attachments.length,
+    });
+    return ok(undefined);
   }
 
   private normalize(

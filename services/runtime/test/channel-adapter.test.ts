@@ -1,3 +1,4 @@
+import { MemoryLogSink, StructuredLogger } from "@nova/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
   ChannelManager,
@@ -46,6 +47,32 @@ describe("ChannelManager", () => {
     ]);
   });
 
+  it("rejects unrecognized identities for inbound commands", () => {
+    const sink = new MemoryLogSink();
+    const manager = new ChannelManager(new StructuredLogger({ service: "runtime.channels", sink }));
+    const telegram = adapter(false);
+    const received: InboundMessage[] = [];
+    manager.subscribe((message) => received.push(message));
+    manager.register(telegram);
+
+    expect(
+      manager.receive("telegram", {
+        sender_id: "unrecognized-user",
+        chat_id: "chat-1",
+        text: "private command text",
+        attachments: [],
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(received).toEqual([]);
+    expect(sink.records().at(-1)?.event).toBe("channel.inbound.rejected");
+    expect(sink.records().at(-1)?.details).toMatchObject({
+      channel_id: "telegram",
+      reason: "identity_unauthorized",
+    });
+    expect(JSON.stringify(sink.records())).not.toContain("private command text");
+    expect(JSON.stringify(sink.records())).not.toContain("unrecognized-user");
+  });
+
   it("rejects unrecognized identities for outbound commands", async () => {
     const manager = new ChannelManager();
     const telegram = adapter(false);
@@ -56,6 +83,33 @@ describe("ChannelManager", () => {
       error: { code: "NOVA-SEC001" },
     });
     expect(telegram.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("audits authorized inbound and outbound channel boundaries without payload content", async () => {
+    const sink = new MemoryLogSink();
+    const manager = new ChannelManager(new StructuredLogger({ service: "runtime.channels", sink }));
+    const telegram = adapter();
+    manager.register(telegram);
+    manager.subscribe(() => undefined);
+
+    expect(
+      manager.receive("telegram", {
+        sender_id: "authorized-user",
+        chat_id: "chat-1",
+        text: "secret inbound text",
+        attachments: [],
+      }),
+    ).toMatchObject({ ok: true });
+    expect(await manager.send("telegram", "chat-1", "secret outbound text")).toMatchObject({
+      ok: true,
+    });
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "channel.adapter.registered",
+      "channel.inbound.accepted",
+      "channel.outbound.sent",
+    ]);
+    expect(JSON.stringify(sink.records())).not.toContain("secret inbound text");
+    expect(JSON.stringify(sink.records())).not.toContain("secret outbound text");
   });
 
   it("delivers through an authorized adapter and exposes media capability limits", async () => {

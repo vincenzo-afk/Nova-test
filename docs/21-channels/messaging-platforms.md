@@ -68,6 +68,12 @@ surface, not a separate, looser policy. Unrecognized senders (e.g., a
 Telegram message from someone other than the configured owner) are never
 treated as authorized commands, only optionally logged.
 
+## Runtime authorization and diagnostics
+
+The Channel Manager resolves the inbound sender identity before dispatching any message to subscribers or the Planner path. An unrecognized or unauthorized sender is rejected with the same security denial used for outbound channel commands; it is never normalized and forwarded as an authorized command. Adapter callbacks and direct runtime receives use the same authorization boundary.
+
+Outbound sends likewise resolve the destination identity before invoking the adapter. Successful, rejected, and failed channel boundaries emit local structured diagnostics containing only the channel identifier, stable reason/status, and bounded attachment counts. Message text, sender identifiers, chat identifiers, attachments, credentials, and delivery content are never written to diagnostics.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-11-internet-and-external-apis.md` — failure modes for this subsystem
