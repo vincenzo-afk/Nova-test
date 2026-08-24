@@ -79,6 +79,8 @@ export class RemoteControlManager {
     }
     if (this.revokedDevices.has(request.initiator_device_id))
       return err(this.securityError("Remote-control trust has been revoked for this device."));
+    if (this.sessions.has(request.session_id))
+      return err(this.securityError("Remote session identifier is already active."));
     if (!this.transport.verify(request))
       return err(this.securityError("Remote session signature could not be verified."));
     const expiresAt = this.now() + sessionTtlMs;

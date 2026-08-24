@@ -81,6 +81,29 @@ describe("RemoteControlManager", () => {
     }
   });
 
+  it("rejects duplicate session identifiers without replacing the original session", () => {
+    const manager = new RemoteControlManager({
+      verify: () => true,
+      send: async () => undefined,
+    });
+
+    expect(
+      manager.requestSession({
+        session_id: "duplicate-session",
+        initiator_device_id: "phone-1",
+        signature: "sig-1",
+      }),
+    ).toMatchObject({ ok: true, value: { initiator_device_id: "phone-1" } });
+    expect(
+      manager.requestSession({
+        session_id: "duplicate-session",
+        initiator_device_id: "phone-2",
+        signature: "sig-2",
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(manager.approve("duplicate-session")).toMatchObject({ ok: true });
+  });
+
   it("rejects blank session and command fields before remote work", async () => {
     const manager = new RemoteControlManager({
       verify: () => true,
