@@ -13,6 +13,8 @@ import {
   type DeviceRuntimeMode,
   type PairingRequest,
   type CompanionCapability,
+  type EmailDraft,
+  type EmailQuery,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -164,6 +166,17 @@ ipcMain.handle("nova:companion:foreground-start", () =>
 );
 ipcMain.handle("nova:companion:foreground-stop", () =>
   requestGateway("companion.foreground-stop", undefined),
+);
+ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
+  requestGateway("email.read", query),
+);
+ipcMain.handle("nova:email:draft", (_event, draft: EmailDraft) =>
+  requestGateway("email.draft", draft),
+);
+ipcMain.handle(
+  "nova:email:send",
+  (_event, payload: { readonly draft: EmailDraft; readonly confirmed: boolean }) =>
+    requestGateway("email.send", payload),
 );
 ipcMain.handle(
   "nova:companion:background-start",
@@ -331,6 +344,76 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("email.read", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const query = data as { readonly from?: unknown; readonly subject?: unknown };
+    if (
+      (query.from !== undefined && typeof query.from !== "string") ||
+      (query.subject !== undefined && typeof query.subject !== "string")
+    ) {
+      throw new Error("Email query fields are invalid.");
+    }
+    const result = await runtimeApplication.readEmail({
+      ...(typeof query.from === "string" ? { from: query.from } : {}),
+      ...(typeof query.subject === "string" ? { subject: query.subject } : {}),
+    } satisfies EmailQuery);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("email.draft", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const draft = data as {
+      readonly to?: unknown;
+      readonly subject?: unknown;
+      readonly body?: unknown;
+    };
+    if (
+      typeof draft.to !== "string" ||
+      draft.to.trim() === "" ||
+      typeof draft.subject !== "string" ||
+      draft.subject.trim() === "" ||
+      typeof draft.body !== "string" ||
+      draft.body.trim() === ""
+    ) {
+      throw new Error("Email draft recipient, subject, and body are required.");
+    }
+    const result = runtimeApplication.draftEmail({
+      to: draft.to,
+      subject: draft.subject,
+      body: draft.body,
+    } satisfies EmailDraft);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("email.send", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly draft?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean") throw new Error("Email confirmation is required.");
+    const draft = payload.draft as {
+      readonly to?: unknown;
+      readonly subject?: unknown;
+      readonly body?: unknown;
+    };
+    if (
+      typeof draft?.to !== "string" ||
+      draft.to.trim() === "" ||
+      typeof draft?.subject !== "string" ||
+      draft.subject.trim() === "" ||
+      typeof draft?.body !== "string" ||
+      draft.body.trim() === ""
+    ) {
+      throw new Error("Email draft recipient, subject, and body are required.");
+    }
+    const result = await runtimeApplication.sendEmail(
+      { to: draft.to, subject: draft.subject, body: draft.body } satisfies EmailDraft,
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("companion.foreground-start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

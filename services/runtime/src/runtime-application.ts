@@ -75,6 +75,13 @@ import type {
 } from "./android-companion.js";
 import type { RemoteControlManager } from "./remote-control.js";
 import type {
+  EmailAssistant,
+  EmailDraft,
+  EmailMessage,
+  EmailQuery,
+  EmailSendReceipt,
+} from "./email-assistant.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -128,6 +135,7 @@ export interface RuntimeApplicationOptions {
   readonly crossDeviceSyncManager?: CrossDeviceSyncManager;
   readonly androidCompanionManager?: AndroidCompanionManager;
   readonly remoteControlManager?: RemoteControlManager;
+  readonly emailAssistant?: EmailAssistant;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -158,6 +166,7 @@ export class RuntimeApplication {
   public readonly crossDeviceSyncManager: CrossDeviceSyncManager | undefined;
   public readonly androidCompanionManager: AndroidCompanionManager | undefined;
   public readonly remoteControlManager: RemoteControlManager | undefined;
+  public readonly emailAssistant: EmailAssistant | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -190,6 +199,7 @@ export class RuntimeApplication {
     this.crossDeviceSyncManager = options.crossDeviceSyncManager;
     this.androidCompanionManager = options.androidCompanionManager;
     this.remoteControlManager = options.remoteControlManager;
+    this.emailAssistant = options.emailAssistant;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -558,6 +568,39 @@ export class RuntimeApplication {
       });
     }
     return this.androidCompanionManager.use(capability);
+  }
+
+  public async readEmail(query: EmailQuery): Promise<Result<readonly EmailMessage[]>> {
+    if (!this.emailAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Email assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.emailAssistant.read(query);
+  }
+
+  public draftEmail(input: EmailDraft): Result<EmailDraft> {
+    if (!this.emailAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Email assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.emailAssistant.draft(input);
+  }
+
+  public async sendEmail(draft: EmailDraft, confirmed: boolean): Promise<Result<EmailSendReceipt>> {
+    if (!this.emailAssistant) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Email assistant is not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.emailAssistant.send(draft, confirmed);
   }
 
   public startAndroidCompanionForegroundService(): Result<void> {

@@ -4,6 +4,7 @@ import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
 import { AndroidCompanionManager, type CompanionCapability } from "../src/android-companion.js";
 import { RemoteControlManager } from "../src/remote-control.js";
+import { EmailAssistant, type EmailDraft } from "../src/email-assistant.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -103,6 +104,43 @@ describe("RuntimeApplication", () => {
     expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
+    });
+  });
+
+  it("routes email reads, drafts, and confirmed sends through the composed runtime", async () => {
+    const email = new EmailAssistant({
+      read: async () => [],
+      send: async (draft) => ({ ...draft, message_id: "sent-1" }),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      emailAssistant: email,
+    });
+    applications.push(application);
+
+    expect(await application.readEmail({ from: "alice@example.com" })).toMatchObject({
+      ok: true,
+      value: [],
+    });
+    const draft: EmailDraft = {
+      to: "bob@example.com",
+      subject: "Update",
+      body: "The work is complete.",
+    };
+    expect(application.draftEmail(draft)).toMatchObject({ ok: true, value: draft });
+    expect(await application.sendEmail(draft, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.sendEmail(draft, true)).toMatchObject({
+      ok: true,
+      value: { message_id: "sent-1" },
     });
   });
 

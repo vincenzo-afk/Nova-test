@@ -23,6 +23,10 @@ const novaApi = {
   stopAndroidCompanionForegroundService: () => ipcRenderer.invoke("nova:companion:foreground-stop"),
   startAndroidCompanionBackground: (capabilityId: string) =>
     ipcRenderer.invoke("nova:companion:background-start", { capability_id: capabilityId }),
+  readEmail: (query: unknown) => ipcRenderer.invoke("nova:email:read", query),
+  draftEmail: (draft: unknown) => ipcRenderer.invoke("nova:email:draft", draft),
+  sendEmail: (draft: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:email:send", { draft, confirmed }),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

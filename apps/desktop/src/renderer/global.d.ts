@@ -119,6 +119,30 @@ declare global {
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      readEmail: (query: { from?: string; subject?: string }) => Promise<{
+        ok: boolean;
+        value?: readonly {
+          id: string;
+          sender: string;
+          subject: string;
+          body: string;
+          attachments: readonly unknown[];
+        }[];
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      draftEmail: (draft: { to: string; subject: string; body: string }) => Promise<{
+        ok: boolean;
+        value?: { to: string; subject: string; body: string };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      sendEmail: (
+        draft: { to: string; subject: string; body: string },
+        confirmed: boolean,
+      ) => Promise<{
+        ok: boolean;
+        value?: { to: string; subject: string; body: string; message_id: string };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       createPairingOffer: (input: {
         runtime_mode: DeviceRuntimeMode;
         primary_public_key: string;
