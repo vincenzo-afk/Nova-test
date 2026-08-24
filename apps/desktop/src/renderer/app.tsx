@@ -176,6 +176,8 @@ export const App = () => {
   const [goal, setGoal] = useState("");
   const [lastTask, setLastTask] = useState<TaskSnapshot | null>(null);
   const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
+  const [taskCursor, setTaskCursor] = useState<string | null>(null);
+  const [taskHasMore, setTaskHasMore] = useState(false);
   const [taskListError, setTaskListError] = useState<string | null>(null);
   const [providerMode, setProviderMode] = useState<ProviderMode | null>(null);
   const [demonstrationTaskCompleted, setDemonstrationTaskCompleted] = useState(false);
@@ -217,6 +219,8 @@ export const App = () => {
         const page = (await window.nova.listTasks(50)) as TaskListPage;
         if (active) {
           setTasks(page.items);
+          setTaskCursor(page.next_cursor);
+          setTaskHasMore(page.has_more);
           setTaskListError(null);
         }
       } catch (error: unknown) {
@@ -266,12 +270,29 @@ export const App = () => {
     setPermissions(updated);
   };
 
+  const loadMoreTasks = async () => {
+    if (!taskHasMore || taskCursor === null) return;
+    try {
+      const page = (await window.nova.listTasks(50, taskCursor)) as TaskListPage;
+      setTasks((current) => [...current, ...page.items]);
+      setTaskCursor(page.next_cursor);
+      setTaskHasMore(page.has_more);
+      setTaskListError(null);
+    } catch (error: unknown) {
+      setTaskListError(
+        error instanceof Error ? error.message : "More task history is unavailable.",
+      );
+    }
+  };
+
   const cancelTask = async (taskId: string) => {
     try {
       const cancelled = await window.nova.cancelTask(taskId);
       setLastTask(cancelled);
       const page = (await window.nova.listTasks(50)) as TaskListPage;
       setTasks(page.items);
+      setTaskCursor(page.next_cursor);
+      setTaskHasMore(page.has_more);
       setTaskListError(null);
     } catch (error: unknown) {
       setTaskListError(error instanceof Error ? error.message : "Task cancellation failed.");
@@ -366,7 +387,9 @@ export const App = () => {
           ) : view === "tasks" ? (
             <TaskMonitor
               error={taskListError}
+              hasMore={taskHasMore}
               onCancel={cancelTask}
+              onLoadMore={loadMoreTasks}
               task={lastTask}
               tasks={tasks}
             />
@@ -625,12 +648,16 @@ const TaskMonitor = ({
   task,
   tasks,
   error,
+  hasMore,
   onCancel,
+  onLoadMore,
 }: {
   task: TaskSnapshot | null;
   tasks: readonly TaskSnapshot[];
   error: string | null;
+  hasMore: boolean;
   onCancel: (taskId: string) => Promise<void>;
+  onLoadMore: () => Promise<void>;
 }) => (
   <section className="content-column" aria-labelledby="tasks-title">
     <div className="section-kicker">Task Monitor / Live state</div>
@@ -671,6 +698,15 @@ const TaskMonitor = ({
       ) : (
         <p className="muted">No task history is available. Start from Chat to create one.</p>
       )}
+      {hasMore ? (
+        <button
+          className="secondary-button task-load-more"
+          onClick={() => void onLoadMore()}
+          type="button"
+        >
+          Load more task history
+        </button>
+      ) : null}
     </div>
   </section>
 );
