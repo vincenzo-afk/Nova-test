@@ -508,6 +508,13 @@ declare global {
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      upgradeRuntime: (
+        request: { current_version: number; target_version: number },
+        confirmed: boolean,
+      ) => Promise<{
+        status: "Upgraded";
+        version: number;
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

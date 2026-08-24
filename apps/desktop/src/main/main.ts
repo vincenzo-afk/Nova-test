@@ -36,6 +36,8 @@ import {
   type PluginDiscoveryResult,
   type SnapshotMetadata,
   type PreparedRestore,
+  type UpgradeRequest,
+  type UpgradeResult,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -111,6 +113,23 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseUpgradeRequest = (value: unknown): UpgradeRequest => {
+  const request = value as {
+    readonly current_version?: unknown;
+    readonly target_version?: unknown;
+  };
+  if (
+    typeof request.current_version !== "number" ||
+    !Number.isSafeInteger(request.current_version) ||
+    request.current_version < 0 ||
+    typeof request.target_version !== "number" ||
+    !Number.isSafeInteger(request.target_version) ||
+    request.target_version < 0
+  )
+    throw new Error("Upgrade request is invalid.");
+  return request as UpgradeRequest;
 };
 
 const parsePreparedRestore = (value: unknown): PreparedRestore => {
@@ -627,6 +646,11 @@ ipcMain.handle(
   (_event, payload: { readonly prepared: PreparedRestore; readonly confirmed: boolean }) =>
     requestGateway("restore.apply", payload),
 );
+ipcMain.handle(
+  "nova:upgrade:run",
+  (_event, payload: { readonly request: UpgradeRequest; readonly confirmed: boolean }) =>
+    requestGateway("upgrade.run", payload),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1063,6 +1087,17 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     return result;
+  });
+  gateway.register("upgrade.run", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly request?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean") throw new Error("Upgrade confirmation is invalid.");
+    const result = await runtimeApplication.upgradeRuntime(
+      parseUpgradeRequest(payload.request),
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies UpgradeResult;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -126,6 +126,7 @@ import type {
 } from "./plugin-discovery.js";
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
+import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -194,6 +195,7 @@ export interface RuntimeApplicationOptions {
   readonly pluginDiscovery?: PluginDiscovery;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
+  readonly upgradeManager?: UpgradeManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -238,6 +240,7 @@ export class RuntimeApplication {
   public readonly pluginDiscovery: PluginDiscovery | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
+  public readonly upgradeManager: UpgradeManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -304,6 +307,7 @@ export class RuntimeApplication {
     this.pluginDiscovery = options.pluginDiscovery;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
+    this.upgradeManager = options.upgradeManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -696,6 +700,21 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public async upgradeRuntime(
+    request: UpgradeRequest,
+    confirmed: boolean,
+  ): Promise<Result<UpgradeResult>> {
+    if (!this.upgradeManager) return err(this.upgradeUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Runtime upgrade requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    return await this.upgradeManager.upgrade(request);
   }
 
   public async prepareRestore(snapshotId: string): Promise<Result<PreparedRestore>> {
@@ -1103,6 +1122,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private upgradeUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Upgrade manager is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private restoreUnavailableError(): {

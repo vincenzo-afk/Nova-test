@@ -20,6 +20,7 @@ import { VoicePipeline } from "../src/voice-pipeline.js";
 import { PluginDiscovery, type PluginIndexEntry } from "../src/plugin-discovery.js";
 import { BackupManager, type BackupBackend } from "../src/backup-manager.js";
 import { RestoreManager } from "../src/restore-manager.js";
+import { UpgradeManager, type UpgradeAdapter } from "../src/upgrade-manager.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -710,6 +711,57 @@ describe("RuntimeApplication", () => {
       ok: true,
     });
     expect(liveState).toEqual({ theme: "dark" });
+  });
+
+  it("requires explicit confirmation before executing a forward-only runtime upgrade", async () => {
+    const calls: string[] = [];
+    const adapter: UpgradeAdapter = {
+      snapshot: async () => {
+        calls.push("snapshot");
+        return "snapshot-1";
+      },
+      migrate: async (fromVersion, toVersion) => {
+        calls.push(`migrate:${fromVersion}-${toVersion}`);
+        return { version: toVersion };
+      },
+      updatePlugins: async () => {
+        calls.push("plugins");
+      },
+      verify: async () => {
+        calls.push("verify");
+        return true;
+      },
+      rollback: async (snapshotId) => {
+        calls.push(`rollback:${snapshotId}`);
+      },
+    };
+    const upgrade = new UpgradeManager(adapter);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      upgradeManager: upgrade,
+    });
+    applications.push(application);
+
+    expect(
+      await application.upgradeRuntime({ current_version: 1, target_version: 3 }, false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(calls).toEqual([]);
+    expect(
+      await application.upgradeRuntime({ current_version: 1, target_version: 3 }, true),
+    ).toMatchObject({
+      ok: true,
+      value: { status: "Upgraded", version: 3 },
+    });
+    expect(calls).toEqual(["snapshot", "migrate:1-2", "migrate:2-3", "plugins", "verify"]);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {
