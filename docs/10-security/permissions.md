@@ -54,6 +54,10 @@ grant and is limited to active/idle signals plus explicitly registered hotkey
 identity events. It never captures, stores, or logs actual keystroke content;
 registered combinations are configuration metadata used only by the native
 hotkey matcher, and emitted events contain only the configured hotkey ID.
+Mouse activity uses a separate off-by-default `mouse_activity` grant and is
+limited to active/idle transitions. An authorized action-time position read is
+performed only on demand and returns bounded coordinates; the system never
+records continuous movement, click history, button state, or cursor trails.
 
 Screen capture and structured desktop control are separate, explicit source categories defined
 by `docs/06-tools/desktop-agent.md`: `screen` permits only one-shot,

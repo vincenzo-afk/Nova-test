@@ -204,6 +204,45 @@ describe("desktop runtime composition", () => {
     expect(bridge.stop).toHaveBeenCalledOnce();
   });
 
+  it("starts mouse activity observation only after permission and supports on-demand position reads", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-mouse-"));
+    temporaryDirectories.push(userDataPath);
+    const bridge = {
+      start: vi.fn(async () => undefined),
+      stop: vi.fn(async () => undefined),
+      readPosition: vi.fn(async () => ({
+        x: 640,
+        y: 360,
+        screen_width: 1920,
+        screen_height: 1080,
+      })),
+    };
+    const runtime = await createDesktopRuntime({ userDataPath, mouseObserverBridge: bridge });
+    runtimes.push(runtime);
+    await runtime.start();
+
+    expect(runtime.mouseObserver.state()).toBe("Disabled");
+    runtime.permissions.update("mouse_activity", true);
+    await runtime.syncObservers();
+    expect(runtime.mouseObserver.state()).toBe("Active");
+    expect(bridge.start).toHaveBeenCalledWith(expect.any(Function), 120_000);
+
+    await runtime.mouseObserver.capture({ type: "activity", state: "active", idle_ms: 0 });
+    expect(runtime.worldModel.engagement()).toMatchObject({
+      mouse_state: "active",
+      idle_ms: 0,
+    });
+    await expect(runtime.mouseObserver.readCurrentPosition()).resolves.toMatchObject({
+      ok: true,
+      value: { x: 640, y: 360 },
+    });
+
+    runtime.permissions.update("mouse_activity", false);
+    await runtime.syncObservers();
+    expect(runtime.mouseObserver.state()).toBe("Disabled");
+    expect(bridge.stop).toHaveBeenCalledOnce();
+  });
+
   it("hot-reloads browser excluded domains before event-journal publication", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-browser-config-"));
     temporaryDirectories.push(userDataPath);
@@ -406,6 +445,7 @@ describe("desktop runtime composition", () => {
       { source: "desktop_control", granted: false },
       { source: "browser_metadata", granted: false },
       { source: "keyboard_activity", granted: false },
+      { source: "mouse_activity", granted: false },
       { source: "clipboard_metadata", granted: false },
       { source: "clipboard_content", granted: false },
       { source: "notifications_metadata", granted: false },

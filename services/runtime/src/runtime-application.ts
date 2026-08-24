@@ -21,6 +21,10 @@ import {
   type KeyboardHotkeyRegistration,
   type NativeKeyboardEventBridgeContract,
   type KeyboardObserverState,
+  MouseObserver,
+  NativeMouseEventBridge,
+  type NativeMouseEventBridgeContract,
+  type MouseObserverState,
   ClipboardObserver,
   NativeClipboardEventBridge,
   type NativeClipboardEventBridgeContract,
@@ -87,6 +91,8 @@ export interface RuntimeApplicationOptions {
   readonly browserExcludedDomains?: readonly string[];
   readonly keyboardObserverBridge?: NativeKeyboardEventBridgeContract;
   readonly keyboardHotkeys?: readonly KeyboardHotkeyRegistration[];
+  readonly mouseObserverBridge?: NativeMouseEventBridgeContract;
+  readonly mouseIdleThresholdMs?: number;
   readonly observationIndexer?: ObservationIndexer;
   readonly registeredTools?: readonly RegisteredTool[];
   readonly logger?: StructuredLogger;
@@ -108,6 +114,7 @@ export class RuntimeApplication {
   public readonly notificationObserver: NotificationObserver;
   public readonly browserObserver: BrowserObserver;
   public readonly keyboardObserver: KeyboardObserver;
+  public readonly mouseObserver: MouseObserver;
   public readonly worldModel: WorldModel;
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -174,6 +181,15 @@ export class RuntimeApplication {
       bridge: options.keyboardObserverBridge ?? new NativeKeyboardEventBridge(),
       bus,
       hotkeys: options.keyboardHotkeys ?? [],
+      ...(this.logger === undefined ? {} : { logger: this.logger }),
+    });
+    this.mouseObserver = new MouseObserver({
+      permissions: this.permissions,
+      bridge: options.mouseObserverBridge ?? new NativeMouseEventBridge(),
+      bus,
+      ...(options.mouseIdleThresholdMs === undefined
+        ? {}
+        : { idleThresholdMs: options.mouseIdleThresholdMs }),
       ...(this.logger === undefined ? {} : { logger: this.logger }),
     });
     this.configuration.subscribe((configuration) => {
@@ -243,6 +259,7 @@ export class RuntimeApplication {
         await this.notificationObserver.revoke();
       if (this.browserObserver.state() !== "Disabled") await this.browserObserver.revoke();
       if (this.keyboardObserver.state() !== "Disabled") await this.keyboardObserver.revoke();
+      if (this.mouseObserver.state() !== "Disabled") await this.mouseObserver.revoke();
       this.worldModel.detach();
       await this.websocket.stop();
       await this.rest.stop();
@@ -341,6 +358,8 @@ export class RuntimeApplication {
     if (!keyboard.ok) return err(keyboard.error);
     const browser = await this.syncBrowserObserver();
     if (!browser.ok) return err(browser.error);
+    const mouse = await this.syncMouseObserver();
+    if (!mouse.ok) return err(mouse.error);
     const clipboard = await this.syncClipboardObserver();
     if (!clipboard.ok) return err(clipboard.error);
     const notifications = await this.syncNotificationObserver();
@@ -392,6 +411,18 @@ export class RuntimeApplication {
     }
     if (this.keyboardObserver.state() === "Disabled") return await this.keyboardObserver.enable();
     return ok(this.keyboardObserver.state());
+  }
+
+  public async syncMouseObserver(): Promise<Result<MouseObserverState>> {
+    const activityGranted = this.permissions
+      .list()
+      .some((grant) => grant.source === "mouse_activity" && grant.granted);
+    if (!activityGranted) {
+      if (this.mouseObserver.state() !== "Disabled") return await this.mouseObserver.revoke();
+      return ok("Disabled");
+    }
+    if (this.mouseObserver.state() === "Disabled") return await this.mouseObserver.enable();
+    return ok(this.mouseObserver.state());
   }
 
   public async syncBrowserObserver(): Promise<Result<BrowserObserverState>> {

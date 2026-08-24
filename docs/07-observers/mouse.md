@@ -46,6 +46,41 @@ As with the Keyboard Observer, no legitimate use case in
 history, and maintaining one would meaningfully increase the privacy
 surface for no corresponding capability benefit.
 
+## Implemented activity-only surface
+
+The current implementation is `services/observers/src/mouse-observer.ts` and
+uses the off-by-default `mouse_activity` permission. While disabled, it cannot
+start the native bridge or read the cursor. Granting the permission starts a
+Windows activity bridge; revocation stops it immediately and rejects both
+subsequent activity events and position reads. Activity events are validated
+for exact fields, bounded idle duration, and the following single topic:
+
+| Topic                     | Payload            |
+| ------------------------- | ------------------ |
+| `observer.mouse.activity` | `{ state: "active" | "idle", idle_ms: integer }` |
+
+The observer also exposes `readCurrentPosition()` for an action-time consumer.
+That method performs one native `GetCursorPos` query, validates the returned
+coordinates against bounded virtual-screen dimensions, and returns the result
+to its authorized caller without publishing an event or accumulating history.
+Cursor coordinates, click locations, button state, movement trails, and raw
+native payloads are not written to Memory, the World Model, or diagnostic
+logs. Position-read diagnostics contain only the screen dimensions and stable
+success/failure metadata.
+
+The Windows activity bridge uses `GetLastInputInfo`, samples the idle duration
+every five seconds, and emits only state transitions. The default idle
+threshold is 120 seconds and the runtime injection point permits a bounded
+host override. The one-shot position bridge uses `GetCursorPos` and
+`GetSystemMetrics` only for the requested read. The implementation contains no
+mouse-history or input-injection APIs such as `mouse_event` or `SendInput`.
+
+On non-Windows hosts the native bridge refuses to start or read position. The
+repository therefore has structural and sandbox evidence but no live Windows
+validation. This observer does not implement pointer movement, click
+execution, vision targeting, or keyboard/mouse automation; those remain
+separate documented execution capabilities.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-10-desktop-android-distributed-sync.md` — failure modes for this subsystem

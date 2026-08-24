@@ -24,7 +24,8 @@ export interface WorldModelFocusState {
 }
 
 export interface WorldModelEngagementState {
-  readonly keyboard_state: "active" | "idle";
+  readonly keyboard_state?: "active" | "idle";
+  readonly mouse_state?: "active" | "idle";
   readonly idle_ms: number;
   readonly updated_at: string;
   readonly confidence: number;
@@ -52,6 +53,7 @@ const topics = [
   "observer.window.title_changed",
   "observer.keyboard.activity",
   "observer.keyboard.hotkey_triggered",
+  "observer.mouse.activity",
 ] as const;
 
 type ApplicationPayload = WorldModelApplication;
@@ -115,18 +117,29 @@ export class WorldModel {
     });
     while (this.transitions.length > this.maxTransitions) this.transitions.shift();
 
-    if (message.topic === "observer.keyboard.activity") {
+    if (
+      message.topic === "observer.keyboard.activity" ||
+      message.topic === "observer.mouse.activity"
+    ) {
       const engagement = parseEngagement(message.payload);
       if (engagement) {
         this.engagementState = {
-          ...engagement,
+          ...(this.engagementState ?? {}),
+          ...(message.topic === "observer.keyboard.activity"
+            ? { keyboard_state: engagement.state }
+            : { mouse_state: engagement.state }),
+          idle_ms: engagement.idle_ms,
           updated_at: message.timestamp || this.now(),
           confidence: 1,
           correlation_id: message.correlation_id,
         };
         this.logger?.info(
           "world_model.engagement.updated",
-          { keyboard_state: engagement.keyboard_state, idle_ms: engagement.idle_ms },
+          {
+            source: message.topic === "observer.keyboard.activity" ? "keyboard" : "mouse",
+            state: engagement.state,
+            idle_ms: engagement.idle_ms,
+          },
           message.correlation_id,
         );
       }
@@ -194,8 +207,8 @@ export class WorldModel {
 
 function parseEngagement(
   payload: unknown,
-): Pick<WorldModelEngagementState, "keyboard_state" | "idle_ms"> | null {
-  if (!isRecord(payload)) return null;
+): { readonly state: "active" | "idle"; readonly idle_ms: number } | null {
+  if (!isRecord(payload) || !hasExactKeys(payload, ["state", "idle_ms"])) return null;
   const idleMs = payload.idle_ms;
   if (
     (payload.state !== "active" && payload.state !== "idle") ||
@@ -206,7 +219,7 @@ function parseEngagement(
   ) {
     return null;
   }
-  return { keyboard_state: payload.state, idle_ms: idleMs };
+  return { state: payload.state, idle_ms: idleMs };
 }
 
 function parseApplication(payload: unknown): ApplicationPayload | null {
@@ -253,6 +266,11 @@ function parseWindow(payload: unknown): WindowPayload | null {
     virtual_desktop_id: payload.virtual_desktop_id,
     z_order: zOrder,
   };
+}
+
+function hasExactKeys(value: object, keys: readonly string[]): boolean {
+  const allowed = new Set(keys);
+  return Object.keys(value).every((key) => allowed.has(key));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

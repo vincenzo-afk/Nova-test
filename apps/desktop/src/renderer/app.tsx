@@ -54,7 +54,9 @@ const permissionLabel = (source: string): string =>
                 ? "Browser metadata"
                 : source === "keyboard_activity"
                   ? "Keyboard activity"
-                  : source;
+                  : source === "mouse_activity"
+                    ? "Mouse activity"
+                    : source;
 const permissionDescription = (source: string): string => {
   if (source === "filesystem") return "Scoped folders only";
   if (source === "screen") return "One-shot task-bound screenshots; not continuously recorded";
@@ -71,6 +73,8 @@ const permissionDescription = (source: string): string => {
     return "Tab open/close/navigation metadata only; no page content, forms, passwords, or automation";
   if (source === "keyboard_activity")
     return "Activity/idle and registered hotkey triggers only; never keystroke content";
+  if (source === "mouse_activity")
+    return "Activity/idle only; cursor position is read on demand and never continuously recorded";
   return "Metadata only until expanded";
 };
 

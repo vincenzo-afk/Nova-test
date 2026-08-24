@@ -55,6 +55,48 @@ describe("WorldModel focus state", () => {
     expect(model.engagement()).not.toHaveProperty("text");
   });
 
+  it("merges mouse activity into ephemeral engagement without cursor history", async () => {
+    const bus = new InMemoryCommunicationBus();
+    const model = new WorldModel();
+    model.attach(bus);
+
+    await bus.publish(
+      message(
+        "observer.mouse.activity",
+        { state: "active", idle_ms: 0 },
+        "2026-08-24T00:00:01.000Z",
+        "00000000-0000-4000-8000-000000000005",
+      ),
+    );
+
+    expect(model.engagement()).toEqual({
+      mouse_state: "active",
+      idle_ms: 0,
+      updated_at: "2026-08-24T00:00:01.000Z",
+      confidence: 1,
+      correlation_id: "00000000-0000-4000-8000-000000000005",
+    });
+    expect(model.engagement()).not.toHaveProperty("x");
+    expect(model.engagement()).not.toHaveProperty("clicks");
+  });
+
+  it("rejects cursor and click fields from engagement state", async () => {
+    const bus = new InMemoryCommunicationBus();
+    const model = new WorldModel();
+    model.attach(bus);
+
+    await bus.publish(
+      message(
+        "observer.mouse.activity",
+        { state: "active", idle_ms: 0, x: 640, click_count: 1 },
+        "2026-08-24T00:00:02.000Z",
+        "00000000-0000-4000-8000-000000000006",
+      ),
+    );
+
+    expect(model.engagement()).toBeNull();
+  });
+
   it("logs engagement updates without recording key content", async () => {
     const bus = new InMemoryCommunicationBus();
     const sink = new MemoryLogSink();
@@ -66,7 +108,7 @@ describe("WorldModel focus state", () => {
     await bus.publish(
       message(
         "observer.keyboard.activity",
-        { state: "active", idle_ms: 0, text: "must-not-log" },
+        { state: "active", idle_ms: 0 },
         "2026-08-24T00:00:00.000Z",
         "00000000-0000-4000-8000-000000000004",
       ),
@@ -76,7 +118,7 @@ describe("WorldModel focus state", () => {
     expect(sink.records()[0]).toMatchObject({
       event: "world_model.engagement.updated",
       correlation_id: "00000000-0000-4000-8000-000000000004",
-      details: { keyboard_state: "active", idle_ms: 0 },
+      details: { source: "keyboard", state: "active", idle_ms: 0 },
     });
     expect(JSON.stringify(sink.records())).not.toContain("must-not-log");
   });
