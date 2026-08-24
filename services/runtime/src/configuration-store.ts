@@ -37,6 +37,15 @@ export interface PersonalizationConfiguration {
   readonly preferences: readonly PersonalizationPreferenceRecord[];
 }
 
+export type BargeInSensitivity = "aggressive" | "conservative";
+
+export interface VoiceConfiguration {
+  readonly enabled: boolean;
+  readonly wake_word: string;
+  readonly always_listening: boolean;
+  readonly barge_in_sensitivity: BargeInSensitivity;
+}
+
 export interface NovaConfiguration {
   readonly schema_version: "1.0.0";
   readonly capabilities: CapabilityRegistryConfiguration;
@@ -48,7 +57,7 @@ export interface NovaConfiguration {
   readonly permissions: Readonly<Record<string, unknown>> & {
     readonly browser_excluded_domains?: readonly string[];
   };
-  readonly voice: Readonly<Record<string, unknown>>;
+  readonly voice: VoiceConfiguration;
   readonly personalization: PersonalizationConfiguration;
 }
 
@@ -212,6 +221,7 @@ export class ConfigurationStore {
     if (section === "capabilities") return this.validateCapabilities(value);
     if (section === "personalization") return this.validatePersonalization(value);
     if (section === "permissions") return this.validatePermissions(value);
+    if (section === "voice") return this.validateVoice(value);
     if (section === "routing_policies") {
       if (!isRecord(value))
         return err(this.configError("Routing policies must be an object.", section));
@@ -259,6 +269,32 @@ export class ConfigurationStore {
     } else if (!isRecord(value)) {
       return err(this.configError(`${section} must be an object.`, section));
     }
+    return ok(undefined);
+  }
+
+  private validateVoice(value: unknown): Result<void> {
+    if (!isRecord(value)) return err(this.configError("Voice must be an object.", "voice"));
+    if (typeof value.enabled !== "boolean")
+      return err(this.configError("Voice enabled must be boolean.", "voice.enabled"));
+    if (typeof value.wake_word !== "string" || value.wake_word.trim().length === 0)
+      return err(
+        this.configError("Voice wake word must be a non-empty phrase.", "voice.wake_word"),
+      );
+    if (typeof value.always_listening !== "boolean")
+      return err(
+        this.configError("Voice always-listening must be boolean.", "voice.always_listening"),
+      );
+    if (
+      !(["aggressive", "conservative"] as const).includes(
+        value.barge_in_sensitivity as BargeInSensitivity,
+      )
+    )
+      return err(
+        this.configError(
+          "Voice barge-in sensitivity must be aggressive or conservative.",
+          "voice.barge_in_sensitivity",
+        ),
+      );
     return ok(undefined);
   }
 

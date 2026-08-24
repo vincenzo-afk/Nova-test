@@ -18,7 +18,12 @@ const config = (): NovaConfiguration => ({
   mcp_servers: [],
   routing_policies: {},
   permissions: {},
-  voice: {},
+  voice: {
+    enabled: false,
+    wake_word: "nova",
+    always_listening: false,
+    barge_in_sensitivity: "conservative",
+  },
   personalization: { preferences: [] },
 });
 const probe = (): HardwareProbe => ({
@@ -100,7 +105,17 @@ describe("SetupWizard", () => {
       }),
     ).toMatchObject({ ok: true });
     expect(wizard.complete("perception")).toMatchObject({ ok: true });
-    expect(wizard.complete("voice")).toMatchObject({ ok: true });
+    expect(
+      wizard.complete("voice", {
+        section: "voice",
+        value: {
+          enabled: true,
+          wake_word: "nova",
+          always_listening: false,
+          barge_in_sensitivity: "conservative",
+        },
+      }),
+    ).toMatchObject({ ok: true });
     expect(wizard.complete("devices")).toMatchObject({ ok: true });
     expect(wizard.complete("channels")).toMatchObject({ ok: true });
     expect(wizard.complete("plugins")).toMatchObject({ ok: true });
@@ -109,7 +124,15 @@ describe("SetupWizard", () => {
 
     expect(wizard.summary()).toMatchObject({
       current_step: "summary",
-      configuration: { capabilities: { llm: capability() } },
+      configuration: {
+        capabilities: { llm: capability() },
+        voice: {
+          enabled: true,
+          wake_word: "nova",
+          always_listening: false,
+          barge_in_sensitivity: "conservative",
+        },
+      },
     });
   });
 

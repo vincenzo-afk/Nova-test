@@ -99,6 +99,12 @@ exactly at the wrong moment), the remaining device proceeds once its own
 "one device eventually responds," never toward "no device responds
 because the coordination handshake itself failed."
 
+## Configuration boundary
+
+The Setup Wizard and Settings surface persist voice preferences through the shared versioned ConfigurationStore. The typed voice section contains `enabled`, a non-empty `wake_word`, `always_listening`, and `barge_in_sensitivity` (`aggressive` or `conservative`). Invalid values are rejected atomically with field-level configuration errors before they can change runtime behavior.
+
+The wake-word detector is always local and is not represented as a cloud-selectable provider setting. Enabling always-listening does not authorize raw microphone audio to be continuously sent to STT or any cloud provider; only an actual post-wake utterance enters the downstream pipeline.
+
 ## Related documents
 
 - `docs/25-failure-modes/FM-13-voice-tts-localization.md` — failure modes for this subsystem

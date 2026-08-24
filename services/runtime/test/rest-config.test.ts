@@ -12,7 +12,12 @@ const configuration = {
   mcp_servers: [],
   routing_policies: {},
   permissions: {},
-  voice: { enabled: true },
+  voice: {
+    enabled: true,
+    wake_word: "nova",
+    always_listening: true,
+    barge_in_sensitivity: "conservative",
+  },
   personalization: { preferences: [] },
 };
 

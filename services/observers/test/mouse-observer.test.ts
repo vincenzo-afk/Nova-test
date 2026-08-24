@@ -160,9 +160,9 @@ describe("MouseObserver", () => {
       "mouse.position.read",
       "mouse.observer.revoked",
     ]);
-    expect(JSON.stringify(sink.records())).not.toMatch(
-      /640|360|click|movement|position_x|position_y/i,
-    );
+    const positionLog = sink.records().find((record) => record.event === "mouse.position.read");
+    expect(positionLog?.details).toMatchObject({ screen_width: 1920, screen_height: 1080 });
+    expect(JSON.stringify(sink.records())).not.toMatch(/click|movement|position_x|position_y/i);
   });
 
   it("uses idle and on-demand cursor APIs, not a continuous movement or click-history API", () => {

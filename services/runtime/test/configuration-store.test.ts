@@ -40,7 +40,12 @@ const base = (): NovaConfiguration => ({
   mcp_servers: [],
   routing_policies: {},
   permissions: {},
-  voice: { enabled: false, wake_word: "nova", always_listening: false },
+  voice: {
+    enabled: false,
+    wake_word: "nova",
+    always_listening: false,
+    barge_in_sensitivity: "conservative",
+  },
   personalization: { preferences: [] },
 });
 
@@ -114,6 +119,34 @@ describe("ConfigurationStore", () => {
     });
 
     expect(result).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+    expect(store.snapshot()).toEqual(before);
+  });
+
+  it("persists a typed voice configuration with local wake-word settings", () => {
+    const store = new ConfigurationStore({ initial: base() });
+    const voice = {
+      enabled: true,
+      wake_word: "computer",
+      always_listening: true,
+      barge_in_sensitivity: "aggressive" as const,
+    };
+
+    expect(store.update("voice", voice)).toMatchObject({ ok: true });
+    expect(store.snapshot().voice).toEqual(voice);
+  });
+
+  it("rejects invalid voice settings atomically", () => {
+    const store = new ConfigurationStore({ initial: base() });
+    const before = store.snapshot();
+
+    expect(
+      store.update("voice", {
+        enabled: true,
+        wake_word: "",
+        always_listening: "yes",
+        barge_in_sensitivity: "balanced",
+      } as never),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
     expect(store.snapshot()).toEqual(before);
   });
 

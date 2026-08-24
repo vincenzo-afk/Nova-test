@@ -48,6 +48,8 @@ Capability entries use the registry model from `docs/18-providers/capability-man
 
 The `personalization` section contains a visible `preferences` array. Each record has `{ id, category, value, enabled, source, updated_at }`, where `category` is one of `tool-default`, `provider-default`, `proactive-timing`, `routing-preference`, or `tone`; `source` is `user` or `feedback`; and `value` is structured preference data rather than a hidden model change. These records are inspectable, editable, individually resettable, and resettable as a collection. No model weights or hidden weighting are changed.
 
+The `voice` section is typed as `{ enabled, wake_word, always_listening, barge_in_sensitivity }`. `enabled` and `always_listening` are booleans, `wake_word` is a non-empty phrase, and `barge_in_sensitivity` is either `aggressive` or `conservative`. The wake-word detector remains an on-device local component regardless of other provider-routing policy; the configuration stores user preferences, not a cloud wake-word fallback.
+
 ## Change propagation
 
 A write to any section takes effect immediately for new requests; no

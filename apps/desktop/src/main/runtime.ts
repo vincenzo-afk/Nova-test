@@ -9,6 +9,7 @@ import {
   Planner,
   RuntimeApplication,
   Verifier,
+  type NovaConfiguration,
   type RuntimeApplicationOptions,
 } from "@nova/runtime";
 import { openDesktopPersistence } from "./persistence.js";
@@ -35,7 +36,7 @@ const desktopPermissions = [
   { source: "notifications_content", granted: false },
 ] as const;
 
-const desktopConfiguration = {
+const desktopConfiguration: NovaConfiguration = {
   schema_version: "1.0.0" as const,
   capabilities: {},
   devices: [],
@@ -44,7 +45,12 @@ const desktopConfiguration = {
   mcp_servers: [],
   routing_policies: {},
   permissions: { browser_excluded_domains: [] },
-  voice: {},
+  voice: {
+    enabled: false,
+    wake_word: "nova",
+    always_listening: false,
+    barge_in_sensitivity: "conservative",
+  },
   personalization: { preferences: [] },
 };
 
