@@ -16,6 +16,7 @@ import {
   type EmailDraft,
   type EmailQuery,
   type CalendarDraft,
+  type InboundMessage,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -210,6 +211,23 @@ ipcMain.handle(
   (_event, payload: { readonly draft: CalendarDraft; readonly confirmed: boolean }) =>
     requestGateway("calendar.create", payload),
 );
+ipcMain.handle(
+  "nova:channel:send",
+  (
+    _event,
+    payload: { readonly channel_id: string; readonly chat_id: string; readonly content: string },
+  ) => requestGateway("channel.send", payload),
+);
+ipcMain.handle(
+  "nova:channel:receive",
+  (
+    _event,
+    payload: { readonly channel_id: string; readonly message: Omit<InboundMessage, "channel_id"> },
+  ) => requestGateway("channel.receive", payload),
+);
+ipcMain.handle("nova:channel:media", (_event, channelId: string) =>
+  requestGateway("channel.media", { channel_id: channelId }),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -387,6 +405,73 @@ const startGateway = async (): Promise<void> => {
       throw new Error(result.error.message);
     }
     return result.value;
+  });
+  gateway.register("channel.send", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly channel_id?: unknown;
+      readonly chat_id?: unknown;
+      readonly content?: unknown;
+    };
+    if (
+      typeof payload.channel_id !== "string" ||
+      payload.channel_id.trim() === "" ||
+      typeof payload.chat_id !== "string" ||
+      payload.chat_id.trim() === "" ||
+      typeof payload.content !== "string" ||
+      payload.content.trim() === ""
+    ) {
+      throw new Error("Channel ID, chat ID, and content are required.");
+    }
+    const result = await runtimeApplication.sendChannelMessage(
+      payload.channel_id,
+      payload.chat_id,
+      payload.content,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("channel.receive", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly channel_id?: unknown;
+      readonly message?: {
+        readonly sender_id?: unknown;
+        readonly chat_id?: unknown;
+        readonly text?: unknown;
+        readonly attachments?: unknown;
+      };
+    };
+    const message = payload.message;
+    if (
+      typeof payload.channel_id !== "string" ||
+      payload.channel_id.trim() === "" ||
+      typeof message?.sender_id !== "string" ||
+      message.sender_id.trim() === "" ||
+      typeof message.chat_id !== "string" ||
+      message.chat_id.trim() === "" ||
+      typeof message.text !== "string" ||
+      !Array.isArray(message.attachments)
+    ) {
+      throw new Error("Channel inbound message fields are invalid.");
+    }
+    const result = runtimeApplication.receiveChannelMessage(payload.channel_id, {
+      sender_id: message.sender_id,
+      chat_id: message.chat_id,
+      text: message.text,
+      attachments: message.attachments,
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
+  });
+  gateway.register("channel.media", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly channel_id?: unknown };
+    if (typeof payload.channel_id !== "string" || payload.channel_id.trim() === "")
+      throw new Error("Channel ID is required.");
+    const result = runtimeApplication.getChannelMediaCapabilities(payload.channel_id);
+    if (!result.ok) throw new Error(result.error.message);
+    return result;
   });
   gateway.register("calendar.upcoming", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

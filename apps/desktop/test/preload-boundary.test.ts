@@ -40,6 +40,12 @@ describe("Electron preload boundary", () => {
       "readEmail",
       "draftEmail",
       "sendEmail",
+      "upcomingCalendarEvents",
+      "proposeCalendarEvent",
+      "createCalendarEvent",
+      "sendChannelMessage",
+      "receiveChannelMessage",
+      "getChannelMediaCapabilities",
       "createPairingOffer",
       "completePairing",
       "revokeTrustedDevice",
@@ -82,6 +88,12 @@ describe("Electron preload boundary", () => {
         readEmail: (query: unknown) => unknown;
         draftEmail: (draft: unknown) => unknown;
         sendEmail: (draft: unknown, confirmed: boolean) => unknown;
+        upcomingCalendarEvents: () => unknown;
+        proposeCalendarEvent: (draft: unknown) => unknown;
+        createCalendarEvent: (draft: unknown, confirmed: boolean) => unknown;
+        sendChannelMessage: (channelId: string, chatId: string, content: string) => unknown;
+        receiveChannelMessage: (channelId: string, message: unknown) => unknown;
+        getChannelMediaCapabilities: (channelId: string) => unknown;
         createPairingOffer: (input: unknown) => unknown;
         completePairing: (code: string, request: unknown) => unknown;
         revokeTrustedDevice: (deviceId: string) => unknown;
@@ -122,6 +134,26 @@ describe("Electron preload boundary", () => {
     api.readEmail({ from: "alice@example.com" });
     api.draftEmail({ to: "bob@example.com", subject: "Update", body: "Complete." });
     api.sendEmail({ to: "bob@example.com", subject: "Update", body: "Complete." }, true);
+    api.upcomingCalendarEvents();
+    api.proposeCalendarEvent({
+      title: "Planning",
+      start: 100,
+      end: 200,
+      attendees: [],
+      owner: true,
+    });
+    api.createCalendarEvent(
+      { title: "Planning", start: 100, end: 200, attendees: [], owner: true },
+      true,
+    );
+    api.sendChannelMessage("telegram", "chat-1", "hello");
+    api.receiveChannelMessage("telegram", {
+      sender_id: "user-1",
+      chat_id: "chat-1",
+      text: "hello",
+      attachments: [],
+    });
+    api.getChannelMediaCapabilities("telegram");
     api.createPairingOffer({ runtime_mode: "Companion", primary_public_key: "primary" });
     api.completePairing("PAIR-1", {
       device_id: "phone-1",
@@ -199,11 +231,38 @@ describe("Electron preload boundary", () => {
       draft: { to: "bob@example.com", subject: "Update", body: "Complete." },
       confirmed: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(19, "nova:devices:pairing-offer", {
+    expect(invoke).toHaveBeenNthCalledWith(19, "nova:calendar:upcoming");
+    expect(invoke).toHaveBeenNthCalledWith(20, "nova:calendar:propose", {
+      title: "Planning",
+      start: 100,
+      end: 200,
+      attendees: [],
+      owner: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(21, "nova:calendar:create", {
+      draft: { title: "Planning", start: 100, end: 200, attendees: [], owner: true },
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(22, "nova:channel:send", {
+      channel_id: "telegram",
+      chat_id: "chat-1",
+      content: "hello",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(23, "nova:channel:receive", {
+      channel_id: "telegram",
+      message: {
+        sender_id: "user-1",
+        chat_id: "chat-1",
+        text: "hello",
+        attachments: [],
+      },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(24, "nova:channel:media", "telegram");
+    expect(invoke).toHaveBeenNthCalledWith(25, "nova:devices:pairing-offer", {
       runtime_mode: "Companion",
       primary_public_key: "primary",
     });
-    expect(invoke).toHaveBeenNthCalledWith(20, "nova:devices:pairing-complete", {
+    expect(invoke).toHaveBeenNthCalledWith(26, "nova:devices:pairing-complete", {
       code: "PAIR-1",
       request: {
         device_id: "phone-1",
@@ -214,26 +273,26 @@ describe("Electron preload boundary", () => {
         confirmed: true,
       },
     });
-    expect(invoke).toHaveBeenNthCalledWith(21, "nova:devices:revoke", {
+    expect(invoke).toHaveBeenNthCalledWith(27, "nova:devices:revoke", {
       device_id: "phone-1",
     });
-    expect(invoke).toHaveBeenNthCalledWith(22, "nova:devices:trusted");
-    expect(invoke).toHaveBeenNthCalledWith(23, "nova:devices:snapshots");
-    expect(invoke).toHaveBeenNthCalledWith(24, "nova:devices:negotiate", {
+    expect(invoke).toHaveBeenNthCalledWith(28, "nova:devices:trusted");
+    expect(invoke).toHaveBeenNthCalledWith(29, "nova:devices:snapshots");
+    expect(invoke).toHaveBeenNthCalledWith(30, "nova:devices:negotiate", {
       device_id: "phone-1",
       capability_id: "camera",
     });
-    expect(invoke).toHaveBeenNthCalledWith(25, "nova:diagnostics:get");
-    expect(invoke).toHaveBeenNthCalledWith(26, "nova:updates:get");
-    expect(invoke).toHaveBeenNthCalledWith(27, "nova:workflow:validate", {
+    expect(invoke).toHaveBeenNthCalledWith(31, "nova:diagnostics:get");
+    expect(invoke).toHaveBeenNthCalledWith(32, "nova:updates:get");
+    expect(invoke).toHaveBeenNthCalledWith(33, "nova:workflow:validate", {
       workflow_id: "workflow-1",
     });
-    expect(invoke).toHaveBeenNthCalledWith(28, "nova:desktop:screenshot", {
+    expect(invoke).toHaveBeenNthCalledWith(34, "nova:desktop:screenshot", {
       task_id: "task-1",
       target: "focused-window",
       max_bytes: 1048576,
     });
-    expect(invoke).toHaveBeenNthCalledWith(29, "nova:desktop:ui-action", {
+    expect(invoke).toHaveBeenNthCalledWith(35, "nova:desktop:ui-action", {
       task_id: "task-1",
       action_id: "save-note",
       action: "invoke",
@@ -241,18 +300,18 @@ describe("Electron preload boundary", () => {
       expected_window_id: "hwnd:2A",
       target: { name: "Save", control_type: "button" },
     });
-    expect(invoke).toHaveBeenNthCalledWith(30, "nova:desktop:ui-read", {
+    expect(invoke).toHaveBeenNthCalledWith(36, "nova:desktop:ui-read", {
       task_id: "task-1",
       expected_window_id: "hwnd:2A",
       target: { name: "Save", control_type: "button" },
     });
-    expect(invoke).toHaveBeenNthCalledWith(31, "nova:permissions:get");
-    expect(invoke).toHaveBeenNthCalledWith(32, "nova:permissions:set", {
+    expect(invoke).toHaveBeenNthCalledWith(37, "nova:permissions:get");
+    expect(invoke).toHaveBeenNthCalledWith(38, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(33, "nova:config:get");
-    expect(invoke).toHaveBeenNthCalledWith(34, "nova:config:update", {
+    expect(invoke).toHaveBeenNthCalledWith(39, "nova:config:get");
+    expect(invoke).toHaveBeenNthCalledWith(40, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
     });

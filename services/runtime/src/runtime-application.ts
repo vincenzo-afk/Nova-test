@@ -88,6 +88,12 @@ import type {
   CalendarProposal,
 } from "./calendar-assistant.js";
 import type {
+  ChannelManager,
+  DeliveryReceipt,
+  InboundMessage,
+  MediaCapabilities,
+} from "./channel-adapter.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -143,6 +149,7 @@ export interface RuntimeApplicationOptions {
   readonly remoteControlManager?: RemoteControlManager;
   readonly emailAssistant?: EmailAssistant;
   readonly calendarAssistant?: CalendarAssistant;
+  readonly channelManager?: ChannelManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -175,6 +182,7 @@ export class RuntimeApplication {
   public readonly remoteControlManager: RemoteControlManager | undefined;
   public readonly emailAssistant: EmailAssistant | undefined;
   public readonly calendarAssistant: CalendarAssistant | undefined;
+  public readonly channelManager: ChannelManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -209,6 +217,7 @@ export class RuntimeApplication {
     this.remoteControlManager = options.remoteControlManager;
     this.emailAssistant = options.emailAssistant;
     this.calendarAssistant = options.calendarAssistant;
+    this.channelManager = options.channelManager;
     this.devicePairingManager = options.devicePairingManager;
     this.sessionContinuityManager = options.sessionContinuityManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
@@ -577,6 +586,46 @@ export class RuntimeApplication {
       });
     }
     return this.androidCompanionManager.use(capability);
+  }
+
+  public async sendChannelMessage(
+    channelId: string,
+    chatId: string,
+    content: string,
+  ): Promise<Result<DeliveryReceipt>> {
+    if (!this.channelManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Messaging channels are not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return await this.channelManager.send(channelId, chatId, content);
+  }
+
+  public receiveChannelMessage(
+    channelId: string,
+    message: Omit<InboundMessage, "channel_id">,
+  ): Result<void> {
+    if (!this.channelManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Messaging channels are not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.channelManager.receive(channelId, message);
+  }
+
+  public getChannelMediaCapabilities(channelId: string): Result<MediaCapabilities> {
+    if (!this.channelManager) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Messaging channels are not configured for this runtime.",
+        retryable: true,
+      });
+    }
+    return this.channelManager.mediaCapabilities(channelId);
   }
 
   public async upcomingCalendarEvents(): Promise<Result<readonly CalendarEvent[]>> {

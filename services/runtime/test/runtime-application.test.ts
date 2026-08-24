@@ -6,6 +6,7 @@ import { AndroidCompanionManager, type CompanionCapability } from "../src/androi
 import { RemoteControlManager } from "../src/remote-control.js";
 import { EmailAssistant, type EmailDraft } from "../src/email-assistant.js";
 import { CalendarAssistant, type CalendarDraft } from "../src/calendar-assistant.js";
+import { ChannelManager, type ChannelAdapter } from "../src/channel-adapter.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -184,6 +185,64 @@ describe("RuntimeApplication", () => {
     expect(await application.createCalendarEvent(draft, true)).toMatchObject({
       ok: true,
       value: { id: "event-1" },
+    });
+  });
+
+  it("routes authorized messaging-channel delivery through the composed runtime", async () => {
+    const adapter: ChannelAdapter = {
+      channel_id: "telegram",
+      descriptor: {
+        provider_id: "telegram",
+        domain: "messaging-channel",
+        privacy_class: "cloud",
+        schema_version: "1.0.0",
+        capabilities: ["send_message", "receive_message"],
+        cost_per_request: 0,
+        latency_p50_ms: 50,
+      },
+      healthCheck: async () => "reachable",
+      invoke: async (request) => request,
+      cancel: () => undefined,
+      shutdown: () => undefined,
+      sendMessage: async (chatId, content) => ({
+        message_id: "message-1",
+        status: "sent",
+        chat_id: chatId,
+        content,
+      }),
+      onMessage: () => undefined,
+      supportsMedia: () => ({ images: true, audio: false, files: true }),
+      resolveIdentity: () => ({ identity_id: "nova-user", authorized: true }),
+    };
+    const channels = new ChannelManager();
+    expect(channels.register(adapter)).toMatchObject({ ok: true });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      channelManager: channels,
+    });
+    applications.push(application);
+
+    expect(await application.sendChannelMessage("telegram", "chat-1", "hello")).toMatchObject({
+      ok: true,
+      value: { message_id: "message-1" },
+    });
+    expect(
+      application.receiveChannelMessage("telegram", {
+        sender_id: "user-1",
+        chat_id: "chat-1",
+        text: "hello",
+        attachments: [],
+      }),
+    ).toMatchObject({ ok: true });
+    expect(application.getChannelMediaCapabilities("telegram")).toMatchObject({
+      ok: true,
+      value: { images: true, audio: false, files: true },
     });
   });
 

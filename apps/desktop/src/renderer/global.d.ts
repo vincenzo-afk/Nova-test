@@ -143,6 +143,90 @@ declare global {
         value?: { to: string; subject: string; body: string; message_id: string };
         error?: { code: string; message: string; retryable: boolean };
       }>;
+      sendChannelMessage: (
+        channelId: string,
+        chatId: string,
+        content: string,
+      ) => Promise<{
+        ok: boolean;
+        value?: { message_id: string; status: "sent" | "failed"; chat_id: string; content: string };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      receiveChannelMessage: (
+        channelId: string,
+        message: {
+          sender_id: string;
+          chat_id: string;
+          text: string;
+          attachments: readonly unknown[];
+        },
+      ) => Promise<{
+        ok: boolean;
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      getChannelMediaCapabilities: (channelId: string) => Promise<{
+        ok: boolean;
+        value?: { images: boolean; audio: boolean; files: boolean };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      upcomingCalendarEvents: () => Promise<{
+        ok: boolean;
+        value?: readonly {
+          id: string;
+          title: string;
+          start: number;
+          end: number;
+          owner: boolean;
+          attendees: readonly string[];
+        }[];
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      proposeCalendarEvent: (draft: {
+        title: string;
+        start: number;
+        end: number;
+        attendees: readonly string[];
+        owner: boolean;
+      }) => Promise<{
+        ok: boolean;
+        value?: {
+          title: string;
+          start: number;
+          end: number;
+          attendees: readonly string[];
+          owner: boolean;
+          conflicts: readonly {
+            id: string;
+            title: string;
+            start: number;
+            end: number;
+            owner: boolean;
+            attendees: readonly string[];
+          }[];
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
+      createCalendarEvent: (
+        draft: {
+          title: string;
+          start: number;
+          end: number;
+          attendees: readonly string[];
+          owner: boolean;
+        },
+        confirmed: boolean,
+      ) => Promise<{
+        ok: boolean;
+        value?: {
+          id: string;
+          title: string;
+          start: number;
+          end: number;
+          owner: boolean;
+          attendees: readonly string[];
+        };
+        error?: { code: string; message: string; retryable: boolean };
+      }>;
       createPairingOffer: (input: {
         runtime_mode: DeviceRuntimeMode;
         primary_public_key: string;

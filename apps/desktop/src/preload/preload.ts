@@ -27,6 +27,16 @@ const novaApi = {
   draftEmail: (draft: unknown) => ipcRenderer.invoke("nova:email:draft", draft),
   sendEmail: (draft: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:email:send", { draft, confirmed }),
+  upcomingCalendarEvents: () => ipcRenderer.invoke("nova:calendar:upcoming"),
+  proposeCalendarEvent: (draft: unknown) => ipcRenderer.invoke("nova:calendar:propose", draft),
+  createCalendarEvent: (draft: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:calendar:create", { draft, confirmed }),
+  sendChannelMessage: (channelId: string, chatId: string, content: string) =>
+    ipcRenderer.invoke("nova:channel:send", { channel_id: channelId, chat_id: chatId, content }),
+  receiveChannelMessage: (channelId: string, message: unknown) =>
+    ipcRenderer.invoke("nova:channel:receive", { channel_id: channelId, message }),
+  getChannelMediaCapabilities: (channelId: string) =>
+    ipcRenderer.invoke("nova:channel:media", channelId),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
