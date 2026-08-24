@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ok } from "@nova/shared";
 import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
+import { DevicePairingManager } from "../src/device-pairing.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
 import { TaskScheduler } from "../src/task-scheduler.js";
@@ -154,6 +155,44 @@ describe("RuntimeApplication", () => {
 
     expect(submitted.status).toBe(202);
     expect(appended).toEqual([expect.any(String)]);
+  });
+
+  it("exposes the trusted paired-device inventory through the composed runtime", async () => {
+    const pairing = new DevicePairingManager({
+      codeFactory: () => "PAIR",
+      tokenFactory: () => "channel",
+      verifySignature: () => true,
+    });
+    pairing.createOffer({ runtime_mode: "Companion", primary_public_key: "primary" });
+    pairing.completePairing("PAIR", {
+      device_id: "android-1",
+      device_public_key: "public-key",
+      challenge: "challenge",
+      signature: "signature",
+      runtime_mode: "Companion",
+      confirmed: true,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      devicePairingManager: pairing,
+    });
+    applications.push(application);
+
+    expect(application.listTrustedDevices()).toEqual([
+      {
+        device_id: "android-1",
+        device_public_key: "public-key",
+        runtime_mode: "Companion",
+        state: "Trusted",
+        paired_at: expect.any(Number),
+      },
+    ]);
   });
 
   it("places tasks through the composed distributed coordinator and records the owning peer", async () => {

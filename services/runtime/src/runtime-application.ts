@@ -67,6 +67,7 @@ import type {
 } from "./orchestration.js";
 import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
+import type { DevicePairingManager, TrustedDevice } from "./device-pairing.js";
 import {
   DistributedTaskCoordinator,
   type DistributedPlacementInput,
@@ -111,6 +112,7 @@ export interface RuntimeApplicationOptions {
   readonly memoryStore?: MemoryStore;
   readonly knowledgeGraph?: KnowledgeGraph;
   readonly distributedTaskCoordinator?: DistributedTaskCoordinator;
+  readonly devicePairingManager?: DevicePairingManager;
   readonly registeredTools?: readonly RegisteredTool[];
   readonly logger?: StructuredLogger;
 }
@@ -136,6 +138,7 @@ export class RuntimeApplication {
   public readonly observationIndexer: ObservationIndexer | undefined;
   public readonly knowledgeGraph: KnowledgeGraph;
   public readonly distributedTaskCoordinator: DistributedTaskCoordinator;
+  public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly toolRegistry: ToolRegistry;
   private readonly executor: Executor;
   private readonly verifier: Verifier;
@@ -163,6 +166,7 @@ export class RuntimeApplication {
     this.tasks = options.taskManager ?? new TaskManager();
     this.distributedTaskCoordinator =
       options.distributedTaskCoordinator ?? new DistributedTaskCoordinator(this.tasks);
+    this.devicePairingManager = options.devicePairingManager;
     this.permissions = options.permissionStore ?? new PermissionGrantStore({ initial: [] });
     const initialConfiguration =
       options.browserExcludedDomains === undefined
@@ -470,6 +474,10 @@ export class RuntimeApplication {
 
   public placeTask(input: DistributedPlacementInput): Result<DistributedPlacementResult> {
     return this.distributedTaskCoordinator.place(input);
+  }
+
+  public listTrustedDevices(): readonly TrustedDevice[] {
+    return this.devicePairingManager?.listTrusted() ?? [];
   }
 
   public issueToken(scopes: Parameters<LocalApiTokenIssuer["issue"]>[0]): string {
