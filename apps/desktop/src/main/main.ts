@@ -27,6 +27,7 @@ import {
 } from "./desktop-agent.js";
 import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
 import { parseBrowserMetadataEvent } from "./browser-gateway.js";
+import { readDiagnostics } from "./diagnostics.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
@@ -144,6 +145,7 @@ ipcMain.handle("nova:memory:record", (_event, payload: { readonly record_id: str
 ipcMain.handle("nova:graph:query", (_event, payload: GraphQueryInput) =>
   requestGateway("graph.query", payload),
 );
+ipcMain.handle("nova:diagnostics:get", () => requestGateway("diagnostics.get", undefined));
 ipcMain.handle("nova:desktop:screenshot", (_event, payload: ScreenshotRequest) =>
   requestGateway("desktop.screenshot", payload),
 );
@@ -191,9 +193,10 @@ ipcMain.handle(
 );
 
 const startGateway = async (): Promise<void> => {
+  const diagnosticsPath = join(app.getPath("userData"), "logs", "nova.jsonl");
   const logger = new StructuredLogger({
     service: "desktop.main",
-    sink: new FileJsonlLogSink(join(app.getPath("userData"), "logs", "nova.jsonl")),
+    sink: new FileJsonlLogSink(diagnosticsPath),
   });
   gatewayBus = new NamedPipeCommunicationBus(
     {
@@ -270,6 +273,7 @@ const startGateway = async (): Promise<void> => {
     }
     return result.value;
   });
+  gateway.register("diagnostics.get", async () => readDiagnostics(diagnosticsPath));
   gateway.register("task.list", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const payload = data as { readonly limit?: number; readonly cursor?: string };

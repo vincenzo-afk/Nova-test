@@ -37,6 +37,9 @@ type SurfaceMetaView = Exclude<DesktopView, "permissions" | "chat" | "tasks">;
 type SurfaceView = Exclude<SurfaceMetaView, "memory" | "graph">;
 type DesktopMemoryRecord = Awaited<ReturnType<typeof window.nova.searchMemory>>["results"][number];
 type DesktopGraphResult = Awaited<ReturnType<typeof window.nova.queryGraph>>;
+type DesktopDiagnosticRecord = Awaited<
+  ReturnType<typeof window.nova.getDiagnostics>
+>["records"][number];
 
 const actionPermissionSources = new Set(["screen", "desktop_control"]);
 const isObserverPermission = (source: string): boolean => !actionPermissionSources.has(source);
@@ -384,6 +387,8 @@ export const App = () => {
             <MemoryView />
           ) : view === "graph" ? (
             <GraphView />
+          ) : view === "diagnostics" ? (
+            <DiagnosticsView />
           ) : (
             <SurfaceView view={view} />
           )}
@@ -1321,6 +1326,125 @@ const GraphView = () => {
           </article>
         </div>
       ) : null}
+    </section>
+  );
+};
+
+const DiagnosticsView = () => {
+  const [records, setRecords] = useState<readonly DesktopDiagnosticRecord[]>([]);
+  const [partial, setPartial] = useState(false);
+  const [collectedAt, setCollectedAt] = useState<string | null>(null);
+  const [state, setState] = useState<"loading" | "populated" | "empty" | "degraded" | "error">(
+    "loading",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setState("loading");
+    setError(null);
+    try {
+      const snapshot = await window.nova.getDiagnostics();
+      setRecords(snapshot.records);
+      setPartial(snapshot.partial);
+      setCollectedAt(snapshot.collected_at);
+      setState(snapshot.partial ? "degraded" : snapshot.records.length > 0 ? "populated" : "empty");
+    } catch (cause: unknown) {
+      setState("error");
+      setError(cause instanceof Error ? cause.message : "Diagnostics are unavailable.");
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const warningCount = records.filter(
+    (record) =>
+      record.severity === "warning" ||
+      record.severity === "error" ||
+      record.severity === "critical",
+  ).length;
+
+  return (
+    <section className="content-column" aria-labelledby="diagnostics-title">
+      <div className="section-kicker">Diagnostics / Local evidence</div>
+      <div className="task-header diagnostics-heading">
+        <div>
+          <h1 id="diagnostics-title">Check NOVA’s health.</h1>
+          <p className="lede">
+            Review bounded, redacted runtime evidence retained on this device. Diagnostic records
+            never include credentials, raw content, screenshots, or keystrokes.
+          </p>
+        </div>
+        <button
+          className="secondary-button"
+          disabled={state === "loading"}
+          onClick={() => void refresh()}
+          type="button"
+        >
+          {state === "loading" ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      <div className="surface-grid diagnostics-grid">
+        <SurfaceCard title="Runtime" detail="Core desktop services are available." state="Online" />
+        <SurfaceCard
+          title="Retained records"
+          detail="Bounded local JSONL evidence."
+          state={`${records.length}`}
+        />
+        <SurfaceCard
+          title="Attention"
+          detail="Warning, error, and critical records."
+          state={`${warningCount}`}
+        />
+      </div>
+      {state === "loading" ? (
+        <div className="state-strip" aria-busy="true" role="status">
+          <strong>Loading diagnostics</strong>
+          <span className="muted">Reading the bounded local diagnostics file.</span>
+        </div>
+      ) : state === "error" ? (
+        <div className="state-strip state-error" role="alert">
+          <strong>Diagnostics unavailable</strong>
+          <span className="muted">{error}</span>
+          <span className="muted">Confirm the local desktop runtime is online, then refresh.</span>
+        </div>
+      ) : state === "empty" ? (
+        <div className="empty-state">
+          <span className="empty-glyph">D</span>
+          <strong>No diagnostic events retained.</strong>
+          <span className="muted">Run a task or refresh later to collect local evidence.</span>
+        </div>
+      ) : (
+        <div className="diagnostic-list" aria-live="polite">
+          <div className={state === "degraded" ? "state-strip state-error" : "state-strip"}>
+            <strong>{state === "degraded" ? "Partial diagnostics" : "Diagnostics ready"}</strong>
+            <span className="muted">
+              {partial
+                ? "Some log lines were malformed and were excluded from this snapshot."
+                : `Collected ${collectedAt ? new Date(collectedAt).toLocaleString() : "just now"}.`}
+            </span>
+          </div>
+          <div className="log-list">
+            {records.map((record) => (
+              <article
+                className="log-row"
+                key={`${record.timestamp}-${record.event}-${record.correlation_id ?? ""}`}
+              >
+                <div className="task-header">
+                  <span className={`log-severity log-${record.severity}`}>{record.severity}</span>
+                  <time dateTime={record.timestamp}>
+                    {new Date(record.timestamp).toLocaleString()}
+                  </time>
+                </div>
+                <strong>{record.event}</strong>
+                <span className="muted">{record.service}</span>
+                {record.correlation_id ? <code>{record.correlation_id}</code> : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

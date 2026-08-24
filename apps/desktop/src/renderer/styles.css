@@ -558,6 +558,64 @@ h2 {
   border-color: #6b3e43;
   background: rgba(62, 27, 34, 0.4);
 }
+.diagnostics-heading {
+  align-items: flex-start;
+  gap: 18px;
+}
+.diagnostics-heading > div {
+  min-width: 0;
+  flex: 1;
+}
+.diagnostics-heading .lede {
+  margin-bottom: 18px;
+}
+.diagnostics-grid {
+  margin-bottom: 18px;
+}
+.diagnostic-list,
+.log-list {
+  display: grid;
+  gap: 12px;
+}
+.log-row {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid #2b3653;
+  border-radius: 12px;
+  background: rgba(18, 26, 48, 0.72);
+}
+.log-row time {
+  color: #7f8aa7;
+  font-size: 11px;
+}
+.log-row code {
+  color: #b8c4dd;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.log-severity {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.log-debug,
+.log-info {
+  color: #cbed97;
+  background: rgba(184, 243, 106, 0.1);
+}
+.log-warning {
+  color: #ffcf9d;
+  background: rgba(255, 189, 118, 0.12);
+}
+.log-error,
+.log-critical {
+  color: #ffadb6;
+  background: rgba(255, 90, 108, 0.12);
+}
 .graph-form select {
   flex: 0 0 auto;
   width: auto;
@@ -601,7 +659,8 @@ h2 {
   }
   .composer,
   .inline-form,
-  .graph-form {
+  .graph-form,
+  .diagnostics-heading {
     align-items: stretch;
     flex-direction: column;
   }

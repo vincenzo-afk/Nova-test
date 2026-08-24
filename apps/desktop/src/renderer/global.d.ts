@@ -72,6 +72,17 @@ declare global {
       }>;
       getMemoryRecord: (recordId: string) => Promise<DesktopMemoryRecord>;
       queryGraph: (input: DesktopGraphQueryInput) => Promise<DesktopGraphQueryResult>;
+      getDiagnostics: () => Promise<{
+        collected_at: string;
+        partial: boolean;
+        records: Array<{
+          timestamp: string;
+          service: string;
+          severity: "debug" | "info" | "warning" | "error" | "critical";
+          event: string;
+          correlation_id?: string;
+        }>;
+      }>;
       captureScreenshot: (request: {
         task_id: string;
         target: "screen" | "focused-window";
