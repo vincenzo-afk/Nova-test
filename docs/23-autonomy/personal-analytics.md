@@ -46,6 +46,19 @@ service" non-goal. Any view that would otherwise surface raw sensitive
 memory content is subject to the same confidence/attribution handling as
 `docs/04-memory/memory-confidence.md`.
 
+The runtime `PersonalAnalytics` boundary consumes existing, already
+permissioned records supplied by its caller; it does not start a new
+observer, screen-time tracker, communication reader, or telemetry stream.
+Reports use a half-open UTC period (`from <= timestamp < to`) and produce
+only bounded aggregates: time allocation by domain/label, task outcome
+counts, provider request/cost totals, and communication volume by
+channel/topic. Raw task goals, message bodies, email contents, prompts,
+transcripts, file names, credentials, and provider responses are not copied
+into the report diagnostics. The local `analytics.report.generated` event
+contains only period boundaries, aggregate counts, and numeric totals.
+Invalid timestamps and negative/non-finite numeric measurements are ignored
+rather than allowed to corrupt a report.
+
 ## Relationship to adaptive personalization
 
 Personal analytics is descriptive (what happened); it is the primary
