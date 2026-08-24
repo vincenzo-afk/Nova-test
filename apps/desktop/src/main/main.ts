@@ -38,6 +38,8 @@ import {
   type PreparedRestore,
   type UpgradeRequest,
   type UpgradeResult,
+  type RepairRequest,
+  type RepairResult,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -113,6 +115,13 @@ const parseIncidentDetail = (value: unknown): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error("Incident detail is required.");
   return value;
+};
+
+const parseRepairRequest = (value: unknown): RepairRequest => {
+  if (value === undefined) return { apply: false };
+  const request = value as { readonly apply?: unknown };
+  if (typeof request.apply !== "boolean") throw new Error("Repair request is invalid.");
+  return { apply: request.apply };
 };
 
 const parseUpgradeRequest = (value: unknown): UpgradeRequest => {
@@ -651,6 +660,9 @@ ipcMain.handle(
   (_event, payload: { readonly request: UpgradeRequest; readonly confirmed: boolean }) =>
     requestGateway("upgrade.run", payload),
 );
+ipcMain.handle("nova:repair:run", (_event, request?: RepairRequest) =>
+  requestGateway("repair.run", request),
+);
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1098,6 +1110,12 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies UpgradeResult;
+  });
+  gateway.register("repair.run", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.repairRuntime(parseRepairRequest(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies RepairResult;
   });
   gateway.register("channel.send", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

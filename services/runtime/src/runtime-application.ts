@@ -127,6 +127,7 @@ import type {
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
+import type { RepairManager, RepairRequest, RepairResult } from "./repair-manager.js";
 import type {
   DevicePairingManager,
   PairingOffer,
@@ -196,6 +197,7 @@ export interface RuntimeApplicationOptions {
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
+  readonly repairManager?: RepairManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -241,6 +243,7 @@ export class RuntimeApplication {
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
+  public readonly repairManager: RepairManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -308,6 +311,7 @@ export class RuntimeApplication {
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
+    this.repairManager = options.repairManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -700,6 +704,13 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public async repairRuntime(
+    request: RepairRequest = { apply: false },
+  ): Promise<Result<RepairResult>> {
+    if (!this.repairManager) return err(this.repairUnavailableError());
+    return await this.repairManager.repair(request);
   }
 
   public async upgradeRuntime(
@@ -1122,6 +1133,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private repairUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Repair manager is not configured for this runtime.",
+      retryable: true,
+    };
   }
 
   private upgradeUnavailableError(): {

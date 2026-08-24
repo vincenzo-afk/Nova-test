@@ -28,6 +28,7 @@ export * from "./runbook-manager.js";
 export * from "./backup-manager.js";
 export * from "./restore-manager.js";
 export * from "./upgrade-manager.js";
+export * from "./repair-manager.js";
 export * from "./job-scheduler.js";
 export * from "./background-assistant.js";
 export * from "./plugin-discovery.js";

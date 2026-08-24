@@ -515,6 +515,10 @@ declare global {
         status: "Upgraded";
         version: number;
       }>;
+      repairRuntime: (request?: { apply: boolean }) => Promise<{
+        applied: readonly string[];
+        reported: readonly { issue_id: string; kind: string; safe: boolean }[];
+      }>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {

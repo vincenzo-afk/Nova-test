@@ -21,6 +21,7 @@ import { PluginDiscovery, type PluginIndexEntry } from "../src/plugin-discovery.
 import { BackupManager, type BackupBackend } from "../src/backup-manager.js";
 import { RestoreManager } from "../src/restore-manager.js";
 import { UpgradeManager, type UpgradeAdapter } from "../src/upgrade-manager.js";
+import { RepairManager } from "../src/repair-manager.js";
 import { DevicePairingManager } from "../src/device-pairing.js";
 import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
@@ -762,6 +763,41 @@ describe("RuntimeApplication", () => {
       value: { status: "Upgraded", version: 3 },
     });
     expect(calls).toEqual(["snapshot", "migrate:1-2", "migrate:2-3", "plugins", "verify"]);
+  });
+
+  it("delegates bounded repair inspection and explicit safe-fix application", async () => {
+    const fixed: string[] = [];
+    const repair = new RepairManager({
+      inspect: async () => [
+        { issue_id: "safe-1", kind: "stale-cache", safe: true },
+        { issue_id: "unsafe-1", kind: "configuration-drift", safe: false },
+      ],
+      fix: async (issueId) => {
+        fixed.push(issueId);
+      },
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      repairManager: repair,
+    });
+    applications.push(application);
+
+    expect(await application.repairRuntime({ apply: false })).toMatchObject({
+      ok: true,
+      value: { applied: [], reported: [{ issue_id: "safe-1" }, { issue_id: "unsafe-1" }] },
+    });
+    expect(fixed).toEqual([]);
+    expect(await application.repairRuntime({ apply: true })).toMatchObject({
+      ok: true,
+      value: { applied: ["safe-1"], reported: [{ issue_id: "unsafe-1" }] },
+    });
+    expect(fixed).toEqual(["safe-1"]);
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

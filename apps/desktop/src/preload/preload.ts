@@ -99,6 +99,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:restore:apply", { prepared, confirmed }),
   upgradeRuntime: (request: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:upgrade:run", { request, confirmed }),
+  repairRuntime: (request?: { apply: boolean }) => ipcRenderer.invoke("nova:repair:run", request),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
