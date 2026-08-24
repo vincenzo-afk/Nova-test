@@ -14,6 +14,7 @@ export * from "./model-router.js";
 export * from "./provider-registry.js";
 export * from "./local-model-manager.js";
 export * from "./personal-analytics.js";
+export * from "./adaptive-personalization.js";
 export * from "./groq-provider.js";
 export * from "./system-inventory.js";
 export * from "./configuration-store.js";

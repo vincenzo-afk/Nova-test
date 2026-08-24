@@ -42,6 +42,19 @@ never a hidden weighting the user cannot inspect. Every adaptive
 preference is stored as a visible, editable record in
 `docs/19-setup/configuration-system.md`'s `personalization` section.
 
+The runtime `AdaptivePersonalization` boundary represents a candidate as a
+pending proposal first. Creating a proposal never mutates the active
+configuration. An explicit approval is required before the proposal is
+written as a `source: "feedback"` record through the shared
+`ConfigurationStore`; dismissal removes only the pending proposal. Repeated
+routing overrides may create a suggested `routing-preference`, but they
+never silently change the active routing policy. Pending proposals can be
+listed for inspection, and approved records can be reset individually or
+all at once through the existing configuration reset path. Proposal
+telemetry contains only bounded identifiers and category metadata; values,
+message content, prompts, transcripts, credentials, and model data are not
+logged.
+
 ## Boundaries (non-negotiable)
 
 - **No model weight changes**, ever, regardless of how much data
