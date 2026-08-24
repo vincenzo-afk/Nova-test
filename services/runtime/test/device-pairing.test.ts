@@ -126,6 +126,31 @@ describe("DevicePairingManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("rejects blank offer and completion fields before issuing or trusting a pairing", () => {
+    const manager = new DevicePairingManager({
+      codeFactory: () => "PAIR",
+      tokenFactory: () => "token",
+      verifySignature: () => true,
+    });
+
+    expect(
+      manager.createOffer({ runtime_mode: "Companion", primary_public_key: "   " }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(
+      manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary" }),
+    ).toMatchObject({ ok: true });
+    expect(
+      manager.completePairing("PAIR", {
+        device_id: "",
+        device_public_key: "device-key",
+        challenge: "challenge",
+        signature: "signature",
+        runtime_mode: "Companion",
+        confirmed: true,
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+  });
+
   it("lists trusted devices without exposing pairing channel secrets", () => {
     const manager = new DevicePairingManager({
       codeFactory: () => "PAIR",

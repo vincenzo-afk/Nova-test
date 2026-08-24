@@ -35,6 +35,11 @@ export interface TrustedDevice {
   readonly paired_at: number;
 }
 
+const hasText = (value: unknown): value is string =>
+  typeof value === "string" && value.trim() !== "";
+const isRuntimeMode = (value: unknown): value is DeviceRuntimeMode =>
+  value === "Full peer" || value === "Companion";
+
 export class DevicePairingManager {
   private readonly offers = new Map<string, PairingOffer>();
   private readonly trusted = new Map<string, TrustedDevice>();
@@ -56,11 +61,30 @@ export class DevicePairingManager {
       runtime_mode: input.runtime_mode,
       expires_at: this.now() + (this.options.ttlMs ?? 30_000),
     };
+    if (
+      !hasText(offer.code) ||
+      !hasText(offer.channel_token) ||
+      !hasText(offer.primary_public_key) ||
+      !isRuntimeMode(offer.runtime_mode)
+    ) {
+      return err(this.securityError("Pairing offer fields are invalid."));
+    }
     this.offers.set(offer.code, offer);
     return ok(offer);
   }
 
   public completePairing(code: string, request: PairingRequest): Result<TrustedDevice> {
+    if (
+      !hasText(code) ||
+      !hasText(request.device_id) ||
+      !hasText(request.device_public_key) ||
+      !hasText(request.challenge) ||
+      !hasText(request.signature) ||
+      !isRuntimeMode(request.runtime_mode) ||
+      request.confirmed !== true
+    ) {
+      return err(this.securityError("Pairing request fields are invalid."));
+    }
     const offer = this.offers.get(code);
     if (!offer || this.now() >= offer.expires_at)
       return err(this.securityError("Pairing offer is expired or unavailable."));
