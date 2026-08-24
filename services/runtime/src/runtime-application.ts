@@ -551,7 +551,9 @@ export class RuntimeApplication {
         retryable: true,
       });
     }
-    return this.devicePairingManager.unpair(deviceId);
+    const result = this.devicePairingManager.unpair(deviceId);
+    if (result.ok) this.sessionContinuityManager?.unregisterDevice(deviceId);
+    return result;
   }
 
   public negotiateDeviceCapability(

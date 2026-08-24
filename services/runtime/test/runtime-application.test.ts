@@ -314,6 +314,8 @@ describe("RuntimeApplication", () => {
       runtime_mode: "Companion",
       confirmed: true,
     });
+    const continuity = new SessionContinuityManager({ now: () => 1000 });
+    continuity.registerDevice("android-1", ["camera"]);
     const application = new RuntimeApplication({
       configuration,
       planner: new Planner({ deterministic: new Map() }),
@@ -323,11 +325,13 @@ describe("RuntimeApplication", () => {
       ),
       verifier: new Verifier(),
       devicePairingManager: pairing,
+      sessionContinuityManager: continuity,
     });
     applications.push(application);
 
     expect(application.revokeTrustedDevice("android-1")).toMatchObject({ ok: true });
     expect(application.listTrustedDevices()).toEqual([]);
+    expect(application.listDeviceSnapshots()).toEqual([]);
     expect(application.revokeTrustedDevice("android-1")).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },

@@ -60,6 +60,13 @@ export class SessionContinuityManager {
     return ok(undefined);
   }
 
+  public unregisterDevice(deviceId: string): void {
+    this.devices.delete(deviceId);
+    for (const [sessionId, session] of this.sessions) {
+      if (session.active_device_id === deviceId) this.sessions.delete(sessionId);
+    }
+  }
+
   public heartbeat(deviceId: string, presence: PresenceState): Result<void> {
     const device = this.devices.get(deviceId);
     if (!device) return err(this.error("Device is not registered."));
