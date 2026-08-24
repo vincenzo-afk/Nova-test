@@ -122,6 +122,34 @@ describe("DevicePairingManager", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
   });
 
+  it("lists trusted devices without exposing pairing channel secrets", () => {
+    const manager = new DevicePairingManager({
+      codeFactory: () => "PAIR",
+      tokenFactory: () => "secret-channel-token",
+      verifySignature: () => true,
+    });
+    manager.createOffer({ runtime_mode: "Companion", primary_public_key: "primary" });
+    manager.completePairing("PAIR", {
+      device_id: "android-1",
+      device_public_key: "key-1",
+      challenge: "nonce-1",
+      signature: "sig-1",
+      runtime_mode: "Companion",
+      confirmed: true,
+    });
+
+    expect(manager.listTrusted()).toEqual([
+      {
+        device_id: "android-1",
+        device_public_key: "key-1",
+        runtime_mode: "Companion",
+        state: "Trusted",
+        paired_at: expect.any(Number),
+      },
+    ]);
+    expect(JSON.stringify(manager.listTrusted())).not.toContain("secret-channel-token");
+  });
+
   it("unpairs and revokes a trusted device", () => {
     const manager = new DevicePairingManager({
       codeFactory: () => "PAIR",

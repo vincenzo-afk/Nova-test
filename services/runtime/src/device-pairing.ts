@@ -90,6 +90,10 @@ export class DevicePairingManager {
     return device ? ok(device) : err(this.securityError("Device is not trusted."));
   }
 
+  public listTrusted(): readonly TrustedDevice[] {
+    return [...this.trusted.values()].map((device) => ({ ...device }));
+  }
+
   public unpair(deviceId: string): Result<void> {
     if (!this.trusted.delete(deviceId)) return err(this.securityError("Device is not trusted."));
     return ok(undefined);
