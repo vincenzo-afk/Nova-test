@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { err, ok } from "@nova/shared";
+import { MemoryLogSink, StructuredLogger, err, ok } from "@nova/shared";
 import type { ExecutionResult, ExecutionStep, VerificationVerdict } from "../src/orchestration.js";
 import {
   WorkflowEngine,
@@ -187,6 +187,66 @@ describe("WorkflowEngine", () => {
         .getCheckpoints("workflow.test")
         .filter((checkpoint) => checkpoint.state === "Superseded"),
     ).not.toHaveLength(0);
+  });
+
+  it("cancels an in-flight sibling when a parallel branch fails", async () => {
+    const sink = new MemoryLogSink();
+    let siblingStarted = false;
+    let siblingCancelled = false;
+    const engine = new WorkflowEngine({
+      execute: (workflowStep, signal) => {
+        if (workflowStep.step_id === "step-left") {
+          return Promise.resolve(
+            err({ code: "NOVA-TL002", message: "branch failure", retryable: false }),
+          );
+        }
+        siblingStarted = true;
+        return new Promise((resolve) => {
+          const onAbort = () => {
+            siblingCancelled = true;
+            resolve(err({ code: "NOVA-WFL002", message: "branch cancelled", retryable: false }));
+          };
+          signal?.addEventListener("abort", onAbort, { once: true });
+          setTimeout(() => {
+            signal?.removeEventListener("abort", onAbort);
+            resolve(ok(successfulResult(workflowStep.step_id)));
+          }, 40);
+        });
+      },
+      verify: (workflowStep) => ok(verified(workflowStep.step_id)),
+      logger: new StructuredLogger({ service: "runtime.workflow", sink }),
+    });
+    const graph = definition(
+      [
+        { id: "split", type: "parallel_split" },
+        task("left"),
+        task("right"),
+        { id: "join", type: "join" },
+        { id: "end", type: "end" },
+      ],
+      [
+        { from: "split", to: "left" },
+        { from: "split", to: "right" },
+        { from: "left", to: "join" },
+        { from: "right", to: "join" },
+        { from: "join", to: "end" },
+      ],
+      "split",
+    );
+
+    const result = await engine.run(graph, {});
+
+    expect(result).toMatchObject({ ok: false, error: { code: "NOVA-WFL002" } });
+    expect(siblingStarted).toBe(true);
+    expect(siblingCancelled).toBe(true);
+    expect(sink.records().map((record) => record.event)).toEqual([
+      "workflow.parallel.branch_failed",
+      "workflow.parallel.branch_cancelled",
+    ]);
+    expect(sink.records()[1]?.details).toMatchObject({
+      workflow_id: "workflow.test",
+      reason: "sibling_branch_failed",
+    });
   });
 
   it("waits for all parallel branches at Join and rolls back on approval denial", async () => {

@@ -1,4 +1,5 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import type { StructuredLogger } from "@nova/shared";
 import type { ExecutionResult, ExecutionStep, VerificationVerdict } from "./orchestration.js";
 
 export type WorkflowNode =
@@ -46,7 +47,7 @@ export interface WorkflowResult {
 }
 
 export interface WorkflowEngineOptions {
-  readonly execute: (step: ExecutionStep) => Promise<Result<ExecutionResult>>;
+  readonly execute: (step: ExecutionStep, signal?: AbortSignal) => Promise<Result<ExecutionResult>>;
   readonly verify: (step: ExecutionStep, result: ExecutionResult) => Result<VerificationVerdict>;
   readonly approve?: (
     nodeId: string,
@@ -58,6 +59,7 @@ export interface WorkflowEngineOptions {
   ) => Promise<void>;
   readonly workflowTimeoutMs?: number;
   readonly maxSteps?: number;
+  readonly logger?: StructuredLogger | undefined;
 }
 
 interface StoredWorkflow {
@@ -267,11 +269,31 @@ export class WorkflowEngine {
       } else if (node.type === "parallel_split") {
         completed.add(node.id);
         const branches = this.outgoing(definition, node.id);
+        const branchControllers = branches.map(() => new AbortController());
+        let firstFailure: Result<readonly string[]> | undefined;
         const branchResults = await Promise.all(
-          branches.map((branch) => this.executeBranch(definition, branch.to, completed, startedAt)),
+          branches.map(async (branch, index) => {
+            const branchResult = await this.executeBranch(
+              definition,
+              branch.to,
+              completed,
+              startedAt,
+              branchControllers[index]?.signal,
+            );
+            if (!branchResult.ok && firstFailure === undefined) {
+              firstFailure = branchResult;
+              this.options.logger?.warning("workflow.parallel.branch_failed", {
+                workflow_id: definition.workflow_id,
+                branch_node_id: branch.to,
+              });
+              branchControllers.forEach((controller, siblingIndex) => {
+                if (siblingIndex !== index) controller.abort();
+              });
+            }
+            return branchResult;
+          }),
         );
-        const failed = branchResults.find((branchResult) => !branchResult.ok);
-        if (failed && !failed.ok) return failed;
+        if (firstFailure !== undefined && !firstFailure.ok) return err(firstFailure.error);
         for (const branchResult of branchResults) {
           if (branchResult.ok) for (const nodeId of branchResult.value) completed.add(nodeId);
         }
@@ -315,10 +337,19 @@ export class WorkflowEngine {
     startNodeId: string,
     completed: Set<string>,
     startedAt: number,
+    signal?: AbortSignal,
   ): Promise<Result<readonly string[]>> {
     const branchCompleted = new Set<string>();
     let current: string | undefined = startNodeId;
     while (current && !this.isJoin(definition, current)) {
+      if (signal?.aborted) {
+        this.options.logger?.info("workflow.parallel.branch_cancelled", {
+          workflow_id: definition.workflow_id,
+          branch_node_id: startNodeId,
+          reason: "sibling_branch_failed",
+        });
+        return err(error("NOVA-WFL002", "Workflow parallel branch was cancelled."));
+      }
       if (Date.now() - startedAt > this.options.workflowTimeoutMs) {
         return err(error("NOVA-WFL002", "Workflow parallel branch exceeded its configured bound."));
       }
@@ -330,12 +361,25 @@ export class WorkflowEngine {
         );
       let result: Result<ExecutionResult>;
       try {
-        result = await this.withTimeout(this.options.execute(node.step), node.step.timeout_ms);
+        result = await this.withTimeout(
+          this.options.execute(node.step, signal),
+          node.step.timeout_ms,
+        );
       } catch {
         return err(
           error("NOVA-WFL002", "Workflow parallel branch exceeded its configured timeout.", {
             nodeId: node.id,
           }),
+        );
+      }
+      if (signal?.aborted) {
+        this.options.logger?.info("workflow.parallel.branch_cancelled", {
+          workflow_id: definition.workflow_id,
+          branch_node_id: node.id,
+          reason: "sibling_branch_failed",
+        });
+        return err(
+          error("NOVA-WFL002", "Workflow parallel branch was cancelled.", { nodeId: node.id }),
         );
       }
       if (!result.ok)

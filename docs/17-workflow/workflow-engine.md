@@ -121,10 +121,16 @@ lists explicitly.
 
 Cancelling a workflow cancels every in-flight task node
 (`docs/03-runtime/task-manager.md`'s cancellation semantics) and, unlike
-a single linear task, may need to invoke rollback nodes for branches that
+ a single linear task, may need to invoke rollback nodes for branches that
 had already completed — cancellation of a workflow with completed
 parallel branches routes through the same Rollback node logic a normal
 "denied" path would, rather than leaving completed branches unaddressed.
+
+## Parallel failure implementation contract
+
+The Workflow Engine passes an optional `AbortSignal` to each parallel task execution. When the first branch returns a failure, the engine aborts every still-running sibling and waits for those branch promises to settle before propagating the original workflow failure. Executor implementations should stop issuing new sub-steps when the signal is aborted, while allowing any already-running unsafe OS operation to reach its next safe boundary as required by `docs/03-runtime/executor.md`.
+
+The engine emits structured local diagnostics for the first failed branch and each cooperatively cancelled sibling. These records contain only the workflow identifier, branch node identifier, and bounded reason metadata; workflow context, task parameters, tool arguments, credentials, and arbitrary result payloads are excluded.
 
 ## Related documents
 
