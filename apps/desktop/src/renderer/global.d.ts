@@ -750,7 +750,7 @@ declare global {
         confirmed: boolean,
       ) => Promise<readonly { action_id: string; status: "completed" | "failed" }[]>;
       startSetupWizard: () => Promise<SetupState>;
-      rerunSetupWizard: () => Promise<SetupState>;
+      rerunSetupWizard: (confirmed: boolean) => Promise<SetupState>;
       completeSetupStep: (
         step: SetupStepId,
         patch: SetupStepPatch | undefined,

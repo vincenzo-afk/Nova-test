@@ -1200,8 +1200,15 @@ export class RuntimeApplication {
     }
   }
 
-  public async rerunSetupWizard(): Promise<Result<SetupState>> {
+  public async rerunSetupWizard(confirmed: boolean): Promise<Result<SetupState>> {
     if (!this.setupWizard) return err(this.setupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Rerunning the setup wizard requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     try {
       return ok(await this.setupWizard.rerun());
     } catch {

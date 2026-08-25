@@ -1954,9 +1954,12 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });
-  gateway.register("setup.rerun", async () => {
+  gateway.register("setup.rerun", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.rerunSetupWizard();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Setup rerun confirmation is invalid.");
+    const result = await runtimeApplication.rerunSetupWizard(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

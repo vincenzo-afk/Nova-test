@@ -1422,6 +1422,14 @@ describe("RuntimeApplication", () => {
 
     const started = await application.startSetupWizard();
     expect(started).toMatchObject({ ok: true, value: { current_step: "core-llm" } });
+    expect(await application.rerunSetupWizard(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.setupSummary()).toMatchObject({
+      ok: true,
+      value: { current_step: "core-llm" },
+    });
     const initialConfiguration = configurationStore.snapshot();
     expect(
       application.completeSetupStep("core-llm", { section: "capabilities", value: {} }, false),
