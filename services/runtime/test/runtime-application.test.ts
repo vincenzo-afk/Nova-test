@@ -1110,6 +1110,14 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { theme: "dark" },
     });
+    expect(application.preUpdateBackup({ theme: "dark" }, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.preUpdateBackup({ theme: "dark" }, true)).toMatchObject({
+      ok: true,
+      value: { snapshot_id: "snapshot-1", owner_id: "owner-1", encrypted: true },
+    });
   });
 
   it("stages restores and requires explicit confirmation before applying live state", async () => {

@@ -243,7 +243,7 @@ describe("Electron preload boundary", () => {
         declinePluginDiscovery: (pluginId: string) => unknown;
         pendingPluginDiscovery: () => unknown;
         createBackup: (state: unknown, confirmed: boolean) => unknown;
-        preUpdateBackup: (state: unknown) => unknown;
+        preUpdateBackup: (state: unknown, confirmed: boolean) => unknown;
         restoreBackup: (snapshotId: string) => unknown;
         prepareRestore: (snapshotId: string) => unknown;
         applyPreparedRestore: (prepared: unknown, confirmed: boolean) => unknown;
@@ -425,7 +425,7 @@ describe("Electron preload boundary", () => {
     api.declinePluginDiscovery("com.example.other");
     api.pendingPluginDiscovery();
     api.createBackup({ theme: "dark" }, true);
-    api.preUpdateBackup({ theme: "dark" });
+    api.preUpdateBackup({ theme: "dark" }, true);
     api.restoreBackup("snapshot-1");
     api.prepareRestore("snapshot-1");
     api.applyPreparedRestore({ verified: true, staging: { theme: "dark" } }, true);
@@ -704,7 +704,10 @@ describe("Electron preload boundary", () => {
       state: { theme: "dark" },
       confirmed: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(55, "nova:backup:pre-update", { theme: "dark" });
+    expect(invoke).toHaveBeenNthCalledWith(55, "nova:backup:pre-update", {
+      state: { theme: "dark" },
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(56, "nova:backup:restore", "snapshot-1");
     expect(invoke).toHaveBeenNthCalledWith(57, "nova:restore:prepare", "snapshot-1");
     expect(invoke).toHaveBeenNthCalledWith(58, "nova:restore:apply", {

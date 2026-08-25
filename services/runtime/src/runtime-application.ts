@@ -1343,8 +1343,15 @@ export class RuntimeApplication {
     return this.backupManager.create(state);
   }
 
-  public preUpdateBackup<T>(state: T): Result<SnapshotMetadata> {
+  public preUpdateBackup<T>(state: T, confirmed: boolean): Result<SnapshotMetadata> {
     if (!this.backupManager) return err(this.backupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Creating a pre-update backup requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.backupManager.preUpdate(state);
   }
 

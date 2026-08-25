@@ -673,7 +673,10 @@ declare global {
         created_at: number;
         reason: "scheduled" | "pre-update";
       }>;
-      preUpdateBackup: (state: unknown) => Promise<{
+      preUpdateBackup: (
+        state: unknown,
+        confirmed: boolean,
+      ) => Promise<{
         snapshot_id: string;
         owner_id: string;
         encrypted: true;

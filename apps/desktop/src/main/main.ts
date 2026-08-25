@@ -934,8 +934,10 @@ ipcMain.handle(
   (_event, payload: { readonly state: unknown; readonly confirmed: boolean }) =>
     requestGateway("backup.create", payload),
 );
-ipcMain.handle("nova:backup:pre-update", (_event, state: unknown) =>
-  requestGateway("backup.pre-update", { state }),
+ipcMain.handle(
+  "nova:backup:pre-update",
+  (_event, payload: { readonly state: unknown; readonly confirmed: boolean }) =>
+    requestGateway("backup.pre-update", payload),
 );
 ipcMain.handle("nova:backup:restore", (_event, snapshotId: string) =>
   requestGateway("backup.restore", { snapshot_id: snapshotId }),
@@ -1815,8 +1817,10 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("backup.pre-update", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly state?: unknown };
-    const result = runtimeApplication.preUpdateBackup(payload.state);
+    const payload = data as { readonly state?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Pre-update backup confirmation is invalid.");
+    const result = runtimeApplication.preUpdateBackup(payload.state, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies SnapshotMetadata;
   });
