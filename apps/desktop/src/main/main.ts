@@ -892,8 +892,10 @@ ipcMain.handle(
   (_event, payload: { readonly request: UpgradeRequest; readonly confirmed: boolean }) =>
     requestGateway("upgrade.run", payload),
 );
-ipcMain.handle("nova:repair:run", (_event, request?: RepairRequest) =>
-  requestGateway("repair.run", request),
+ipcMain.handle(
+  "nova:repair:run",
+  (_event, payload?: { readonly request?: RepairRequest; readonly confirmed?: boolean }) =>
+    requestGateway("repair.run", payload),
 );
 ipcMain.handle(
   "nova:resources:acquire",
@@ -1666,7 +1668,12 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("repair.run", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.repairRuntime(parseRepairRequest(data));
+    const payload = data as { readonly request?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean") throw new Error("Repair confirmation is invalid.");
+    const result = await runtimeApplication.repairRuntime(
+      parseRepairRequest(payload.request),
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies RepairResult;
   });

@@ -1026,7 +1026,12 @@ describe("RuntimeApplication", () => {
       value: { applied: [], reported: [{ issue_id: "safe-1" }, { issue_id: "unsafe-1" }] },
     });
     expect(fixed).toEqual([]);
-    expect(await application.repairRuntime({ apply: true })).toMatchObject({
+    expect(await application.repairRuntime({ apply: true }, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(fixed).toEqual([]);
+    expect(await application.repairRuntime({ apply: true }, true)).toMatchObject({
       ok: true,
       value: { applied: ["safe-1"], reported: [{ issue_id: "unsafe-1" }] },
     });

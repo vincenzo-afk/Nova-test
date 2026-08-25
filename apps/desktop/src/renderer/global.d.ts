@@ -680,7 +680,10 @@ declare global {
         status: "Upgraded";
         version: number;
       }>;
-      repairRuntime: (request?: { apply: boolean }) => Promise<{
+      repairRuntime: (
+        request?: { apply: boolean },
+        confirmed?: boolean,
+      ) => Promise<{
         applied: readonly string[];
         reported: readonly { issue_id: string; kind: string; safe: boolean }[];
       }>;

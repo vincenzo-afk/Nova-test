@@ -106,7 +106,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:restore:apply", { prepared, confirmed }),
   upgradeRuntime: (request: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:upgrade:run", { request, confirmed }),
-  repairRuntime: (request?: { apply: boolean }) => ipcRenderer.invoke("nova:repair:run", request),
+  repairRuntime: (request?: { apply: boolean }, confirmed = false) =>
+    ipcRenderer.invoke("nova:repair:run", { request, confirmed }),
   acquireResources: (taskId: string, resources: readonly string[]) =>
     ipcRenderer.invoke("nova:resources:acquire", { task_id: taskId, resources }),
   releaseResources: (taskId: string) => ipcRenderer.invoke("nova:resources:release", taskId),

@@ -1147,8 +1147,16 @@ export class RuntimeApplication {
 
   public async repairRuntime(
     request: RepairRequest = { apply: false },
+    confirmed = false,
   ): Promise<Result<RepairResult>> {
     if (!this.repairManager) return err(this.repairUnavailableError());
+    if (request.apply && !confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Applying runtime repairs requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return await this.repairManager.repair(request);
   }
 

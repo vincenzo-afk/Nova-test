@@ -236,7 +236,7 @@ describe("Electron preload boundary", () => {
         prepareRestore: (snapshotId: string) => unknown;
         applyPreparedRestore: (prepared: unknown, confirmed: boolean) => unknown;
         upgradeRuntime: (request: unknown, confirmed: boolean) => unknown;
-        repairRuntime: (request?: { apply: boolean }) => unknown;
+        repairRuntime: (request?: { apply: boolean }, confirmed?: boolean) => unknown;
         acquireResources: (taskId: string, resources: readonly string[]) => unknown;
         releaseResources: (taskId: string) => unknown;
         resourceHolder: (resource: string) => unknown;
@@ -412,7 +412,7 @@ describe("Electron preload boundary", () => {
     api.prepareRestore("snapshot-1");
     api.applyPreparedRestore({ verified: true, staging: { theme: "dark" } }, true);
     api.upgradeRuntime({ current_version: 1, target_version: 2 }, true);
-    api.repairRuntime({ apply: false });
+    api.repairRuntime({ apply: false }, false);
     api.acquireResources("task-1", ["gpu"]);
     api.releaseResources("task-1");
     api.resourceHolder("gpu");
@@ -674,7 +674,10 @@ describe("Electron preload boundary", () => {
       request: { current_version: 1, target_version: 2 },
       confirmed: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(60, "nova:repair:run", { apply: false });
+    expect(invoke).toHaveBeenNthCalledWith(60, "nova:repair:run", {
+      request: { apply: false },
+      confirmed: false,
+    });
     expect(invoke).toHaveBeenNthCalledWith(61, "nova:resources:acquire", {
       task_id: "task-1",
       resources: ["gpu"],
