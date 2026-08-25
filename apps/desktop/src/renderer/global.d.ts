@@ -289,6 +289,9 @@ declare global {
           state: "AwaitingApproval" | "Active" | "Expired" | "Revoked";
         }[]
       >;
+      remoteControlPreApprovalStatuses: () => Promise<
+        readonly { device_id: string; expires_at: number }[]
+      >;
 
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;

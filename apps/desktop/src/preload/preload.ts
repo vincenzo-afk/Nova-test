@@ -177,6 +177,7 @@ const novaApi = {
   hardwareCapabilitySummary: () => ipcRenderer.invoke("nova:hardware:summary"),
   rescanHardwareCapabilitySummary: () => ipcRenderer.invoke("nova:hardware:rescan-summary"),
   remoteControlSessionStatuses: () => ipcRenderer.invoke("nova:remote:sessions"),
+  remoteControlPreApprovalStatuses: () => ipcRenderer.invoke("nova:remote:pre-approvals"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

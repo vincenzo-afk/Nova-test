@@ -1883,6 +1883,30 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("exposes active remote pre-approval status without trust material", () => {
+    const remoteControl = new RemoteControlManager(
+      { verify: () => true, send: async () => undefined },
+      { now: () => 1000 },
+    );
+    remoteControl.preApprove("phone-1", 2_000);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      remoteControlManager: remoteControl,
+    });
+    applications.push(application);
+
+    expect(application.remoteControlPreApprovalStatuses()).toEqual({
+      ok: true,
+      value: [{ device_id: "phone-1", expires_at: 3_000 }],
+    });
+  });
+
   it("places tasks through the composed distributed coordinator and records the owning peer", async () => {
     const application = createApplication();
     applications.push(application);

@@ -40,6 +40,15 @@ describe("RemoteControlManager", () => {
     expect(transport.send).toHaveBeenCalledWith("session-1", command);
   });
 
+  it("lists only active pre-approval metadata", () => {
+    const manager = new RemoteControlManager(
+      { verify: () => true, send: async () => undefined },
+      { now: () => 1000 },
+    );
+    expect(manager.preApprove("phone", 2000)).toMatchObject({ ok: true });
+    expect(manager.listPreApprovals()).toEqual([{ device_id: "phone", expires_at: 3000 }]);
+  });
+
   it("supports scoped pre-approval but still expires and revokes immediately", async () => {
     let now = 1000;
     const manager = new RemoteControlManager(

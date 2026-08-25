@@ -76,7 +76,11 @@ import type {
   CompanionCapability,
   CompanionPermissionState,
 } from "./android-companion.js";
-import type { RemoteControlManager, RemoteSessionView } from "./remote-control.js";
+import type {
+  RemoteControlManager,
+  RemotePreApprovalView,
+  RemoteSessionView,
+} from "./remote-control.js";
 import type {
   EmailAssistant,
   EmailDraft,
@@ -853,6 +857,10 @@ export class RuntimeApplication {
   public remoteControlSessionStatuses(): Result<readonly RemoteSessionView[]> {
     if (!this.remoteControlManager) return err(this.remoteControlUnavailableError());
     return ok(this.remoteControlManager.listSessions());
+  }
+  public remoteControlPreApprovalStatuses(): Result<readonly RemotePreApprovalView[]> {
+    if (!this.remoteControlManager) return err(this.remoteControlUnavailableError());
+    return ok(this.remoteControlManager.listPreApprovals());
   }
   public async rescanHardwareCapabilitySummary(): Promise<Result<HardwareCapabilitySummary>> {
     if (!this.hardwareDetector) return err(this.hardwareSummaryUnavailableError());

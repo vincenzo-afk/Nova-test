@@ -39,6 +39,11 @@ export interface RemoteSessionView {
   readonly state: RemoteSessionState;
 }
 
+export interface RemotePreApprovalView {
+  readonly device_id: string;
+  readonly expires_at: number;
+}
+
 export interface RemoteExecutionReceipt {
   readonly command_id: string;
   readonly audit_origin: "remote";
@@ -124,6 +129,13 @@ export class RemoteControlManager {
       this.expired(session);
       return this.view(session);
     });
+  }
+
+  public listPreApprovals(): readonly RemotePreApprovalView[] {
+    const now = this.now();
+    return [...this.preapprovals.entries()]
+      .filter(([, expiresAt]) => expiresAt > now)
+      .map(([device_id, expires_at]) => ({ device_id, expires_at }));
   }
 
   public async execute(
