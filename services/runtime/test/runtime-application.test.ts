@@ -1006,13 +1006,21 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    expect(await application.startVoicePipeline()).toMatchObject({
+    expect(await application.startVoicePipeline(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.startVoicePipeline(true)).toMatchObject({
       ok: true,
       value: { state: "Listening" },
     });
     expect(application.voicePipelineState()).toBe("Listening");
     expect(application.bargeInVoice()).toMatchObject({ ok: true, value: { state: "Listening" } });
-    expect(await application.stopVoicePipeline()).toMatchObject({
+    expect(await application.stopVoicePipeline(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.stopVoicePipeline(true)).toMatchObject({
       ok: true,
       value: { state: "Idle" },
     });

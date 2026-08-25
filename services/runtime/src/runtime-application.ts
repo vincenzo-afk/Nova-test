@@ -1375,13 +1375,27 @@ export class RuntimeApplication {
     return this.pluginDiscovery?.pending() ?? [];
   }
 
-  public async startVoicePipeline(): Promise<Result<{ state: VoiceState }>> {
+  public async startVoicePipeline(confirmed: boolean): Promise<Result<{ state: VoiceState }>> {
     if (!this.voicePipeline) return err(this.voiceUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Starting the voice pipeline requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return await this.voicePipeline.start();
   }
 
-  public async stopVoicePipeline(): Promise<Result<{ state: VoiceState }>> {
+  public async stopVoicePipeline(confirmed: boolean): Promise<Result<{ state: VoiceState }>> {
     if (!this.voicePipeline) return err(this.voiceUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Stopping the voice pipeline requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return await this.voicePipeline.stop();
   }
 

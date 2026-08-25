@@ -894,8 +894,12 @@ ipcMain.handle("nova:task:deny-waiting-user", (_event, data) =>
 );
 ipcMain.handle("nova:task:pause", (_event, data) => requestGateway("task.pause", data));
 
-ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
-ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
+ipcMain.handle("nova:voice:start", (_event, confirmed: boolean) =>
+  requestGateway("voice.start", { confirmed }),
+);
+ipcMain.handle("nova:voice:stop", (_event, confirmed: boolean) =>
+  requestGateway("voice.stop", { confirmed }),
+);
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
 ipcMain.handle("nova:voice:state", () => requestGateway("voice.state", undefined));
 ipcMain.handle("nova:plugins:discover", (_event, gap: CapabilityGap) =>
@@ -1708,15 +1712,21 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies readonly DeviceSnapshot[];
   });
-  gateway.register("voice.start", async () => {
+  gateway.register("voice.start", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.startVoicePipeline();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Voice start confirmation is invalid.");
+    const result = await runtimeApplication.startVoicePipeline(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });
-  gateway.register("voice.stop", async () => {
+  gateway.register("voice.stop", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.stopVoicePipeline();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Voice stop confirmation is invalid.");
+    const result = await runtimeApplication.stopVoicePipeline(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

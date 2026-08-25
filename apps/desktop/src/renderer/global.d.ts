@@ -608,10 +608,10 @@ declare global {
       networkState: () => Promise<ConnectionState>;
       systemInventorySummary: () => Promise<SystemInventorySummary>;
       sessionDeviceSnapshots: () => Promise<readonly DeviceSnapshot[]>;
-      startVoicePipeline: () => Promise<{
+      startVoicePipeline: (confirmed: boolean) => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;
-      stopVoicePipeline: () => Promise<{
+      stopVoicePipeline: (confirmed: boolean) => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;
       bargeInVoice: () => Promise<{

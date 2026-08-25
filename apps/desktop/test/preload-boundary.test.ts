@@ -234,8 +234,8 @@ describe("Electron preload boundary", () => {
         setCapabilityPolicy: (capabilityId: string, policy: unknown, confirmed: boolean) => unknown;
         discoverLocalModels: (hardware: unknown) => unknown;
         modelProviderHealth: (providerId: string) => unknown;
-        startVoicePipeline: () => unknown;
-        stopVoicePipeline: () => unknown;
+        startVoicePipeline: (confirmed: boolean) => unknown;
+        stopVoicePipeline: (confirmed: boolean) => unknown;
         bargeInVoice: () => unknown;
         voicePipelineState: () => unknown;
         discoverPluginsForGap: (gap: unknown) => unknown;
@@ -412,8 +412,8 @@ describe("Electron preload boundary", () => {
       recommendations: {},
     });
     api.modelProviderHealth("local-model");
-    api.startVoicePipeline();
-    api.stopVoicePipeline();
+    api.startVoicePipeline(true);
+    api.stopVoicePipeline(true);
     api.bargeInVoice();
     api.voicePipelineState();
     api.discoverPluginsForGap({
@@ -685,8 +685,8 @@ describe("Electron preload boundary", () => {
       recommendations: {},
     });
     expect(invoke).toHaveBeenNthCalledWith(45, "nova:models:health", "local-model");
-    expect(invoke).toHaveBeenNthCalledWith(46, "nova:voice:start");
-    expect(invoke).toHaveBeenNthCalledWith(47, "nova:voice:stop");
+    expect(invoke).toHaveBeenNthCalledWith(46, "nova:voice:start", true);
+    expect(invoke).toHaveBeenNthCalledWith(47, "nova:voice:stop", true);
     expect(invoke).toHaveBeenNthCalledWith(48, "nova:voice:barge-in");
     expect(invoke).toHaveBeenNthCalledWith(49, "nova:voice:state");
     expect(invoke).toHaveBeenNthCalledWith(50, "nova:plugins:discover", {
