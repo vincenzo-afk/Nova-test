@@ -52,6 +52,7 @@ import { CrossDeviceSyncManager } from "../src/cross-device-sync.js";
 import { Executor, PermissionManager, Planner, Verifier } from "../src/orchestration.js";
 import { RuntimeApplication } from "../src/runtime-application.js";
 import { TaskScheduler } from "../src/task-scheduler.js";
+import { WorkflowEngine } from "../src/workflow-engine.js";
 import { SessionContinuityManager } from "../src/session-continuity.js";
 
 const configuration = {
@@ -404,6 +405,69 @@ describe("RuntimeApplication", () => {
     expect(application.configuration.snapshot().personalization.preferences).toMatchObject([
       { id: "tone.concise", source: "feedback" },
     ]);
+  });
+
+  it("exposes privacy-safe workflow checkpoint summaries through the composed runtime", async () => {
+    const workflowEngine = new WorkflowEngine({
+      execute: async () =>
+        ok({
+          step_id: "unused",
+          status: "success",
+          evidence: { type: "none", value: null },
+          affected_resources: [],
+        }),
+      verify: () =>
+        ok({
+          step_id: "unused",
+          outcome: "verified",
+          confidence: 1,
+          verification_method: "ground_truth",
+          explanation: "test",
+        }),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      workflowEngine,
+    });
+    applications.push(application);
+    await workflowEngine.run(
+      {
+        workflow_id: "workflow.summary",
+        start_node_id: "end",
+        nodes: [{ id: "end", type: "end" }],
+        edges: [],
+      },
+      { secret: "never expose" },
+    );
+
+    const summaries = application.workflowCheckpointSummaries("workflow.summary");
+    expect(summaries).toMatchObject({
+      ok: true,
+      value: expect.arrayContaining([
+        expect.objectContaining({
+          checkpoint_id: expect.any(String),
+          workflow_id: "workflow.summary",
+          state: "Valid",
+          completed_node_count: expect.any(Number),
+          created_at: expect.any(String),
+        }),
+      ]),
+    });
+    if (summaries.ok) {
+      expect(
+        summaries.value.every(
+          (summary) =>
+            Object.keys(summary).sort().join(",") ===
+            "checkpoint_id,completed_node_count,created_at,state,workflow_id",
+        ),
+      ).toBe(true);
+    }
   });
 
   it("delegates personal analytics over caller-supplied permissioned records", () => {

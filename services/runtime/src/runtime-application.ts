@@ -60,6 +60,7 @@ import {
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore } from "./permission-grant-store.js";
 import type { TaskScheduler, TaskSchedulerStatus } from "./task-scheduler.js";
+import type { WorkflowCheckpointSummary, WorkflowEngine } from "./workflow-engine.js";
 import type {
   ExecutionResult,
   ExecutionStep,
@@ -217,6 +218,7 @@ export interface RuntimeApplicationOptions {
   readonly permissionStore?: PermissionGrantStore;
   readonly persistence?: TaskCheckpointPersistence & TaskRecoveryPersistence;
   readonly scheduler?: TaskScheduler;
+  readonly workflowEngine?: WorkflowEngine;
   readonly dispose?: () => Promise<void>;
   readonly webhookManager?: WebhookManager;
   readonly authorizeTopics?: PublicWebSocketServerOptions["authorizeTopics"];
@@ -281,6 +283,7 @@ export class RuntimeApplication {
   public readonly webhook: WebhookManager;
   public readonly coordinator: RuntimeTaskCoordinator;
   public readonly scheduler: TaskScheduler | undefined;
+  public readonly workflowEngine: WorkflowEngine | undefined;
   public readonly rest: PublicApiServer;
   public readonly websocket: PublicWebSocketServer;
   public readonly windowsObserver: WindowsApplicationObserver;
@@ -465,6 +468,7 @@ export class RuntimeApplication {
       ...(options.persistence === undefined ? {} : { persistence: options.persistence }),
     });
     this.scheduler = options.scheduler;
+    this.workflowEngine = options.workflowEngine;
     this.rest = new PublicApiServer(this.restOptions(options));
     this.websocket = new PublicWebSocketServer({
       tokenIssuer: this.tokenIssuer,
@@ -856,6 +860,18 @@ export class RuntimeApplication {
       });
     }
     return ok(this.scheduler.status());
+  }
+  public workflowCheckpointSummaries(
+    workflowId: string,
+  ): Result<readonly WorkflowCheckpointSummary[]> {
+    if (!this.workflowEngine) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Workflow engine is not configured for this runtime.",
+        retryable: false,
+      });
+    }
+    return ok(this.workflowEngine.checkpointSummaries(workflowId));
   }
 
   public listScheduledJobStates(): Result<readonly JobState[]> {

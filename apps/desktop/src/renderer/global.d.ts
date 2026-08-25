@@ -557,6 +557,15 @@ declare global {
         active_count: number;
         max_concurrent: number;
       }>;
+      workflowCheckpointSummaries: (workflowId: string) => Promise<
+        readonly {
+          checkpoint_id: string;
+          workflow_id: string;
+          state: "Created" | "Valid" | "Superseded";
+          completed_node_count: number;
+          created_at: string;
+        }[]
+      >;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

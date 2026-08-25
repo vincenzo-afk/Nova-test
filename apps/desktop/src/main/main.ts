@@ -828,6 +828,9 @@ ipcMain.handle("nova:tools:list", () => requestGateway("tools.list", undefined))
 ipcMain.handle("nova:task-scheduler:status", () =>
   requestGateway("task-scheduler.status", undefined),
 );
+ipcMain.handle("nova:workflow:checkpoints", (_event, data) =>
+  requestGateway("workflow.checkpoints", data),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1370,6 +1373,15 @@ const startGateway = async (): Promise<void> => {
   gateway.register("task-scheduler.status", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const result = runtimeApplication.taskSchedulerStatus();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workflow.checkpoints", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly workflow_id?: unknown };
+    const result = runtimeApplication.workflowCheckpointSummaries(
+      parseWorkspaceText(payload.workflow_id, "Workflow ID"),
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

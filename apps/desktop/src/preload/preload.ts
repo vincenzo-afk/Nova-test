@@ -191,6 +191,8 @@ const novaApi = {
   pluginRecordSummaries: () => ipcRenderer.invoke("nova:plugins:list"),
   listToolSummaries: () => ipcRenderer.invoke("nova:tools:list"),
   taskSchedulerStatus: () => ipcRenderer.invoke("nova:task-scheduler:status"),
+  workflowCheckpointSummaries: (workflowId: string) =>
+    ipcRenderer.invoke("nova:workflow:checkpoints", { workflow_id: workflowId }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

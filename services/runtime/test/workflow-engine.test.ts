@@ -176,6 +176,26 @@ describe("WorkflowEngine", () => {
     const failed = await engine.run(graph, {});
     expect(failed).toMatchObject({ ok: false, error: { code: "NOVA-WFL002" } });
     const checkpointId = failed.ok ? "" : String(failed.error.details?.checkpointId ?? "");
+    const summaries = engine.checkpointSummaries("workflow.test");
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(summaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkpoint_id: expect.any(String),
+          workflow_id: "workflow.test",
+          state: "Valid",
+          completed_node_count: expect.any(Number),
+          created_at: expect.any(String),
+        }),
+      ]),
+    );
+    expect(
+      summaries.every(
+        (summary) =>
+          Object.keys(summary).sort().join(",") ===
+          "checkpoint_id,completed_node_count,created_at,state,workflow_id",
+      ),
+    ).toBe(true);
     shouldFail = false;
 
     const resumed = await engine.resume(checkpointId);

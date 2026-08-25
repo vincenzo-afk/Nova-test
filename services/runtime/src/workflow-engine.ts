@@ -39,6 +39,14 @@ export interface WorkflowCheckpoint {
   readonly createdAt: string;
 }
 
+export interface WorkflowCheckpointSummary {
+  readonly checkpoint_id: string;
+  readonly workflow_id: string;
+  readonly state: WorkflowCheckpoint["state"];
+  readonly completed_node_count: number;
+  readonly created_at: string;
+}
+
 export interface WorkflowResult {
   readonly workflow_id: string;
   readonly state: WorkflowState;
@@ -186,6 +194,23 @@ export class WorkflowEngine {
     return [...this.checkpoints.values()].filter(
       (checkpoint) => checkpoint.workflow_id === workflowId,
     );
+  }
+
+  public checkpointSummaries(workflowId: string): readonly WorkflowCheckpointSummary[] {
+    return [...this.getCheckpoints(workflowId)]
+      .sort(
+        (left, right) =>
+          left.createdAt.localeCompare(right.createdAt) ||
+          left.checkpoint_id.localeCompare(right.checkpoint_id),
+      )
+      .slice(0, 128)
+      .map(({ checkpoint_id, workflow_id, state, completedNodeIds, createdAt }) => ({
+        checkpoint_id,
+        workflow_id,
+        state,
+        completed_node_count: completedNodeIds.length,
+        created_at: createdAt,
+      }));
   }
 
   private async executeFrom(
