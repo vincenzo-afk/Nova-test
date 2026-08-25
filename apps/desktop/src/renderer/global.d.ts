@@ -984,6 +984,7 @@ declare global {
         state: string;
         granted_permissions: readonly string[];
       }>;
+      uninstallPlugin: (pluginId: string, confirmed: boolean) => Promise<void>;
     };
   }
 }

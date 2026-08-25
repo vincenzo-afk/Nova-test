@@ -1870,6 +1870,21 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { state: "Disabled" },
     });
+    expect(await application.uninstallPlugin("com.example.reader", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.pluginRecord("com.example.reader")).toMatchObject({
+      ok: true,
+      value: { state: "Disabled" },
+    });
+    expect(await application.uninstallPlugin("com.example.reader", true)).toMatchObject({
+      ok: true,
+      value: undefined,
+    });
+    expect(application.pluginRecord("com.example.reader")).toMatchObject({
+      ok: false,
+    });
   });
 
   it("delegates trust-preserving plugin record inspection", () => {

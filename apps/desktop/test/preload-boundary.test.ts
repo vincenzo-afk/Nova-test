@@ -158,6 +158,7 @@ describe("Electron preload boundary", () => {
       "pauseTask",
       "enablePlugin",
       "disablePlugin",
+      "uninstallPlugin",
     ]);
   });
 
@@ -315,6 +316,7 @@ describe("Electron preload boundary", () => {
         pauseTask: (taskId: string, confirmed: boolean) => unknown;
         enablePlugin: (pluginId: string, confirmed: boolean) => unknown;
         disablePlugin: (pluginId: string, confirmed: boolean) => unknown;
+        uninstallPlugin: (pluginId: string, confirmed: boolean) => unknown;
       },
     ];
 
@@ -520,6 +522,7 @@ describe("Electron preload boundary", () => {
     api.pauseTask("task-1", true);
     api.enablePlugin("plugin-1", true);
     api.disablePlugin("plugin-1", true);
+    api.uninstallPlugin("plugin-1", true);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -857,6 +860,10 @@ describe("Electron preload boundary", () => {
       confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(136, "nova:plugins:disable", {
+      plugin_id: "plugin-1",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(137, "nova:plugins:uninstall", {
       plugin_id: "plugin-1",
       confirmed: true,
     });
