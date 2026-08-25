@@ -129,6 +129,7 @@ describe("Electron preload boundary", () => {
       "systemStartupLog",
       "systemShutdownLog",
       "compareLogicalClockValues",
+      "networkState",
     ]);
   });
 
@@ -252,6 +253,7 @@ describe("Electron preload boundary", () => {
         systemStartupLog: () => unknown;
         systemShutdownLog: () => unknown;
         compareLogicalClockValues: (left: unknown, right: unknown) => unknown;
+        networkState: () => unknown;
       },
     ];
 
@@ -428,6 +430,7 @@ describe("Electron preload boundary", () => {
       { counter: 3, device_id: "device-a" },
       { counter: 3, device_id: "device-b" },
     );
+    api.networkState();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -696,5 +699,6 @@ describe("Electron preload boundary", () => {
       { counter: 3, device_id: "device-a" },
       { counter: 3, device_id: "device-b" },
     );
+    expect(invoke).toHaveBeenNthCalledWith(108, "nova:network:state");
   });
 });

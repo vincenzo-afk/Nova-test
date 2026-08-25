@@ -169,6 +169,7 @@ const novaApi = {
   systemShutdownLog: () => ipcRenderer.invoke("nova:system:shutdown-log"),
   compareLogicalClockValues: (left: unknown, right: unknown) =>
     ipcRenderer.invoke("nova:devices:logical-clock-compare", left, right),
+  networkState: () => ipcRenderer.invoke("nova:network:state"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

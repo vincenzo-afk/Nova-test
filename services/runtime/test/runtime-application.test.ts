@@ -38,6 +38,7 @@ import type { ServiceLifecycle } from "@nova/shared";
 import { PluginManager } from "../src/plugin-manager.js";
 import { InMemoryJobStore, JobScheduler } from "../src/job-scheduler.js";
 import { SystemLifecycleOrchestrator } from "../src/system-lifecycle.js";
+import { NetworkDiscoveryManager } from "../src/networking.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1067,6 +1068,23 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: "down",
     });
+  });
+
+  it("delegates read-only network state inspection", () => {
+    const network = new NetworkDiscoveryManager({ expectedPeerKey: "peer-key", transports: [] });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      networkDiscovery: network,
+    });
+    applications.push(application);
+
+    expect(application.networkState()).toMatchObject({ ok: true, value: "Disconnected" });
   });
 
   it("delegates read-only system lifecycle log inspection", async () => {

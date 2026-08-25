@@ -6,6 +6,7 @@ import type {
   PerformanceBudgetReport,
   CompatibilityResult,
   LogicalClockValue,
+  ConnectionState,
   PluginRecord,
   JobState,
   SetupStepId,
@@ -456,6 +457,7 @@ declare global {
         left: LogicalClockValue,
         right: LogicalClockValue,
       ) => Promise<number>;
+      networkState: () => Promise<ConnectionState>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;

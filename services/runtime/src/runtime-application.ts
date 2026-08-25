@@ -143,6 +143,7 @@ import type {
 import type { PluginManager, PluginRecord } from "./plugin-manager.js";
 import type { JobScheduler, JobState } from "./job-scheduler.js";
 import type { SystemLifecycleOrchestrator } from "./system-lifecycle.js";
+import type { ConnectionState, NetworkDiscoveryManager } from "./networking.js";
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
@@ -235,6 +236,7 @@ export interface RuntimeApplicationOptions {
   readonly pluginManager?: PluginManager;
   readonly jobScheduler?: JobScheduler;
   readonly systemLifecycle?: SystemLifecycleOrchestrator;
+  readonly networkDiscovery?: NetworkDiscoveryManager;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -292,6 +294,7 @@ export class RuntimeApplication {
   public readonly pluginManager: PluginManager | undefined;
   public readonly jobScheduler: JobScheduler | undefined;
   public readonly systemLifecycle: SystemLifecycleOrchestrator | undefined;
+  public readonly networkDiscovery: NetworkDiscoveryManager | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -372,6 +375,7 @@ export class RuntimeApplication {
     this.pluginManager = options.pluginManager;
     this.jobScheduler = options.jobScheduler;
     this.systemLifecycle = options.systemLifecycle;
+    this.networkDiscovery = options.networkDiscovery;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -818,6 +822,11 @@ export class RuntimeApplication {
   public systemShutdownLog(): Result<readonly ShutdownStep[]> {
     if (!this.systemLifecycle) return err(this.systemLifecycleUnavailableError());
     return ok(this.systemLifecycle.shutdownLog());
+  }
+
+  public networkState(): Result<ConnectionState> {
+    if (!this.networkDiscovery) return err(this.networkDiscoveryUnavailableError());
+    return ok(this.networkDiscovery.state());
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1380,6 +1389,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private networkDiscoveryUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Network discovery manager is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private systemLifecycleUnavailableError(): {
