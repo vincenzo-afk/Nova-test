@@ -675,11 +675,11 @@ ipcMain.handle(
     },
   ) => requestGateway("companion.permission-set", payload),
 );
-ipcMain.handle("nova:companion:foreground-start", () =>
-  requestGateway("companion.foreground-start", undefined),
+ipcMain.handle("nova:companion:foreground-start", (_event, confirmed: boolean) =>
+  requestGateway("companion.foreground-start", { confirmed }),
 );
-ipcMain.handle("nova:companion:foreground-stop", () =>
-  requestGateway("companion.foreground-stop", undefined),
+ipcMain.handle("nova:companion:foreground-stop", (_event, confirmed: boolean) =>
+  requestGateway("companion.foreground-stop", { confirmed }),
 );
 ipcMain.handle("nova:calendar:upcoming", () => requestGateway("calendar.upcoming", undefined));
 ipcMain.handle("nova:calendar:propose", (_event, draft: CalendarDraft) =>
@@ -2186,15 +2186,21 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });
-  gateway.register("companion.foreground-start", async () => {
+  gateway.register("companion.foreground-start", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = runtimeApplication.startAndroidCompanionForegroundService();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Companion foreground start confirmation is invalid.");
+    const result = runtimeApplication.startAndroidCompanionForegroundService(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });
-  gateway.register("companion.foreground-stop", async () => {
+  gateway.register("companion.foreground-stop", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = runtimeApplication.stopAndroidCompanionForegroundService();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Companion foreground stop confirmation is invalid.");
+    const result = runtimeApplication.stopAndroidCompanionForegroundService(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });

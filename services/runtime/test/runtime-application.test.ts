@@ -194,11 +194,19 @@ describe("RuntimeApplication", () => {
       ok: false,
       error: { code: "NOVA-SEC001" },
     });
-    expect(application.startAndroidCompanionForegroundService()).toMatchObject({ ok: true });
+    expect(application.startAndroidCompanionForegroundService(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.startAndroidCompanionForegroundService(true)).toMatchObject({ ok: true });
     expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
       ok: true,
     });
-    expect(application.stopAndroidCompanionForegroundService()).toMatchObject({ ok: true });
+    expect(application.stopAndroidCompanionForegroundService(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.stopAndroidCompanionForegroundService(true)).toMatchObject({ ok: true });
     expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },

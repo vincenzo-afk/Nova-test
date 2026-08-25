@@ -19,9 +19,10 @@ const novaApi = {
     ipcRenderer.invoke("nova:companion:permission-set", { permission, granted, confirmed }),
   checkAndroidCompanionCapability: (input: unknown) =>
     ipcRenderer.invoke("nova:companion:capability", input),
-  startAndroidCompanionForegroundService: () =>
-    ipcRenderer.invoke("nova:companion:foreground-start"),
-  stopAndroidCompanionForegroundService: () => ipcRenderer.invoke("nova:companion:foreground-stop"),
+  startAndroidCompanionForegroundService: (confirmed: boolean) =>
+    ipcRenderer.invoke("nova:companion:foreground-start", confirmed),
+  stopAndroidCompanionForegroundService: (confirmed: boolean) =>
+    ipcRenderer.invoke("nova:companion:foreground-stop", confirmed),
   startAndroidCompanionBackground: (capabilityId: string) =>
     ipcRenderer.invoke("nova:companion:background-start", { capability_id: capabilityId }),
   readEmail: (query: unknown) => ipcRenderer.invoke("nova:email:read", query),

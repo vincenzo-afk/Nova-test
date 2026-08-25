@@ -1640,7 +1640,7 @@ export class RuntimeApplication {
     return await this.emailAssistant.send(draft, confirmed);
   }
 
-  public startAndroidCompanionForegroundService(): Result<void> {
+  public startAndroidCompanionForegroundService(confirmed: boolean): Result<void> {
     if (!this.androidCompanionManager) {
       return err({
         code: "NOVA-SEC001",
@@ -1648,16 +1648,32 @@ export class RuntimeApplication {
         retryable: true,
       });
     }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message:
+          "Starting the Android companion foreground service requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     this.androidCompanionManager.startForegroundService();
     return ok(undefined);
   }
 
-  public stopAndroidCompanionForegroundService(): Result<void> {
+  public stopAndroidCompanionForegroundService(confirmed: boolean): Result<void> {
     if (!this.androidCompanionManager) {
       return err({
         code: "NOVA-SEC001",
         message: "Android companion is not configured for this runtime.",
         retryable: true,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message:
+          "Stopping the Android companion foreground service requires explicit confirmation.",
+        retryable: false,
       });
     }
     this.androidCompanionManager.stopForegroundService();

@@ -133,11 +133,11 @@ declare global {
         value?: { status: "Available"; device_id: string };
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      startAndroidCompanionForegroundService: () => Promise<{
+      startAndroidCompanionForegroundService: (confirmed: boolean) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      stopAndroidCompanionForegroundService: () => Promise<{
+      stopAndroidCompanionForegroundService: (confirmed: boolean) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
