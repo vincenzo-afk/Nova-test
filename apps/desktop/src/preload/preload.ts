@@ -182,6 +182,7 @@ const novaApi = {
   heldResourceLocks: () => ipcRenderer.invoke("nova:resources:held"),
   listScheduledJobStates: () => ipcRenderer.invoke("nova:jobs:list"),
   activeScheduledJobConcurrencyGroups: () => ipcRenderer.invoke("nova:jobs:active-groups"),
+  listModelProviderHealthStatuses: () => ipcRenderer.invoke("nova:models:health-list"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

@@ -141,6 +141,7 @@ describe("Electron preload boundary", () => {
       "heldResourceLocks",
       "listScheduledJobStates",
       "activeScheduledJobConcurrencyGroups",
+      "listModelProviderHealthStatuses",
     ]);
   });
 
@@ -276,6 +277,7 @@ describe("Electron preload boundary", () => {
         heldResourceLocks: () => unknown;
         listScheduledJobStates: () => unknown;
         activeScheduledJobConcurrencyGroups: () => unknown;
+        listModelProviderHealthStatuses: () => unknown;
       },
     ];
 
@@ -464,6 +466,7 @@ describe("Electron preload boundary", () => {
     api.heldResourceLocks();
     api.listScheduledJobStates();
     api.activeScheduledJobConcurrencyGroups();
+    api.listModelProviderHealthStatuses();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -744,5 +747,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(117, "nova:resources:held");
     expect(invoke).toHaveBeenNthCalledWith(118, "nova:jobs:list");
     expect(invoke).toHaveBeenNthCalledWith(119, "nova:jobs:active-groups");
+    expect(invoke).toHaveBeenNthCalledWith(120, "nova:models:health-list");
   });
 });

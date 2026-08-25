@@ -124,7 +124,7 @@ import type {
   CapabilityRegistry,
 } from "./provider-registry.js";
 import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
-import type { HealthState, ModelRouter } from "./model-router.js";
+import type { HealthState, ModelRouter, ProviderHealthStatus } from "./model-router.js";
 import type { RuntimeManager } from "./runtime-manager.js";
 import {
   PerformanceBudgetEvaluator,
@@ -802,6 +802,10 @@ export class RuntimeApplication {
   public modelProviderHealth(providerId: string): Result<HealthState> {
     if (!this.modelRouter) return err(this.modelRouterUnavailableError());
     return ok(this.modelRouter.health(providerId));
+  }
+  public listModelProviderHealthStatuses(): Result<readonly ProviderHealthStatus[]> {
+    if (!this.modelRouter) return err(this.modelRouterUnavailableError());
+    return ok(this.modelRouter.providerHealthStatuses());
   }
 
   public compareDeviceVersions(left: string, right: string): Result<CompatibilityResult> {

@@ -2,6 +2,11 @@ import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 import { z } from "zod";
 
 export type HealthState = "reachable" | "degraded" | "down";
+
+export interface ProviderHealthStatus {
+  readonly provider_id: string;
+  readonly health: HealthState;
+}
 export type PrivacyRequirement = "local_only" | "any";
 export type ModelCapability = "tool_calls" | "vision_input" | "streaming";
 
@@ -127,6 +132,16 @@ export class ModelRouter {
       return "down";
     }
     return this.isCircuitOpen(state) ? "down" : state.health;
+  }
+
+  providerHealthStatuses(): readonly ProviderHealthStatus[] {
+    return [...this.states.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .slice(0, 128)
+      .map(([provider_id, state]) => ({
+        provider_id,
+        health: this.isCircuitOpen(state) ? "down" : state.health,
+      }));
   }
 
   private async eligibleProviders(request: ModelRequest): Promise<LlmProvider[]> {

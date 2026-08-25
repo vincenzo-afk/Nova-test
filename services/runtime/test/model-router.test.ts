@@ -51,6 +51,21 @@ describe("ModelRouter", () => {
     expect(cloud.invoke).not.toHaveBeenCalled();
   });
 
+  it("lists cached provider health without invoking providers", () => {
+    const local = provider({ descriptor: descriptor({ provider_id: "local" }) });
+    const cloud = provider({
+      descriptor: descriptor({ provider_id: "cloud", privacy_class: "cloud" }),
+    });
+    const router = new ModelRouter([cloud, local]);
+
+    expect(router.providerHealthStatuses()).toEqual([
+      { provider_id: "cloud", health: "reachable" },
+      { provider_id: "local", health: "reachable" },
+    ]);
+    expect(local.healthCheck).not.toHaveBeenCalled();
+    expect(cloud.healthCheck).not.toHaveBeenCalled();
+  });
+
   it("filters providers that lack required capabilities before invocation", async () => {
     const noTools = provider({
       descriptor: descriptor({

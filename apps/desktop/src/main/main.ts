@@ -818,6 +818,7 @@ ipcMain.handle("nova:capability:list", () => requestGateway("capability.list", u
 ipcMain.handle("nova:resources:held", () => requestGateway("resources.held", undefined));
 ipcMain.handle("nova:jobs:list", () => requestGateway("jobs.list", undefined));
 ipcMain.handle("nova:jobs:active-groups", () => requestGateway("jobs.active-groups", undefined));
+ipcMain.handle("nova:models:health-list", () => requestGateway("models.health-list", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1315,6 +1316,12 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies HealthState;
+  });
+  gateway.register("models.health-list", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.listModelProviderHealthStatuses();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("performance.budgets", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

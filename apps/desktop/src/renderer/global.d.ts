@@ -500,6 +500,9 @@ declare global {
         }[]
       >;
       modelProviderHealth: (providerId: string) => Promise<HealthState>;
+      listModelProviderHealthStatuses: () => Promise<
+        readonly { provider_id: string; health: HealthState }[]
+      >;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

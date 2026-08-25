@@ -1225,6 +1225,46 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("lists cached model-provider health without invoking providers", () => {
+    const provider = (providerId: string): LlmProvider => ({
+      descriptor: {
+        provider_id: providerId,
+        domain: "llm",
+        privacy_class: "local",
+        schema_version: "1.0.0",
+        cost_per_1k_tokens: 0,
+        capabilities: {
+          tool_calls: true,
+          vision_input: false,
+          streaming: false,
+          max_context_tokens: 8_192,
+        },
+      },
+      healthCheck: async () => "reachable",
+      invoke: async () => ({ text: "hidden", provider_id: providerId }),
+    });
+    const modelRouter = new ModelRouter([provider("zeta"), provider("alpha")]);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      modelRouter,
+    });
+    applications.push(application);
+
+    expect(application.listModelProviderHealthStatuses()).toEqual({
+      ok: true,
+      value: [
+        { provider_id: "alpha", health: "reachable" },
+        { provider_id: "zeta", health: "reachable" },
+      ],
+    });
+  });
+
   it("delegates privacy-safe model provider health inspection", () => {
     const provider: LlmProvider = {
       descriptor: {
