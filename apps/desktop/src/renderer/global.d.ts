@@ -968,6 +968,14 @@ declare global {
         section: ConfigurationSectionName,
         value: NovaConfiguration[ConfigurationSectionName],
       ) => Promise<NovaConfiguration>;
+      enablePlugin: (
+        pluginId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        manifest: unknown;
+        state: string;
+        granted_permissions: readonly string[];
+      }>;
     };
   }
 }

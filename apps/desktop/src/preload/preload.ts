@@ -217,6 +217,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:task:deny-waiting-user", { task_id: taskId, confirmed }),
   pauseTask: (taskId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:task:pause", { task_id: taskId, confirmed }),
+  enablePlugin: (pluginId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:plugins:enable", { plugin_id: pluginId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

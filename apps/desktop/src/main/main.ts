@@ -872,6 +872,11 @@ ipcMain.handle(
   (_event, payload: { readonly plugin_id: string; readonly confirmed: boolean }) =>
     requestGateway("plugins.confirm", payload),
 );
+ipcMain.handle(
+  "nova:plugins:enable",
+  (_event, payload: { readonly plugin_id: string; readonly confirmed: boolean }) =>
+    requestGateway("plugins.enable", payload),
+);
 ipcMain.handle("nova:plugins:decline", (_event, pluginId: string) =>
   requestGateway("plugins.decline", { plugin_id: pluginId }),
 );
@@ -1624,6 +1629,16 @@ const startGateway = async (): Promise<void> => {
     if (typeof payload.confirmed !== "boolean")
       throw new Error("Plugin discovery approval confirmation is invalid.");
     const result = runtimeApplication.confirmPluginDiscovery(pluginId, payload.confirmed);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("plugins.enable", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly plugin_id?: unknown; readonly confirmed?: unknown };
+    const pluginId = parseProviderId(payload.plugin_id);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Plugin enable confirmation is invalid.");
+    const result = await runtimeApplication.enablePlugin(pluginId, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

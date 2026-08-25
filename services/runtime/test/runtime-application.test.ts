@@ -1811,6 +1811,55 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("requires explicit confirmation before enabling an installed plugin", async () => {
+    const manager = new PluginManager({
+      novaApiVersion: "1.0.0",
+      verify: async () => true,
+      sandbox: async () => true,
+      processFactory: () => ({
+        start: async () => undefined,
+        stop: async () => undefined,
+      }),
+    });
+    expect(
+      manager.install({
+        plugin_id: "com.example.reader",
+        version: "1.0.0",
+        nova_api_version_range: ">=1.0.0",
+        display_name: "Reader",
+        description: "Read-only plugin metadata.",
+        provided_tools: ["reader.read"],
+        required_permissions: [],
+        dependencies: [],
+        entry_point: "index.js",
+      }),
+    ).toMatchObject({ ok: true, value: { state: "Installed" } });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      pluginManager: manager,
+    });
+    applications.push(application);
+
+    expect(await application.enablePlugin("com.example.reader", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.pluginRecord("com.example.reader")).toMatchObject({
+      ok: true,
+      value: { state: "Installed" },
+    });
+    expect(await application.enablePlugin("com.example.reader", true)).toMatchObject({
+      ok: true,
+      value: { state: "Enabled" },
+    });
+  });
+
   it("delegates trust-preserving plugin record inspection", () => {
     const manager = new PluginManager({ novaApiVersion: "1.0.0" });
     expect(
