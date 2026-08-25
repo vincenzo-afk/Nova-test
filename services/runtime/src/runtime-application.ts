@@ -12,6 +12,8 @@ import {
   ok,
   type Result,
   type ServiceHealth,
+  type ShutdownStep,
+  type StartupStep,
   type StructuredLogger,
 } from "@nova/shared";
 import {
@@ -135,6 +137,7 @@ import type {
 } from "./plugin-discovery.js";
 import type { PluginManager, PluginRecord } from "./plugin-manager.js";
 import type { JobScheduler, JobState } from "./job-scheduler.js";
+import type { SystemLifecycleOrchestrator } from "./system-lifecycle.js";
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
@@ -226,6 +229,7 @@ export interface RuntimeApplicationOptions {
   readonly pluginDiscovery?: PluginDiscovery;
   readonly pluginManager?: PluginManager;
   readonly jobScheduler?: JobScheduler;
+  readonly systemLifecycle?: SystemLifecycleOrchestrator;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -282,6 +286,7 @@ export class RuntimeApplication {
   public readonly pluginDiscovery: PluginDiscovery | undefined;
   public readonly pluginManager: PluginManager | undefined;
   public readonly jobScheduler: JobScheduler | undefined;
+  public readonly systemLifecycle: SystemLifecycleOrchestrator | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -361,6 +366,7 @@ export class RuntimeApplication {
     this.pluginDiscovery = options.pluginDiscovery;
     this.pluginManager = options.pluginManager;
     this.jobScheduler = options.jobScheduler;
+    this.systemLifecycle = options.systemLifecycle;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -790,6 +796,16 @@ export class RuntimeApplication {
   public jobState(jobId: string): Result<JobState> {
     if (!this.jobScheduler) return err(this.jobSchedulerUnavailableError());
     return this.jobScheduler.get(jobId);
+  }
+
+  public systemStartupLog(): Result<readonly StartupStep[]> {
+    if (!this.systemLifecycle) return err(this.systemLifecycleUnavailableError());
+    return ok(this.systemLifecycle.startupLog());
+  }
+
+  public systemShutdownLog(): Result<readonly ShutdownStep[]> {
+    if (!this.systemLifecycle) return err(this.systemLifecycleUnavailableError());
+    return ok(this.systemLifecycle.shutdownLog());
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1352,6 +1368,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private systemLifecycleUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "System lifecycle orchestrator is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private jobSchedulerUnavailableError(): {

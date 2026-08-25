@@ -126,6 +126,8 @@ describe("Electron preload boundary", () => {
       "runtimeServiceHealth",
       "pluginRecord",
       "jobState",
+      "systemStartupLog",
+      "systemShutdownLog",
     ]);
   });
 
@@ -246,6 +248,8 @@ describe("Electron preload boundary", () => {
         runtimeServiceHealth: (serviceName: string) => unknown;
         pluginRecord: (pluginId: string) => unknown;
         jobState: (jobId: string) => unknown;
+        systemStartupLog: () => unknown;
+        systemShutdownLog: () => unknown;
       },
     ];
 
@@ -416,6 +420,8 @@ describe("Electron preload boundary", () => {
     api.runtimeServiceHealth("memory");
     api.pluginRecord("com.example.reader");
     api.jobState("briefing");
+    api.systemStartupLog();
+    api.systemShutdownLog();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -676,5 +682,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(102, "nova:runtime:service-health", "memory");
     expect(invoke).toHaveBeenNthCalledWith(103, "nova:plugins:record", "com.example.reader");
     expect(invoke).toHaveBeenNthCalledWith(104, "nova:jobs:state", "briefing");
+    expect(invoke).toHaveBeenNthCalledWith(105, "nova:system:startup-log");
+    expect(invoke).toHaveBeenNthCalledWith(106, "nova:system:shutdown-log");
   });
 });

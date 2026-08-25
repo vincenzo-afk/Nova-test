@@ -16,7 +16,7 @@ import type {
   NovaConfiguration,
   PairingRequest,
 } from "@nova/runtime";
-import type { ServiceHealth } from "@nova/shared";
+import type { ServiceHealth, ShutdownStep, StartupStep } from "@nova/shared";
 import type { PermissionGrant } from "./shell-model.js";
 
 interface DesktopMemorySearchInput {
@@ -449,6 +449,8 @@ declare global {
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;
       pluginRecord: (pluginId: string) => Promise<PluginRecord>;
       jobState: (jobId: string) => Promise<JobState>;
+      systemStartupLog: () => Promise<readonly StartupStep[]>;
+      systemShutdownLog: () => Promise<readonly ShutdownStep[]>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;

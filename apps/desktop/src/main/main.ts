@@ -61,6 +61,8 @@ import {
   NamedPipeCommunicationBus,
   StructuredLogger,
   type ServiceHealth,
+  type StartupStep,
+  type ShutdownStep,
 } from "@nova/shared";
 import { createDesktopRuntime } from "./runtime.js";
 import {
@@ -772,6 +774,8 @@ ipcMain.handle("nova:plugins:record", (_event, pluginId: string) =>
 ipcMain.handle("nova:jobs:state", (_event, jobId: string) =>
   requestGateway("jobs.state", { job_id: jobId }),
 );
+ipcMain.handle("nova:system:startup-log", () => requestGateway("system.startup-log", undefined));
+ipcMain.handle("nova:system:shutdown-log", () => requestGateway("system.shutdown-log", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1270,6 +1274,18 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.jobState(parseWorkspaceText(payload.job_id, "Job ID"));
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies JobState;
+  });
+  gateway.register("system.startup-log", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.systemStartupLog();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies readonly StartupStep[];
+  });
+  gateway.register("system.shutdown-log", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.systemShutdownLog();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies readonly ShutdownStep[];
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

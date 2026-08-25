@@ -33,6 +33,7 @@ import { RuntimeManager } from "../src/runtime-manager.js";
 import type { ServiceLifecycle } from "@nova/shared";
 import { PluginManager } from "../src/plugin-manager.js";
 import { InMemoryJobStore, JobScheduler } from "../src/job-scheduler.js";
+import { SystemLifecycleOrchestrator } from "../src/system-lifecycle.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1061,6 +1062,32 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("delegates read-only system lifecycle log inspection", async () => {
+    const lifecycle = new SystemLifecycleOrchestrator(
+      [{ name: "Ready", run: async () => ({ ok: true, value: undefined }) }],
+      [{ name: "Runtime Manager Exits", run: async () => ({ ok: true, value: undefined }) }],
+    );
+    await lifecycle.start();
+    await lifecycle.stop();
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      systemLifecycle: lifecycle,
+    });
+    applications.push(application);
+
+    expect(application.systemStartupLog()).toMatchObject({ ok: true, value: ["Ready"] });
+    expect(application.systemShutdownLog()).toMatchObject({
+      ok: true,
+      value: ["Runtime Manager Exits"],
     });
   });
 
