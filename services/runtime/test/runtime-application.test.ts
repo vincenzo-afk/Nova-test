@@ -910,6 +910,15 @@ describe("RuntimeApplication", () => {
         provider_id: "whisper-local",
       },
     });
+    expect(await application.retireLocalModel("whisper-small", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(localModels.reclaimableSummaries()).toEqual([]);
+    expect(await application.retireLocalModel("whisper-small", true)).toMatchObject({
+      ok: true,
+      value: { model_id: "whisper-small", status: "reclaimable" },
+    });
     await rm(storagePath, { recursive: true, force: true });
   });
 

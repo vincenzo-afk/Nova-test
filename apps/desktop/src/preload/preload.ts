@@ -243,6 +243,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:models:download", { model_id: modelId, confirmed }),
   loadLocalModel: (modelId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:models:load", { model_id: modelId, confirmed }),
+  retireLocalModel: (modelId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:models:retire", { model_id: modelId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

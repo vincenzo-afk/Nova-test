@@ -1005,6 +1005,13 @@ declare global {
         provider_id: string;
         status: "loaded";
       }>;
+      retireLocalModel: (
+        modelId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        model_id: string;
+        status: "reclaimable";
+      }>;
     };
   }
 }

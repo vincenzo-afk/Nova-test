@@ -814,6 +814,11 @@ ipcMain.handle(
   (_event, payload: { readonly model_id: string; readonly confirmed: boolean }) =>
     requestGateway("models.load", payload),
 );
+ipcMain.handle(
+  "nova:models:retire",
+  (_event, payload: { readonly model_id: string; readonly confirmed: boolean }) =>
+    requestGateway("models.retire", payload),
+);
 ipcMain.handle("nova:models:health", (_event, providerId: string) =>
   requestGateway("models.health", { provider_id: providerId }),
 );
@@ -1455,6 +1460,21 @@ const startGateway = async (): Promise<void> => {
       model_id: result.value.model_id,
       provider_id: result.value.provider_id,
       status: "loaded" as const,
+    };
+  });
+  gateway.register("models.retire", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly model_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Local model retirement confirmation is invalid.");
+    const result = runtimeApplication.retireLocalModel(
+      parseModelId(payload.model_id),
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return {
+      model_id: result.value.model_id,
+      status: result.value.status,
     };
   });
   gateway.register("models.health", async (data) => {

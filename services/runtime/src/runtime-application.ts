@@ -133,6 +133,7 @@ import type {
   LocalModelDownloadResult,
   LocalModelLoadResult,
   LocalModelManager,
+  LocalModelRetirementResult,
   ReclaimableLocalModelSummary,
 } from "./local-model-manager.js";
 import type { HealthState, ModelRouter, ProviderHealthStatus } from "./model-router.js";
@@ -855,6 +856,17 @@ export class RuntimeApplication {
       });
     }
     return await this.localModelManager.load(modelId);
+  }
+  public retireLocalModel(modelId: string, confirmed: boolean): Result<LocalModelRetirementResult> {
+    if (!this.localModelManager) return err(this.localModelManagerUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Marking a local model reclaimable requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    return this.localModelManager.markRetired(modelId);
   }
   public reclaimableLocalModelSummaries(): Result<readonly ReclaimableLocalModelSummary[]> {
     if (!this.localModelManager) return err(this.localModelManagerUnavailableError());
