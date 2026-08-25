@@ -712,10 +712,13 @@ declare global {
       ) => Promise<{
         granted_request_id?: string;
       }>;
-      submitOfflineAction: (action: {
-        action_id: string;
-        description: string;
-      }) => Promise<
+      submitOfflineAction: (
+        action: {
+          action_id: string;
+          description: string;
+        },
+        confirmed: boolean,
+      ) => Promise<
         { status: "QueuedOffline" } | { action_id: string; status: "completed" | "failed" }
       >;
       reconnectOfflineActions: () => Promise<

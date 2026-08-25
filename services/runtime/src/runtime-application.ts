@@ -1080,8 +1080,16 @@ export class RuntimeApplication {
 
   public async submitOfflineAction(
     action: OfflineAction,
+    confirmed: boolean,
   ): Promise<Result<{ status: "QueuedOffline" } | OfflineActionResult>> {
     if (!this.offlineActionQueue) return err(this.offlineUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Submitting an offline action requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return await this.offlineActionQueue.submit(action);
   }
 

@@ -1145,7 +1145,14 @@ describe("RuntimeApplication", () => {
     applications.push(application);
 
     expect(
-      await application.submitOfflineAction({ action_id: "remote-1", description: "sync" }),
+      await application.submitOfflineAction({ action_id: "remote-1", description: "sync" }, false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(executed).toEqual([]);
+    expect(
+      await application.submitOfflineAction({ action_id: "remote-1", description: "sync" }, true),
     ).toMatchObject({
       ok: true,
       value: { status: "QueuedOffline" },

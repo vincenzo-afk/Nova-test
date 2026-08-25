@@ -243,7 +243,7 @@ describe("Electron preload boundary", () => {
         expireResourceLocks: () => unknown;
         acquireArbitratedResource: (resource: string, request: unknown) => unknown;
         releaseArbitratedResource: (resource: string, requestId: string) => unknown;
-        submitOfflineAction: (action: unknown) => unknown;
+        submitOfflineAction: (action: unknown, confirmed: boolean) => unknown;
         reconnectOfflineActions: () => unknown;
         startSetupWizard: () => unknown;
         rerunSetupWizard: () => unknown;
@@ -422,7 +422,7 @@ describe("Electron preload boundary", () => {
       origin: "remote",
     });
     api.releaseArbitratedResource("microphone", "remote-1");
-    api.submitOfflineAction({ action_id: "remote-1", description: "sync" });
+    api.submitOfflineAction({ action_id: "remote-1", description: "sync" }, true);
     api.reconnectOfflineActions();
     api.startSetupWizard();
     api.rerunSetupWizard();
@@ -691,8 +691,8 @@ describe("Electron preload boundary", () => {
       request_id: "remote-1",
     });
     expect(invoke).toHaveBeenNthCalledWith(67, "nova:offline:submit", {
-      action_id: "remote-1",
-      description: "sync",
+      action: { action_id: "remote-1", description: "sync" },
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(68, "nova:offline:reconnect");
     expect(invoke).toHaveBeenNthCalledWith(69, "nova:setup:start");

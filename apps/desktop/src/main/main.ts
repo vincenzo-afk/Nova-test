@@ -917,8 +917,10 @@ ipcMain.handle(
   (_event, payload: { readonly resource: string; readonly request_id: string }) =>
     requestGateway("resources.arbitration-release", payload),
 );
-ipcMain.handle("nova:offline:submit", (_event, action: OfflineAction) =>
-  requestGateway("offline.submit", action),
+ipcMain.handle(
+  "nova:offline:submit",
+  (_event, payload: { readonly action: OfflineAction; readonly confirmed: boolean }) =>
+    requestGateway("offline.submit", payload),
 );
 ipcMain.handle("nova:offline:reconnect", () => requestGateway("offline.reconnect", undefined));
 ipcMain.handle("nova:setup:start", () => requestGateway("setup.start", undefined));
@@ -1716,7 +1718,13 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("offline.submit", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.submitOfflineAction(parseOfflineAction(data));
+    const payload = data as { readonly action?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Offline-action confirmation is invalid.");
+    const result = await runtimeApplication.submitOfflineAction(
+      parseOfflineAction(payload.action),
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies { status: "QueuedOffline" } | OfflineActionResult;
   });
