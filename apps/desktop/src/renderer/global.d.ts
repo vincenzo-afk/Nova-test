@@ -259,7 +259,10 @@ declare global {
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      dismissAdaptivePreference: (proposalId: string) => Promise<{
+      dismissAdaptivePreference: (
+        proposalId: string,
+        confirmed: boolean,
+      ) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;

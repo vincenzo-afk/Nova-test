@@ -426,6 +426,21 @@ describe("RuntimeApplication", () => {
     });
     expect(proposal).toMatchObject({ ok: true, value: { status: "pending" } });
     expect(application.pendingAdaptivePreferences()).toHaveLength(1);
+    expect(application.dismissAdaptivePreference("email.concise", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.pendingAdaptivePreferences()).toHaveLength(1);
+    expect(application.dismissAdaptivePreference("email.concise", true)).toMatchObject({
+      ok: true,
+    });
+    expect(application.pendingAdaptivePreferences()).toHaveLength(0);
+    const reproposal = application.proposeAdaptivePreference({
+      id: "email.concise",
+      category: "tool-default",
+      value: { style: "concise" },
+    });
+    expect(reproposal).toMatchObject({ ok: true, value: { status: "pending" } });
     expect(application.approveAdaptivePreference("email.concise", false)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },

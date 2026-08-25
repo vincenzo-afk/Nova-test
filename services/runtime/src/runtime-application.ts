@@ -1576,8 +1576,15 @@ export class RuntimeApplication {
     return this.adaptivePersonalization.approve(proposalId);
   }
 
-  public dismissAdaptivePreference(proposalId: string): Result<void> {
+  public dismissAdaptivePreference(proposalId: string, confirmed: boolean): Result<void> {
     if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Dismissing an adaptive preference proposal requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.adaptivePersonalization.dismiss(proposalId);
   }
 

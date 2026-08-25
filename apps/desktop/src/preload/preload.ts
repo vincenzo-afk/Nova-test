@@ -58,8 +58,8 @@ const novaApi = {
       proposal_id: proposalId,
       confirmed,
     }),
-  dismissAdaptivePreference: (proposalId: string) =>
-    ipcRenderer.invoke("nova:personalization:dismiss", proposalId),
+  dismissAdaptivePreference: (proposalId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:personalization:dismiss", { proposal_id: proposalId, confirmed }),
   pendingAdaptivePreferences: () => ipcRenderer.invoke("nova:personalization:pending"),
   resetAdaptivePreference: (preferenceId: string | undefined, confirmed: boolean) =>
     ipcRenderer.invoke("nova:personalization:reset", { preference_id: preferenceId, confirmed }),
