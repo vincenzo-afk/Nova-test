@@ -1340,8 +1340,18 @@ export class RuntimeApplication {
     return this.adaptivePersonalization?.pendingSummaries() ?? [];
   }
 
-  public resetAdaptivePreference(preferenceId?: string): Result<void> {
+  public resetAdaptivePreference(
+    preferenceId: string | undefined,
+    confirmed: boolean,
+  ): Result<void> {
     if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Resetting adaptive preferences requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.adaptivePersonalization.reset(preferenceId);
   }
 

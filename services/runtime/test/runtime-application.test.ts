@@ -372,7 +372,12 @@ describe("RuntimeApplication", () => {
       ok: true,
     });
     expect(configurationStore.snapshot().personalization.preferences).toHaveLength(1);
-    expect(application.resetAdaptivePreference("email.concise")).toMatchObject({ ok: true });
+    expect(application.resetAdaptivePreference("email.concise", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(configurationStore.snapshot().personalization.preferences).toHaveLength(1);
+    expect(application.resetAdaptivePreference("email.concise", true)).toMatchObject({ ok: true });
     expect(configurationStore.snapshot().personalization.preferences).toHaveLength(0);
   });
 

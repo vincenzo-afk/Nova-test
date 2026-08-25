@@ -199,7 +199,7 @@ describe("Electron preload boundary", () => {
         approveAdaptivePreference: (proposalId: string, confirmed: boolean) => unknown;
         dismissAdaptivePreference: (proposalId: string) => unknown;
         pendingAdaptivePreferences: () => unknown;
-        resetAdaptivePreference: (preferenceId?: string) => unknown;
+        resetAdaptivePreference: (preferenceId: string | undefined, confirmed: boolean) => unknown;
         generatePersonalAnalytics: (input: unknown) => unknown;
         detectIncident: (detail: string) => unknown;
         triageIncident: (incidentId: string, severity: string) => unknown;
@@ -368,7 +368,7 @@ describe("Electron preload boundary", () => {
     api.approveAdaptivePreference("email.concise", true);
     api.dismissAdaptivePreference("email.concise");
     api.pendingAdaptivePreferences();
-    api.resetAdaptivePreference("email.concise");
+    api.resetAdaptivePreference("email.concise", true);
     api.generatePersonalAnalytics({
       period: { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" },
       activity: [],
@@ -604,7 +604,10 @@ describe("Electron preload boundary", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(29, "nova:personalization:dismiss", "email.concise");
     expect(invoke).toHaveBeenNthCalledWith(30, "nova:personalization:pending");
-    expect(invoke).toHaveBeenNthCalledWith(31, "nova:personalization:reset", "email.concise");
+    expect(invoke).toHaveBeenNthCalledWith(31, "nova:personalization:reset", {
+      preference_id: "email.concise",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(32, "nova:analytics:generate", {
       period: { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" },
       activity: [],

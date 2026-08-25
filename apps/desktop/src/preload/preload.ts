@@ -57,8 +57,8 @@ const novaApi = {
   dismissAdaptivePreference: (proposalId: string) =>
     ipcRenderer.invoke("nova:personalization:dismiss", proposalId),
   pendingAdaptivePreferences: () => ipcRenderer.invoke("nova:personalization:pending"),
-  resetAdaptivePreference: (preferenceId?: string) =>
-    ipcRenderer.invoke("nova:personalization:reset", preferenceId),
+  resetAdaptivePreference: (preferenceId: string | undefined, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:personalization:reset", { preference_id: preferenceId, confirmed }),
   generatePersonalAnalytics: (input: unknown) =>
     ipcRenderer.invoke("nova:analytics:generate", input),
   detectIncident: (detail: string) => ipcRenderer.invoke("nova:incident:detect", detail),

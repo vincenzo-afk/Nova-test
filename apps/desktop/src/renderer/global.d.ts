@@ -329,7 +329,10 @@ declare global {
       >;
       listScheduledJobStates: () => Promise<readonly JobState[]>;
       activeScheduledJobConcurrencyGroups: () => Promise<readonly string[]>;
-      resetAdaptivePreference: (preferenceId?: string) => Promise<{
+      resetAdaptivePreference: (
+        preferenceId: string | undefined,
+        confirmed: boolean,
+      ) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;

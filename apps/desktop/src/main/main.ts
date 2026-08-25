@@ -721,8 +721,10 @@ ipcMain.handle("nova:personalization:dismiss", (_event, proposalId: string) =>
 ipcMain.handle("nova:personalization:pending", () =>
   requestGateway("personalization.pending", undefined),
 );
-ipcMain.handle("nova:personalization:reset", (_event, preferenceId?: string) =>
-  requestGateway("personalization.reset", { preference_id: preferenceId }),
+ipcMain.handle(
+  "nova:personalization:reset",
+  (_event, payload: { readonly preference_id?: string; readonly confirmed: boolean }) =>
+    requestGateway("personalization.reset", payload),
 );
 ipcMain.handle("nova:analytics:generate", (_event, input: AnalyticsInput) =>
   requestGateway("analytics.generate", input),
@@ -1194,10 +1196,15 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("personalization.reset", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly preference_id?: unknown };
+    const payload = data as { readonly preference_id?: unknown; readonly confirmed?: unknown };
     if (payload.preference_id !== undefined && typeof payload.preference_id !== "string")
       throw new Error("Adaptive preference ID is invalid.");
-    const result = runtimeApplication.resetAdaptivePreference(payload.preference_id);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Adaptive preference reset confirmation is invalid.");
+    const result = runtimeApplication.resetAdaptivePreference(
+      payload.preference_id,
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });
