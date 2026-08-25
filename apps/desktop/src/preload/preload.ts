@@ -121,7 +121,8 @@ const novaApi = {
   declinePluginDiscovery: (pluginId: string) =>
     ipcRenderer.invoke("nova:plugins:decline", pluginId),
   pendingPluginDiscovery: () => ipcRenderer.invoke("nova:plugins:pending"),
-  createBackup: (state: unknown) => ipcRenderer.invoke("nova:backup:create", state),
+  createBackup: (state: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:backup:create", { state, confirmed }),
   preUpdateBackup: (state: unknown) => ipcRenderer.invoke("nova:backup:pre-update", state),
   restoreBackup: (snapshotId: string) => ipcRenderer.invoke("nova:backup:restore", snapshotId),
   prepareRestore: (snapshotId: string) => ipcRenderer.invoke("nova:restore:prepare", snapshotId),

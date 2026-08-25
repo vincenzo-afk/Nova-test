@@ -663,7 +663,10 @@ declare global {
           status: "pending";
         }[]
       >;
-      createBackup: (state: unknown) => Promise<{
+      createBackup: (
+        state: unknown,
+        confirmed: boolean,
+      ) => Promise<{
         snapshot_id: string;
         owner_id: string;
         encrypted: true;

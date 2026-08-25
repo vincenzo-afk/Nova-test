@@ -929,8 +929,10 @@ ipcMain.handle("nova:plugins:decline", (_event, pluginId: string) =>
   requestGateway("plugins.decline", { plugin_id: pluginId }),
 );
 ipcMain.handle("nova:plugins:pending", () => requestGateway("plugins.pending", undefined));
-ipcMain.handle("nova:backup:create", (_event, state: unknown) =>
-  requestGateway("backup.create", { state }),
+ipcMain.handle(
+  "nova:backup:create",
+  (_event, payload: { readonly state: unknown; readonly confirmed: boolean }) =>
+    requestGateway("backup.create", payload),
 );
 ipcMain.handle("nova:backup:pre-update", (_event, state: unknown) =>
   requestGateway("backup.pre-update", { state }),
@@ -1804,8 +1806,10 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("backup.create", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly state?: unknown };
-    const result = runtimeApplication.createBackup(payload.state);
+    const payload = data as { readonly state?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Backup creation confirmation is invalid.");
+    const result = runtimeApplication.createBackup(payload.state, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies SnapshotMetadata;
   });

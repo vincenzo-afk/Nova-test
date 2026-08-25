@@ -1331,8 +1331,15 @@ export class RuntimeApplication {
     return await this.restoreManager.apply(prepared, confirmed);
   }
 
-  public createBackup<T>(state: T): Result<SnapshotMetadata> {
+  public createBackup<T>(state: T, confirmed: boolean): Result<SnapshotMetadata> {
     if (!this.backupManager) return err(this.backupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Creating a backup snapshot requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.backupManager.create(state);
   }
 

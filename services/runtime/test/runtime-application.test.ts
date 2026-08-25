@@ -1098,7 +1098,11 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    expect(application.createBackup({ theme: "dark" })).toMatchObject({
+    expect(application.createBackup({ theme: "dark" }, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.createBackup({ theme: "dark" }, true)).toMatchObject({
       ok: true,
       value: { snapshot_id: "snapshot-1", owner_id: "owner-1", encrypted: true },
     });
