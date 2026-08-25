@@ -148,6 +148,7 @@ describe("Electron preload boundary", () => {
       "webhookHealthSummary",
       "pluginRecordSummaries",
       "listToolSummaries",
+      "taskSchedulerStatus",
     ]);
   });
 
@@ -290,6 +291,7 @@ describe("Electron preload boundary", () => {
         webhookHealthSummary: (webhookId: string) => unknown;
         pluginRecordSummaries: () => unknown;
         listToolSummaries: () => unknown;
+        taskSchedulerStatus: () => unknown;
       },
     ];
 
@@ -485,6 +487,7 @@ describe("Electron preload boundary", () => {
     api.webhookHealthSummary("webhook-1");
     api.pluginRecordSummaries();
     api.listToolSummaries();
+    api.taskSchedulerStatus();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -772,5 +775,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(124, "nova:webhook:health", { webhook_id: "webhook-1" });
     expect(invoke).toHaveBeenNthCalledWith(125, "nova:plugins:list");
     expect(invoke).toHaveBeenNthCalledWith(126, "nova:tools:list");
+    expect(invoke).toHaveBeenNthCalledWith(127, "nova:task-scheduler:status");
   });
 });

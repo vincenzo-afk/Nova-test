@@ -59,7 +59,7 @@ import {
 } from "./runtime-task-coordinator.js";
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore } from "./permission-grant-store.js";
-import type { TaskScheduler } from "./task-scheduler.js";
+import type { TaskScheduler, TaskSchedulerStatus } from "./task-scheduler.js";
 import type {
   ExecutionResult,
   ExecutionStep,
@@ -846,6 +846,16 @@ export class RuntimeApplication {
   }
   public listToolSummaries(): Result<readonly RegisteredToolSummary[]> {
     return ok(this.toolRegistry.listSummaries());
+  }
+  public taskSchedulerStatus(): Result<TaskSchedulerStatus> {
+    if (!this.scheduler) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Task scheduler is not configured for this runtime.",
+        retryable: false,
+      });
+    }
+    return ok(this.scheduler.status());
   }
 
   public listScheduledJobStates(): Result<readonly JobState[]> {

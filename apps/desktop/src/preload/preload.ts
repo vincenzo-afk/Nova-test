@@ -190,6 +190,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:webhook:health", { webhook_id: webhookId }),
   pluginRecordSummaries: () => ipcRenderer.invoke("nova:plugins:list"),
   listToolSummaries: () => ipcRenderer.invoke("nova:tools:list"),
+  taskSchedulerStatus: () => ipcRenderer.invoke("nova:task-scheduler:status"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

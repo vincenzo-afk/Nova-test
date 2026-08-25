@@ -552,6 +552,11 @@ declare global {
           read_only_action_count: number;
         }[]
       >;
+      taskSchedulerStatus: () => Promise<{
+        queued_count: number;
+        active_count: number;
+        max_concurrent: number;
+      }>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

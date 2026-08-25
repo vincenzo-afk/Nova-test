@@ -12,6 +12,12 @@ export interface TaskSchedulerOptions {
   readonly now?: () => number;
 }
 
+export interface TaskSchedulerStatus {
+  readonly queued_count: number;
+  readonly active_count: number;
+  readonly max_concurrent: number;
+}
+
 interface QueueEntry {
   readonly taskId: string;
   readonly priority: ScheduledTaskPriority;
@@ -75,6 +81,14 @@ export class TaskScheduler {
 
   public activeCount(): number {
     return this.running.size;
+  }
+
+  public status(): TaskSchedulerStatus {
+    return {
+      queued_count: this.queue.length,
+      active_count: this.running.size,
+      max_concurrent: this.options.maxConcurrent,
+    };
   }
 
   private fillSlots(): void {

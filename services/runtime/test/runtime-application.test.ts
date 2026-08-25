@@ -1843,6 +1843,30 @@ describe("RuntimeApplication", () => {
     expect(await config.json()).toEqual(configuration);
   });
 
+  it("exposes bounded foreground scheduler status without task contents", () => {
+    const scheduler = new TaskScheduler(
+      { execute: async () => ({ ok: true as const, value: undefined }) },
+      { maxConcurrent: 2, starvationThresholdMs: 60_000, now: () => 0 },
+    );
+    scheduler.enqueue("queued-task", "default", 0);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      scheduler,
+    });
+    applications.push(application);
+
+    expect(application.taskSchedulerStatus()).toEqual({
+      ok: true,
+      value: { queued_count: 1, active_count: 0, max_concurrent: 2 },
+    });
+  });
+
   it("dispatches submitted REST tasks through the injected local scheduler", async () => {
     const started: string[] = [];
     const scheduler = new TaskScheduler(

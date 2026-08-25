@@ -62,6 +62,16 @@ describe("TaskScheduler", () => {
     await draining;
   });
 
+  it("reports bounded scheduler status without task identifiers or payloads", () => {
+    const scheduler = new TaskScheduler(
+      { execute: async () => ({ ok: true as const, value: undefined }) },
+      { maxConcurrent: 2, starvationThresholdMs: 60_000, now: () => 0 },
+    );
+    scheduler.enqueue("queued-task", "default", 0);
+
+    expect(scheduler.status()).toEqual({ queued_count: 1, active_count: 0, max_concurrent: 2 });
+  });
+
   it("cancels queued work without preempting work already in flight", async () => {
     let releaseFirst: (() => void) | undefined;
     const started: string[] = [];
