@@ -488,6 +488,7 @@ declare global {
           policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
           manual_override?: string;
         },
+        confirmed: boolean,
       ) => Promise<{
         capability_id: string;
         domain: string;

@@ -787,8 +787,14 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "nova:capability:policy",
-  (_event, payload: { readonly capability_id: string; readonly policy: CapabilityPolicy }) =>
-    requestGateway("capability.policy", payload),
+  (
+    _event,
+    payload: {
+      readonly capability_id: string;
+      readonly policy: CapabilityPolicy;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway("capability.policy", payload),
 );
 ipcMain.handle("nova:models:discover", (_event, hardware: HardwareProfile) =>
   requestGateway("models.discover", hardware),
@@ -1382,10 +1388,17 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("capability.policy", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly capability_id?: unknown; readonly policy?: unknown };
+    const payload = data as {
+      readonly capability_id?: unknown;
+      readonly policy?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Capability policy confirmation is invalid.");
     const result = runtimeApplication.setCapabilityPolicy(
       parseCapabilityId(payload.capability_id),
       parseCapabilityPolicy(payload.policy),
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies CapabilityRecord;

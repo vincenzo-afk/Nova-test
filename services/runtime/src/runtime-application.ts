@@ -1340,8 +1340,16 @@ export class RuntimeApplication {
   public setCapabilityPolicy(
     capabilityId: string,
     policy: CapabilityPolicy,
+    confirmed: boolean,
   ): Result<CapabilityRecord> {
     if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Changing a capability routing policy requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.capabilityRegistry.setPolicy(capabilityId, policy);
   }
 

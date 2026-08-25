@@ -724,7 +724,25 @@ describe("RuntimeApplication", () => {
       value: { providers: [{ priority: 0 }] },
     });
     expect(
-      application.setCapabilityPolicy("llm", { policy: "manual", manual_override: "local-llm" }),
+      application.setCapabilityPolicy(
+        "llm",
+        { policy: "manual", manual_override: "local-llm" },
+        false,
+      ),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.getCapabilityRecord("llm")).toMatchObject({
+      ok: true,
+      value: { active_policy: { policy: "privacy-first" } },
+    });
+    expect(
+      application.setCapabilityPolicy(
+        "llm",
+        { policy: "manual", manual_override: "local-llm" },
+        true,
+      ),
     ).toMatchObject({
       ok: true,
       value: { active_policy: { policy: "manual", manual_override: "local-llm" } },
