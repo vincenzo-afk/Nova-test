@@ -747,8 +747,14 @@ ipcMain.handle("nova:incident:detect", (_event, detail: string) =>
 );
 ipcMain.handle(
   "nova:incident:triage",
-  (_event, payload: { readonly incident_id: string; readonly severity: IncidentSeverity }) =>
-    requestGateway("incident.triage", payload),
+  (
+    _event,
+    payload: {
+      readonly incident_id: string;
+      readonly severity: IncidentSeverity;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway("incident.triage", payload),
 );
 ipcMain.handle(
   "nova:incident:mitigate",
@@ -1306,11 +1312,18 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("incident.triage", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly incident_id?: unknown; readonly severity?: unknown };
+    const payload = data as {
+      readonly incident_id?: unknown;
+      readonly severity?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Incident triage confirmation is invalid.");
     return unwrapIncident(
       runtimeApplication.triageIncident(
         parseIncidentId(payload.incident_id),
         parseIncidentSeverity(payload.severity),
+        payload.confirmed,
       ),
     );
   });

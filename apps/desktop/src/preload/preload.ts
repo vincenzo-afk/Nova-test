@@ -66,8 +66,8 @@ const novaApi = {
   generatePersonalAnalytics: (input: unknown) =>
     ipcRenderer.invoke("nova:analytics:generate", input),
   detectIncident: (detail: string) => ipcRenderer.invoke("nova:incident:detect", detail),
-  triageIncident: (incidentId: string, severity: string) =>
-    ipcRenderer.invoke("nova:incident:triage", { incident_id: incidentId, severity }),
+  triageIncident: (incidentId: string, severity: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:incident:triage", { incident_id: incidentId, severity, confirmed }),
   mitigateIncident: (incidentId: string, detail: string) =>
     ipcRenderer.invoke("nova:incident:mitigate", { incident_id: incidentId, detail }),
   resolveIncident: (incidentId: string, detail: string) =>

@@ -394,6 +394,7 @@ declare global {
       triageIncident: (
         incidentId: string,
         severity: "Low" | "Medium" | "High" | "Critical",
+        confirmed: boolean,
       ) => Promise<{
         incident_id: string;
         stage: "Triaged";

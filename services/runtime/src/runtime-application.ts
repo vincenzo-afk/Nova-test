@@ -1537,7 +1537,18 @@ export class RuntimeApplication {
     return this.incidentManager.detect(detail);
   }
 
-  public triageIncident(incidentId: string, severity: IncidentSeverity): Result<IncidentEntry> {
+  public triageIncident(
+    incidentId: string,
+    severity: IncidentSeverity,
+    confirmed: boolean,
+  ): Result<IncidentEntry> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Triaging an incident requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.incidentManager.triage(incidentId, severity);
   }
 

@@ -691,7 +691,12 @@ describe("RuntimeApplication", () => {
 
     const detected = application.detectIncident("Provider unavailable.");
     expect(detected).toMatchObject({ ok: true, value: { stage: "Detected" } });
-    expect(application.triageIncident("inc-1", "High" as IncidentSeverity)).toMatchObject({
+    expect(application.triageIncident("inc-1", "High" as IncidentSeverity, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.incidentTimeline("inc-1")).toMatchObject([{ stage: "Detected" }]);
+    expect(application.triageIncident("inc-1", "High" as IncidentSeverity, true)).toMatchObject({
       ok: true,
       value: { stage: "Triaged", severity: "High" },
     });
