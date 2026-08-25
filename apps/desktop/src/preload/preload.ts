@@ -164,6 +164,7 @@ const novaApi = {
   runtimeServiceHealth: (serviceName: string) =>
     ipcRenderer.invoke("nova:runtime:service-health", serviceName),
   pluginRecord: (pluginId: string) => ipcRenderer.invoke("nova:plugins:record", pluginId),
+  jobState: (jobId: string) => ipcRenderer.invoke("nova:jobs:state", jobId),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

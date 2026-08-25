@@ -36,6 +36,7 @@ import {
   type PerformanceBudgetReport,
   type CompatibilityResult,
   type PluginRecord,
+  type JobState,
   type CapabilityGap,
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
@@ -768,6 +769,9 @@ ipcMain.handle("nova:runtime:service-health", (_event, serviceName: string) =>
 ipcMain.handle("nova:plugins:record", (_event, pluginId: string) =>
   requestGateway("plugins.record", { plugin_id: pluginId }),
 );
+ipcMain.handle("nova:jobs:state", (_event, jobId: string) =>
+  requestGateway("jobs.state", { job_id: jobId }),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1259,6 +1263,13 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies PluginRecord;
+  });
+  gateway.register("jobs.state", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly job_id?: unknown };
+    const result = runtimeApplication.jobState(parseWorkspaceText(payload.job_id, "Job ID"));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies JobState;
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

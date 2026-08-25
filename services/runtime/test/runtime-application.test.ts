@@ -32,6 +32,7 @@ import { compareDeviceVersions } from "../src/device-compatibility.js";
 import { RuntimeManager } from "../src/runtime-manager.js";
 import type { ServiceLifecycle } from "@nova/shared";
 import { PluginManager } from "../src/plugin-manager.js";
+import { InMemoryJobStore, JobScheduler } from "../src/job-scheduler.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1060,6 +1061,44 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("delegates read-only scheduled-job state inspection", () => {
+    const scheduler = new JobScheduler(new InMemoryJobStore(), {
+      runner: async () => undefined,
+      now: () => 0,
+    });
+    expect(
+      scheduler.register({
+        job_id: "briefing",
+        type: "recurring",
+        schedule: "1h",
+        dependencies: [],
+        priority: "normal",
+        concurrency_group: "briefings",
+        idempotent: true,
+      }),
+    ).toMatchObject({ ok: true, value: { status: "scheduled" } });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      jobScheduler: scheduler,
+    });
+    applications.push(application);
+
+    expect(application.jobState("briefing")).toMatchObject({
+      ok: true,
+      value: { definition: { job_id: "briefing" }, status: "scheduled" },
+    });
+    expect(application.jobState("missing-job")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
     });
   });
 

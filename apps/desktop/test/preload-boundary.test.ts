@@ -125,6 +125,7 @@ describe("Electron preload boundary", () => {
       "compareDeviceVersions",
       "runtimeServiceHealth",
       "pluginRecord",
+      "jobState",
     ]);
   });
 
@@ -244,6 +245,7 @@ describe("Electron preload boundary", () => {
         compareDeviceVersions: (left: string, right: string) => unknown;
         runtimeServiceHealth: (serviceName: string) => unknown;
         pluginRecord: (pluginId: string) => unknown;
+        jobState: (jobId: string) => unknown;
       },
     ];
 
@@ -413,6 +415,7 @@ describe("Electron preload boundary", () => {
     api.compareDeviceVersions("5.2.0", "5.2.0");
     api.runtimeServiceHealth("memory");
     api.pluginRecord("com.example.reader");
+    api.jobState("briefing");
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -672,5 +675,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(101, "nova:devices:compatibility", "5.2.0", "5.2.0");
     expect(invoke).toHaveBeenNthCalledWith(102, "nova:runtime:service-health", "memory");
     expect(invoke).toHaveBeenNthCalledWith(103, "nova:plugins:record", "com.example.reader");
+    expect(invoke).toHaveBeenNthCalledWith(104, "nova:jobs:state", "briefing");
   });
 });

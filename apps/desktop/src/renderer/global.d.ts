@@ -6,6 +6,7 @@ import type {
   PerformanceBudgetReport,
   CompatibilityResult,
   PluginRecord,
+  JobState,
   SetupStepId,
   SetupState,
   SetupStepPatch,
@@ -447,6 +448,7 @@ declare global {
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;
       pluginRecord: (pluginId: string) => Promise<PluginRecord>;
+      jobState: (jobId: string) => Promise<JobState>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;
