@@ -50,6 +50,13 @@ interface DesktopGraphQueryInput {
   depth: number;
 }
 
+interface DesktopTaskSummary {
+  task_id: string;
+  state: string;
+  retry_count: number;
+  updated_at: string;
+}
+
 interface DesktopGraphQueryResult {
   root: {
     id: string;
@@ -77,24 +84,17 @@ interface DesktopGraphQueryResult {
 declare global {
   interface Window {
     nova: {
-      submitTask: (goal: string) => Promise<{ task_id: string; goal: string; state: string }>;
-      getTask: (taskId: string) => Promise<{ task_id: string; goal: string; state: string }>;
+      submitTask: (goal: string) => Promise<DesktopTaskSummary>;
+      getTask: (taskId: string) => Promise<DesktopTaskSummary>;
       listTasks: (
         limit?: number,
         cursor?: string,
       ) => Promise<{
-        items: Array<{ task_id: string; goal: string; state: string; retry_count: number }>;
+        items: Array<DesktopTaskSummary>;
         next_cursor: string | null;
         has_more: boolean;
       }>;
-      cancelTask: (
-        taskId: string,
-        confirmed: boolean,
-      ) => Promise<{
-        task_id: string;
-        goal: string;
-        state: string;
-      }>;
+      cancelTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       searchMemory: (input: DesktopMemorySearchInput) => Promise<{
         results: DesktopMemoryRecord[];
         query: string;
@@ -597,12 +597,12 @@ declare global {
           created_at: string;
         }[]
       >;
-      retryTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
-      resumePausedTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
-      confirmWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
+      retryTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
+      resumePausedTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
+      confirmWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => Promise<unknown>;
-      denyWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
-      pauseTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
+      denyWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
+      pauseTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

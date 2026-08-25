@@ -83,13 +83,15 @@ import {
   projectPluginDiscoveryProposals,
   projectPluginDiscoveryResult,
   projectPluginRecord,
+  projectTaskRecord,
+  projectTaskRecords,
 } from "./response-projections.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
-  readonly goal: string;
   readonly state: string;
-  readonly retry_count?: number;
+  readonly retry_count: number;
+  readonly updated_at: string;
 }
 
 const parseCalendarDraft = (data: unknown): CalendarDraft => {
@@ -1215,14 +1217,15 @@ const startGateway = async (): Promise<void> => {
     if (!payload.goal) throw new Error("Task goal is required.");
     const result = await runtimeApplication?.coordinator.submitDurable({ goal: payload.goal });
     if (!result?.ok) throw new Error(result?.error.message ?? "Task submission failed.");
-    return result.value satisfies TaskSnapshot;
+    return projectTaskRecord(result.value);
   });
   gateway.register("task.get", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const payload = data as { readonly task_id?: string };
     if (!payload.task_id) throw new Error("Task ID is required.");
-    const result = runtimeApplication?.tasks.get(payload.task_id);
-    if (!result?.ok) throw new Error(result?.error.message ?? "Task lookup failed.");
-    return result.value;
+    const result = runtimeApplication.getTask(payload.task_id);
+    if (!result.ok) throw new Error(result.error.message);
+    return projectTaskRecord(result.value);
   });
   gateway.register("memory.search", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1663,7 +1666,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectTaskRecord(result.value);
   });
   gateway.register("task.resume-paused", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1675,7 +1678,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectTaskRecord(result.value);
   });
   gateway.register("task.confirm-waiting-user", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1687,7 +1690,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectTaskRecord(result.value);
   });
   gateway.register("task.deny-waiting-user", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1699,7 +1702,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectTaskRecord(result.value);
   });
   gateway.register("performance.budgets", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -2486,9 +2489,12 @@ const startGateway = async (): Promise<void> => {
   gateway.register("task.list", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const payload = data as { readonly limit?: number; readonly cursor?: string };
-    const page = listDesktopTasks(runtimeApplication.tasks.list(), payload);
+    const page = listDesktopTasks(runtimeApplication.listTasks(), payload);
     if (!page.ok) throw new Error(page.error.message);
-    return page.value;
+    return {
+      ...page.value,
+      items: projectTaskRecords(page.value.items),
+    };
   });
   gateway.register("desktop.screenshot", async (data) => {
     const payload = data as ScreenshotRequest;
@@ -2555,7 +2561,7 @@ const startGateway = async (): Promise<void> => {
       throw new Error("Task cancellation confirmation is invalid.");
     const cancelled = await runtimeApplication.cancelTask(payload.task_id, payload.confirmed);
     if (!cancelled.ok) throw new Error(cancelled.error.message);
-    return cancelled.value;
+    return projectTaskRecord(cancelled.value);
   });
   gateway.register("task.pause", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -2565,7 +2571,7 @@ const startGateway = async (): Promise<void> => {
       throw new Error("Task pause confirmation is invalid.");
     const paused = await runtimeApplication.pauseTask(payload.task_id, payload.confirmed);
     if (!paused.ok) throw new Error(paused.error.message);
-    return paused.value;
+    return projectTaskRecord(paused.value);
   });
   gateway.register("permissions.get", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

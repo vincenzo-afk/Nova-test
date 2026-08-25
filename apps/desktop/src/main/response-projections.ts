@@ -3,6 +3,7 @@ import type {
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
   PluginRecord,
+  TaskRecord,
 } from "@nova/runtime";
 
 export interface PairingOfferSummary {
@@ -83,4 +84,24 @@ export function projectPluginDiscoveryResult(
     proposals: projectPluginDiscoveryProposals(result.proposals),
     fallback: result.fallback,
   };
+}
+
+export interface TaskRecordSummary {
+  readonly task_id: string;
+  readonly state: TaskRecord["state"];
+  readonly retry_count: number;
+  readonly updated_at: string;
+}
+
+export function projectTaskRecord(record: TaskRecord): TaskRecordSummary {
+  return {
+    task_id: record.task_id,
+    state: record.state,
+    retry_count: record.retry_count,
+    updated_at: record.updated_at,
+  };
+}
+
+export function projectTaskRecords(records: readonly TaskRecord[]): readonly TaskRecordSummary[] {
+  return records.map(projectTaskRecord);
 }

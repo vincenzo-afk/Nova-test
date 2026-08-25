@@ -19,12 +19,9 @@ import {
 
 interface TaskSnapshot {
   readonly task_id: string;
-  readonly goal: string;
   readonly state: string;
-  readonly retry_count?: number;
-  readonly step_history?: readonly unknown[];
-  readonly waiting_user_reason?: string;
-  readonly reason?: string;
+  readonly retry_count: number;
+  readonly updated_at: string;
 }
 
 interface TaskListPage {
@@ -701,13 +698,10 @@ const TaskMonitor = ({
                 <span className="task-status">{entry.state}</span>
                 <code>{entry.task_id}</code>
               </div>
-              <h2>{entry.goal}</h2>
+              <h2>Task {entry.task_id}</h2>
               <div className="task-meta">
-                <span>{entry.retry_count ?? 0} retries</span>
-                {entry.waiting_user_reason ? (
-                  <span>Waiting: {entry.waiting_user_reason}</span>
-                ) : null}
-                {entry.reason ? <span>{entry.reason}</span> : null}
+                <span>{entry.retry_count} retries</span>
+                <span>Updated {entry.updated_at}</span>
               </div>
               {!terminal ? (
                 <button onClick={() => void onCancel(entry.task_id)} type="button">
@@ -763,7 +757,7 @@ const HomeView = ({
       />
       <SurfaceCard
         title="Latest task"
-        detail={task?.goal ?? "No task has been submitted yet."}
+        detail={task ? `Task ${task.task_id}` : "No task has been submitted yet."}
         state={task?.state ?? "Empty"}
       />
     </div>

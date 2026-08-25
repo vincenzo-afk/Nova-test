@@ -1016,6 +1016,14 @@ export class RuntimeApplication {
   public listToolSummaries(): Result<readonly RegisteredToolSummary[]> {
     return ok(this.toolRegistry.listSummaries());
   }
+  public getTask(taskId: string): Result<TaskRecord> {
+    return this.tasks.get(taskId);
+  }
+
+  public listTasks(): readonly TaskRecord[] {
+    return this.tasks.list();
+  }
+
   public taskSchedulerStatus(): Result<TaskSchedulerStatus> {
     if (!this.scheduler) {
       return err({
