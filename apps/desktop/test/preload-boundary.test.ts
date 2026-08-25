@@ -184,7 +184,12 @@ describe("Electron preload boundary", () => {
         upcomingCalendarEvents: () => unknown;
         proposeCalendarEvent: (draft: unknown) => unknown;
         createCalendarEvent: (draft: unknown, confirmed: boolean) => unknown;
-        sendChannelMessage: (channelId: string, chatId: string, content: string) => unknown;
+        sendChannelMessage: (
+          channelId: string,
+          chatId: string,
+          content: string,
+          confirmed: boolean,
+        ) => unknown;
         receiveChannelMessage: (channelId: string, message: unknown) => unknown;
         getChannelMediaCapabilities: (channelId: string) => unknown;
         generateBackgroundBriefing: (trigger: string) => unknown;
@@ -340,7 +345,7 @@ describe("Electron preload boundary", () => {
       { title: "Planning", start: 100, end: 200, attendees: [], owner: true },
       true,
     );
-    api.sendChannelMessage("telegram", "chat-1", "hello");
+    api.sendChannelMessage("telegram", "chat-1", "hello", true);
     api.receiveChannelMessage("telegram", {
       sender_id: "user-1",
       chat_id: "chat-1",
@@ -565,6 +570,7 @@ describe("Electron preload boundary", () => {
       channel_id: "telegram",
       chat_id: "chat-1",
       content: "hello",
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(23, "nova:channel:receive", {
       channel_id: "telegram",

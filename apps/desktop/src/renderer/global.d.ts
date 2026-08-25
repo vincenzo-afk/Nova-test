@@ -165,6 +165,7 @@ declare global {
         channelId: string,
         chatId: string,
         content: string,
+        confirmed: boolean,
       ) => Promise<{
         ok: boolean;
         value?: { message_id: string; status: "sent" | "failed"; chat_id: string; content: string };

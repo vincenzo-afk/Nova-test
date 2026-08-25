@@ -269,10 +269,18 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    expect(await application.sendChannelMessage("telegram", "chat-1", "hello")).toMatchObject({
-      ok: true,
-      value: { message_id: "message-1" },
+    expect(
+      await application.sendChannelMessage("telegram", "chat-1", "hello", false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
     });
+    expect(await application.sendChannelMessage("telegram", "chat-1", "hello", true)).toMatchObject(
+      {
+        ok: true,
+        value: { message_id: "message-1" },
+      },
+    );
     expect(
       application.receiveChannelMessage("telegram", {
         sender_id: "user-1",

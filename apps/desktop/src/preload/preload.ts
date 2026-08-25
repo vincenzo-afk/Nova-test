@@ -31,8 +31,13 @@ const novaApi = {
   proposeCalendarEvent: (draft: unknown) => ipcRenderer.invoke("nova:calendar:propose", draft),
   createCalendarEvent: (draft: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:calendar:create", { draft, confirmed }),
-  sendChannelMessage: (channelId: string, chatId: string, content: string) =>
-    ipcRenderer.invoke("nova:channel:send", { channel_id: channelId, chat_id: chatId, content }),
+  sendChannelMessage: (channelId: string, chatId: string, content: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:channel:send", {
+      channel_id: channelId,
+      chat_id: chatId,
+      content,
+      confirmed,
+    }),
   receiveChannelMessage: (channelId: string, message: unknown) =>
     ipcRenderer.invoke("nova:channel:receive", { channel_id: channelId, message }),
   getChannelMediaCapabilities: (channelId: string) =>

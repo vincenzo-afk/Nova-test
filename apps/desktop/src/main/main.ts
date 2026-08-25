@@ -676,7 +676,12 @@ ipcMain.handle(
   "nova:channel:send",
   (
     _event,
-    payload: { readonly channel_id: string; readonly chat_id: string; readonly content: string },
+    payload: {
+      readonly channel_id: string;
+      readonly chat_id: string;
+      readonly content: string;
+      readonly confirmed: boolean;
+    },
   ) => requestGateway("channel.send", payload),
 );
 ipcMain.handle(
@@ -1823,6 +1828,7 @@ const startGateway = async (): Promise<void> => {
       readonly channel_id?: unknown;
       readonly chat_id?: unknown;
       readonly content?: unknown;
+      readonly confirmed?: unknown;
     };
     if (
       typeof payload.channel_id !== "string" ||
@@ -1834,10 +1840,13 @@ const startGateway = async (): Promise<void> => {
     ) {
       throw new Error("Channel ID, chat ID, and content are required.");
     }
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Channel-send confirmation is invalid.");
     const result = await runtimeApplication.sendChannelMessage(
       payload.channel_id,
       payload.chat_id,
       payload.content,
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result;

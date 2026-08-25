@@ -1310,12 +1310,20 @@ export class RuntimeApplication {
     channelId: string,
     chatId: string,
     content: string,
+    confirmed: boolean,
   ): Promise<Result<DeliveryReceipt>> {
     if (!this.channelManager) {
       return err({
         code: "NOVA-SEC001",
         message: "Messaging channels are not configured for this runtime.",
         retryable: true,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Sending a channel message requires explicit confirmation.",
+        retryable: false,
       });
     }
     return await this.channelManager.send(channelId, chatId, content);
