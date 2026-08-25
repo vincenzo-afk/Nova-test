@@ -922,7 +922,9 @@ ipcMain.handle(
   (_event, payload: { readonly action: OfflineAction; readonly confirmed: boolean }) =>
     requestGateway("offline.submit", payload),
 );
-ipcMain.handle("nova:offline:reconnect", () => requestGateway("offline.reconnect", undefined));
+ipcMain.handle("nova:offline:reconnect", (_event, confirmed: boolean) =>
+  requestGateway("offline.reconnect", { confirmed }),
+);
 ipcMain.handle("nova:setup:start", () => requestGateway("setup.start", undefined));
 ipcMain.handle("nova:setup:rerun", () => requestGateway("setup.rerun", undefined));
 ipcMain.handle(
@@ -1728,9 +1730,12 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies { status: "QueuedOffline" } | OfflineActionResult;
   });
-  gateway.register("offline.reconnect", async () => {
+  gateway.register("offline.reconnect", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.reconnectOfflineActions();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Offline reconnect confirmation is invalid.");
+    const result = await runtimeApplication.reconnectOfflineActions(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies readonly OfflineActionResult[];
   });

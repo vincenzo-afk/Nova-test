@@ -121,7 +121,8 @@ const novaApi = {
     }),
   submitOfflineAction: (action: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:offline:submit", { action, confirmed }),
-  reconnectOfflineActions: () => ipcRenderer.invoke("nova:offline:reconnect"),
+  reconnectOfflineActions: (confirmed: boolean) =>
+    ipcRenderer.invoke("nova:offline:reconnect", confirmed),
   startSetupWizard: () => ipcRenderer.invoke("nova:setup:start"),
   rerunSetupWizard: () => ipcRenderer.invoke("nova:setup:rerun"),
   completeSetupStep: (step: string, patch?: unknown) =>

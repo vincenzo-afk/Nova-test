@@ -721,9 +721,9 @@ declare global {
       ) => Promise<
         { status: "QueuedOffline" } | { action_id: string; status: "completed" | "failed" }
       >;
-      reconnectOfflineActions: () => Promise<
-        readonly { action_id: string; status: "completed" | "failed" }[]
-      >;
+      reconnectOfflineActions: (
+        confirmed: boolean,
+      ) => Promise<readonly { action_id: string; status: "completed" | "failed" }[]>;
       startSetupWizard: () => Promise<SetupState>;
       rerunSetupWizard: () => Promise<SetupState>;
       completeSetupStep: (step: SetupStepId, patch?: SetupStepPatch) => Promise<SetupState>;

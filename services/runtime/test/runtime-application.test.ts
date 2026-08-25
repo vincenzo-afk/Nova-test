@@ -1158,7 +1158,12 @@ describe("RuntimeApplication", () => {
       value: { status: "QueuedOffline" },
     });
     expect(executed).toEqual([]);
-    expect(await application.reconnectOfflineActions()).toMatchObject({
+    expect(await application.reconnectOfflineActions(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(executed).toEqual([]);
+    expect(await application.reconnectOfflineActions(true)).toMatchObject({
       ok: true,
       value: [{ action_id: "remote-1", status: "completed" }],
     });

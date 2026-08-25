@@ -1093,8 +1093,17 @@ export class RuntimeApplication {
     return await this.offlineActionQueue.submit(action);
   }
 
-  public async reconnectOfflineActions(): Promise<Result<readonly OfflineActionResult[]>> {
+  public async reconnectOfflineActions(
+    confirmed: boolean,
+  ): Promise<Result<readonly OfflineActionResult[]>> {
     if (!this.offlineActionQueue) return err(this.offlineUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Reconnecting offline actions requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return await this.offlineActionQueue.reconnect();
   }
 
