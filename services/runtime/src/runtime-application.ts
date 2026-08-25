@@ -11,6 +11,7 @@ import {
   err,
   ok,
   type Result,
+  type ServiceHealth,
   type StructuredLogger,
 } from "@nova/shared";
 import {
@@ -117,6 +118,7 @@ import type {
 } from "./provider-registry.js";
 import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
 import type { HealthState, ModelRouter } from "./model-router.js";
+import type { RuntimeManager } from "./runtime-manager.js";
 import {
   PerformanceBudgetEvaluator,
   type BudgetSamples,
@@ -216,6 +218,7 @@ export interface RuntimeApplicationOptions {
   readonly capabilityRegistry?: CapabilityRegistry;
   readonly localModelManager?: LocalModelManager;
   readonly modelRouter?: ModelRouter;
+  readonly runtimeManager?: RuntimeManager;
   readonly performanceBudgetEvaluator?: PerformanceBudgetEvaluator;
   readonly voicePipeline?: VoicePipeline;
   readonly pluginDiscovery?: PluginDiscovery;
@@ -269,6 +272,7 @@ export class RuntimeApplication {
   public readonly capabilityRegistry: CapabilityRegistry | undefined;
   public readonly localModelManager: LocalModelManager | undefined;
   public readonly modelRouter: ModelRouter | undefined;
+  public readonly runtimeManager: RuntimeManager | undefined;
   public readonly performanceBudgetEvaluator: PerformanceBudgetEvaluator;
   public readonly voicePipeline: VoicePipeline | undefined;
   public readonly pluginDiscovery: PluginDiscovery | undefined;
@@ -344,6 +348,7 @@ export class RuntimeApplication {
     this.capabilityRegistry = options.capabilityRegistry;
     this.localModelManager = options.localModelManager;
     this.modelRouter = options.modelRouter;
+    this.runtimeManager = options.runtimeManager;
     this.performanceBudgetEvaluator =
       options.performanceBudgetEvaluator ?? new PerformanceBudgetEvaluator();
     this.voicePipeline = options.voicePipeline;
@@ -762,6 +767,11 @@ export class RuntimeApplication {
 
   public evaluatePerformanceBudgets(samples: BudgetSamples): Result<PerformanceBudgetReport> {
     return ok(this.performanceBudgetEvaluator.evaluate(samples));
+  }
+
+  public runtimeServiceHealth(serviceName: string): Result<ServiceHealth> {
+    if (!this.runtimeManager) return err(this.runtimeManagerUnavailableError());
+    return ok(this.runtimeManager.health(serviceName));
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1324,6 +1334,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private runtimeManagerUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Runtime manager is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private modelRouterUnavailableError(): {

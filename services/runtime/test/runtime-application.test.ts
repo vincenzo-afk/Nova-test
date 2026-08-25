@@ -29,6 +29,8 @@ import { WorkspaceManager } from "../src/workspace-manager.js";
 import { ModelRouter, type LlmProvider } from "../src/model-router.js";
 import { PerformanceBudgetEvaluator, type BudgetSamples } from "../src/performance-budgets.js";
 import { compareDeviceVersions } from "../src/device-compatibility.js";
+import { RuntimeManager } from "../src/runtime-manager.js";
+import type { ServiceLifecycle } from "@nova/shared";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1057,6 +1059,61 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("delegates read-only runtime service health inspection", () => {
+    const manager = new RuntimeManager({ now: () => 0 });
+    const service: ServiceLifecycle = {
+      start: async () => ({ ok: true, value: undefined }),
+      stop: async () => ({ ok: true, value: undefined }),
+      heartbeat: async () => ({
+        ok: true,
+        value: {
+          serviceName: "memory",
+          state: "Created",
+          publishedAt: new Date(0).toISOString(),
+        },
+      }),
+      health: () => ({
+        state: "Healthy",
+        detail: "ready",
+        checkedAt: new Date(0).toISOString(),
+        missedHeartbeats: 0,
+      }),
+    };
+    expect(
+      manager.register(
+        {
+          name: "memory",
+          dependencies: [],
+          critical: true,
+          restartWindowMs: 300_000,
+          maxImmediateRestarts: 3,
+          backoffCeilingMs: 30_000,
+        },
+        service,
+      ),
+    ).toMatchObject({ ok: true });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      runtimeManager: manager,
+    });
+    applications.push(application);
+
+    expect(application.runtimeServiceHealth("memory")).toMatchObject({
+      ok: true,
+      value: { state: "Healthy", missedHeartbeats: 0 },
+    });
+    expect(application.runtimeServiceHealth("missing")).toMatchObject({
+      ok: true,
+      value: { state: "Failed" },
     });
   });
 

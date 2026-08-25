@@ -14,6 +14,7 @@ import type {
   NovaConfiguration,
   PairingRequest,
 } from "@nova/runtime";
+import type { ServiceHealth } from "@nova/shared";
 import type { PermissionGrant } from "./shell-model.js";
 
 interface DesktopMemorySearchInput {
@@ -443,6 +444,7 @@ declare global {
       modelProviderHealth: (providerId: string) => Promise<HealthState>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
+      runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;
