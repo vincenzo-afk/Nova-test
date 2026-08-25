@@ -647,7 +647,10 @@ declare global {
         plugin_id: string;
         status: "approved";
       }>;
-      declinePluginDiscovery: (pluginId: string) => Promise<{
+      declinePluginDiscovery: (
+        pluginId: string,
+        confirmed: boolean,
+      ) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;

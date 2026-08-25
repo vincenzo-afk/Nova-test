@@ -925,8 +925,10 @@ ipcMain.handle(
   (_event, payload: { readonly plugin_id: string; readonly confirmed: boolean }) =>
     requestGateway("plugins.uninstall", payload),
 );
-ipcMain.handle("nova:plugins:decline", (_event, pluginId: string) =>
-  requestGateway("plugins.decline", { plugin_id: pluginId }),
+ipcMain.handle(
+  "nova:plugins:decline",
+  (_event, payload: { readonly plugin_id: string; readonly confirmed: boolean }) =>
+    requestGateway("plugins.decline", payload),
 );
 ipcMain.handle("nova:plugins:pending", () => requestGateway("plugins.pending", undefined));
 ipcMain.handle(
@@ -1802,9 +1804,11 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("plugins.decline", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly plugin_id?: unknown };
+    const payload = data as { readonly plugin_id?: unknown; readonly confirmed?: unknown };
     const pluginId = parseProviderId(payload.plugin_id);
-    const result = runtimeApplication.declinePluginDiscovery(pluginId);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Plugin discovery decline confirmation is invalid.");
+    const result = runtimeApplication.declinePluginDiscovery(pluginId, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });

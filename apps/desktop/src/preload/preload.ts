@@ -118,8 +118,8 @@ const novaApi = {
   discoverPluginsForGap: (gap: unknown) => ipcRenderer.invoke("nova:plugins:discover", gap),
   confirmPluginDiscovery: (pluginId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:plugins:confirm", { plugin_id: pluginId, confirmed }),
-  declinePluginDiscovery: (pluginId: string) =>
-    ipcRenderer.invoke("nova:plugins:decline", pluginId),
+  declinePluginDiscovery: (pluginId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:plugins:decline", { plugin_id: pluginId, confirmed }),
   pendingPluginDiscovery: () => ipcRenderer.invoke("nova:plugins:pending"),
   createBackup: (state: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:backup:create", { state, confirmed }),

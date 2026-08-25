@@ -1425,8 +1425,15 @@ export class RuntimeApplication {
     return this.pluginDiscovery.confirm(pluginId);
   }
 
-  public declinePluginDiscovery(pluginId: string): Result<void> {
+  public declinePluginDiscovery(pluginId: string, confirmed: boolean): Result<void> {
     if (!this.pluginDiscovery) return err(this.pluginUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Declining a plugin-discovery proposal requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.pluginDiscovery.decline(pluginId);
   }
 

@@ -1060,6 +1060,11 @@ describe("RuntimeApplication", () => {
       value: { proposals: [{ plugin_id: "com.example.calendar", status: "pending" }] },
     });
     expect(application.pendingPluginDiscovery()).toHaveLength(1);
+    expect(application.declinePluginDiscovery("com.example.calendar", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.pendingPluginDiscovery()).toHaveLength(1);
     expect(application.confirmPluginDiscovery("com.example.calendar", false)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },

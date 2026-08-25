@@ -240,7 +240,7 @@ describe("Electron preload boundary", () => {
         voicePipelineState: () => unknown;
         discoverPluginsForGap: (gap: unknown) => unknown;
         confirmPluginDiscovery: (pluginId: string, confirmed: boolean) => unknown;
-        declinePluginDiscovery: (pluginId: string) => unknown;
+        declinePluginDiscovery: (pluginId: string, confirmed: boolean) => unknown;
         pendingPluginDiscovery: () => unknown;
         createBackup: (state: unknown, confirmed: boolean) => unknown;
         preUpdateBackup: (state: unknown, confirmed: boolean) => unknown;
@@ -422,7 +422,7 @@ describe("Electron preload boundary", () => {
       enabled_provider_count: 0,
     });
     api.confirmPluginDiscovery("email.concise", true);
-    api.declinePluginDiscovery("com.example.other");
+    api.declinePluginDiscovery("com.example.calendar", true);
     api.pendingPluginDiscovery();
     api.createBackup({ theme: "dark" }, true);
     api.preUpdateBackup({ theme: "dark" }, true);
@@ -698,7 +698,10 @@ describe("Electron preload boundary", () => {
       plugin_id: "email.concise",
       confirmed: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(52, "nova:plugins:decline", "com.example.other");
+    expect(invoke).toHaveBeenNthCalledWith(52, "nova:plugins:decline", {
+      plugin_id: "com.example.calendar",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(53, "nova:plugins:pending");
     expect(invoke).toHaveBeenNthCalledWith(54, "nova:backup:create", {
       state: { theme: "dark" },
