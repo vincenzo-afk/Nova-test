@@ -154,6 +154,7 @@ describe("Electron preload boundary", () => {
       "resumePausedTask",
       "confirmWaitingUserTask",
       "resumeWorkflowCheckpoint",
+      "denyWaitingUserTask",
     ]);
   });
 
@@ -302,6 +303,7 @@ describe("Electron preload boundary", () => {
         resumePausedTask: (taskId: string, confirmed: boolean) => unknown;
         confirmWaitingUserTask: (taskId: string, confirmed: boolean) => unknown;
         resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => unknown;
+        denyWaitingUserTask: (taskId: string, confirmed: boolean) => unknown;
       },
     ];
 
@@ -503,6 +505,7 @@ describe("Electron preload boundary", () => {
     api.resumePausedTask("task-1", true);
     api.confirmWaitingUserTask("task-1", true);
     api.resumeWorkflowCheckpoint("checkpoint-1", true);
+    api.denyWaitingUserTask("task-1", true);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -808,6 +811,10 @@ describe("Electron preload boundary", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(132, "nova:workflow:resume", {
       checkpoint_id: "checkpoint-1",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(133, "nova:task:deny-waiting-user", {
+      task_id: "task-1",
       confirmed: true,
     });
   });

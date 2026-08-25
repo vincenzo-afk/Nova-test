@@ -567,10 +567,11 @@ declare global {
           created_at: string;
         }[]
       >;
-      resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => Promise<unknown>;
       retryTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       resumePausedTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       confirmWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
+      resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => Promise<unknown>;
+      denyWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

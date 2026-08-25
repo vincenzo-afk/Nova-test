@@ -109,7 +109,7 @@ export class TaskManager {
   transition(
     taskId: string,
     target: TaskState,
-    reason?: WaitingUserReason | "resumed",
+    reason?: WaitingUserReason | "resumed" | "denied",
   ): Result<TaskRecord> {
     const current = this.tasks.get(taskId);
     if (!current) {

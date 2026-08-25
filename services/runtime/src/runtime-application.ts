@@ -877,6 +877,12 @@ export class RuntimeApplication {
   ): Promise<Result<TaskRecord>> {
     return this.coordinator.confirmWaitingUser(taskId, confirmed);
   }
+  public async denyWaitingUserTask(
+    taskId: string,
+    confirmed: boolean,
+  ): Promise<Result<TaskRecord>> {
+    return this.coordinator.denyWaitingUser(taskId, confirmed);
+  }
   public workflowCheckpointSummaries(
     workflowId: string,
   ): Result<readonly WorkflowCheckpointSummary[]> {

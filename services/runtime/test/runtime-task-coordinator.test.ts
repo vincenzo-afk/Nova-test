@@ -239,6 +239,46 @@ describe("RuntimeTaskCoordinator", () => {
     });
   });
 
+  it("denies permission-blocked WaitingUser tasks only with explicit confirmation", async () => {
+    const tasks = new TaskManager();
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      events: new InMemoryCommunicationBus(),
+    });
+    const submitted = tasks.create({ goal: "deny permission" });
+    if (!submitted.ok) throw new Error("Task creation failed.");
+    expect(tasks.transition(submitted.value.task_id, "Paused")).toMatchObject({ ok: true });
+    expect(
+      tasks.transition(submitted.value.task_id, "WaitingUser", "permission_confirmation"),
+    ).toMatchObject({ ok: true });
+
+    expect(await coordinator.denyWaitingUser(submitted.value.task_id, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await coordinator.denyWaitingUser(submitted.value.task_id, true)).toMatchObject({
+      ok: true,
+      value: { state: "Cancelled", reason: "denied" },
+    });
+
+    const clarification = tasks.create({ goal: "do not deny clarification" });
+    if (!clarification.ok) throw new Error("Clarification task creation failed.");
+    expect(tasks.transition(clarification.value.task_id, "Planning")).toMatchObject({ ok: true });
+    expect(
+      tasks.transition(clarification.value.task_id, "WaitingUser", "clarification_requested"),
+    ).toMatchObject({ ok: true });
+    expect(await coordinator.denyWaitingUser(clarification.value.task_id, true)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("never reports Completed when execution has no verification evidence", async () => {
     const tasks = new TaskManager();
     const coordinator = new RuntimeTaskCoordinator({

@@ -510,6 +510,36 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("denies permission-blocked WaitingUser tasks only with confirmation", async () => {
+    const application = createApplication();
+    applications.push(application);
+    const permissionTask = application.tasks.create({ goal: "deny permission" });
+    if (!permissionTask.ok) throw new Error("Task creation failed.");
+    expect(application.tasks.transition(permissionTask.value.task_id, "Paused")).toMatchObject({
+      ok: true,
+    });
+    expect(
+      application.tasks.transition(
+        permissionTask.value.task_id,
+        "WaitingUser",
+        "permission_confirmation",
+      ),
+    ).toMatchObject({ ok: true });
+
+    expect(
+      await application.denyWaitingUserTask(permissionTask.value.task_id, false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.denyWaitingUserTask(permissionTask.value.task_id, true)).toMatchObject(
+      {
+        ok: true,
+        value: { state: "Cancelled", reason: "denied" },
+      },
+    );
+  });
+
   it("delegates personal analytics over caller-supplied permissioned records", () => {
     const input: AnalyticsInput = {
       period: { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" },

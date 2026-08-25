@@ -201,6 +201,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:task:confirm-waiting-user", { task_id: taskId, confirmed }),
   resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:workflow:resume", { checkpoint_id: checkpointId, confirmed }),
+  denyWaitingUserTask: (taskId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:task:deny-waiting-user", { task_id: taskId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);
