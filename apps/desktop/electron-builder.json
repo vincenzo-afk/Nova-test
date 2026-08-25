@@ -1,0 +1,88 @@
+{
+  "appId": "com.nova.desktop",
+  "productName": "NOVA",
+  "artifactName": "NOVA-${version}-Setup-${arch}.${ext}",
+  "directories": {
+    "output": "../../release"
+  },
+  "files": [
+    "dist/**/*",
+    {
+      "from": "../../packages/shared/dist",
+      "to": "node_modules/@nova/shared/dist"
+    },
+    {
+      "from": "../../packages/shared/package.json",
+      "to": "node_modules/@nova/shared/package.json"
+    },
+    {
+      "from": "../../services/memory/dist",
+      "to": "node_modules/@nova/memory/dist"
+    },
+    {
+      "from": "../../services/memory/package.json",
+      "to": "node_modules/@nova/memory/package.json"
+    },
+    {
+      "from": "../../services/observers/dist",
+      "to": "node_modules/@nova/observers/dist"
+    },
+    {
+      "from": "../../services/observers/package.json",
+      "to": "node_modules/@nova/observers/package.json"
+    },
+    {
+      "from": "../../services/state/dist",
+      "to": "node_modules/@nova/state/dist"
+    },
+    {
+      "from": "../../services/state/package.json",
+      "to": "node_modules/@nova/state/package.json"
+    },
+    {
+      "from": "../../services/runtime/dist",
+      "to": "node_modules/@nova/runtime/dist"
+    },
+    {
+      "from": "../../services/runtime/package.json",
+      "to": "node_modules/@nova/runtime/package.json"
+    },
+    {
+      "from": "../../node_modules/ws",
+      "to": "node_modules/ws"
+    },
+    {
+      "from": "../../node_modules/zod",
+      "to": "node_modules/zod"
+    },
+    {
+      "from": "../../node_modules/@prisma/client",
+      "to": "node_modules/@prisma/client"
+    }
+  ],
+  "extraResources": [
+    {
+      "from": "dist/migrations",
+      "to": "migrations"
+    }
+  ],
+  "extraMetadata": {
+    "main": "dist/main/main.js"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "runAfterFinish": true
+  }
+}

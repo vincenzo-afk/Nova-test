@@ -37,6 +37,8 @@ The repository currently provides `pnpm install:windows` as a non-destructive so
 
 A packaged host can be registered separately with `pnpm register:windows-service` on Windows. The command requires `NOVA_HOST_EXECUTABLE` and `NOVA_SERVICE_ACCOUNT`, creates an auto-start `NovaHost` service with Service Control Manager restart recovery, and prompts for the account password only while executing the registration. The command refuses non-Windows hosts and never accepts the password through an environment variable or stores it in the service plan.
 
+The standard NSIS artifact is built with `pnpm package:windows` on a Windows build host. The build uses the Electron main entry, renderer assets, runtime workspace packages, Prisma client, migrations, and a per-user installation configuration. The source-checkout bootstrap remains intentionally separate from this packaging command.
+
 ## No silent background activity before consent
 
 This is a hard requirement of the installer sequence, not an

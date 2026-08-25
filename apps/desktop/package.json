@@ -7,6 +7,8 @@
   "scripts": {
     "build": "pnpm --filter @nova/shared build && pnpm --filter @nova/memory prisma:generate && pnpm --filter @nova/memory build && pnpm --filter @nova/runtime build && vite build && tsc -p tsconfig.json && node scripts/copy-migrations.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "package:win": "pnpm build && electron-builder --win --config electron-builder.json",
+    "package:dir": "pnpm build && electron-builder --dir --config electron-builder.json",
     "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
@@ -21,6 +23,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^34.0.0",
+    "electron-builder": "^26.15.3",
     "vite": "^6.0.0"
   }
 }
