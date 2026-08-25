@@ -773,7 +773,7 @@ declare global {
       setupSummary: () => Promise<SetupState>;
       workspaceIdentity: () => Promise<WorkspaceIdentity>;
       workspaceState: () => Promise<WorkspaceState>;
-      createWorkspace: (workspaceId: string) => Promise<WorkspaceIdentity>;
+      createWorkspace: (workspaceId: string, confirmed: boolean) => Promise<WorkspaceIdentity>;
       activateWorkspace: (confirmed: boolean) => Promise<void>;
       acquireWorkspaceLock: (reason: string) => Promise<WorkspaceLock>;
       releaseWorkspaceLock: (token: string) => Promise<void>;

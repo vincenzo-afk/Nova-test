@@ -160,8 +160,8 @@ const novaApi = {
   setupSummary: () => ipcRenderer.invoke("nova:setup:summary"),
   workspaceIdentity: () => ipcRenderer.invoke("nova:workspace:identity"),
   workspaceState: () => ipcRenderer.invoke("nova:workspace:state"),
-  createWorkspace: (workspaceId: string) =>
-    ipcRenderer.invoke("nova:workspace:create", workspaceId),
+  createWorkspace: (workspaceId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:workspace:create", { workspace_id: workspaceId, confirmed }),
   activateWorkspace: (confirmed: boolean) =>
     ipcRenderer.invoke("nova:workspace:activate", confirmed),
   acquireWorkspaceLock: (reason: string) =>

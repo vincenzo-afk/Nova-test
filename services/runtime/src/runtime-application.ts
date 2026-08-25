@@ -1154,8 +1154,15 @@ export class RuntimeApplication {
     return ok(this.workspaceManager.state());
   }
 
-  public createWorkspace(workspaceId: string): Result<WorkspaceIdentity> {
+  public createWorkspace(workspaceId: string, confirmed: boolean): Result<WorkspaceIdentity> {
     if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Creating a workspace requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.workspaceManager.createWorkspace(workspaceId);
   }
 

@@ -1037,8 +1037,10 @@ ipcMain.handle("nova:setup:defer", (_event, step: SetupStepId) =>
 ipcMain.handle("nova:setup:summary", () => requestGateway("setup.summary", undefined));
 ipcMain.handle("nova:workspace:identity", () => requestGateway("workspace.identity", undefined));
 ipcMain.handle("nova:workspace:state", () => requestGateway("workspace.state", undefined));
-ipcMain.handle("nova:workspace:create", (_event, workspaceId: string) =>
-  requestGateway("workspace.create", { workspace_id: workspaceId }),
+ipcMain.handle(
+  "nova:workspace:create",
+  (_event, payload: { readonly workspace_id: string; readonly confirmed: boolean }) =>
+    requestGateway("workspace.create", payload),
 );
 ipcMain.handle("nova:workspace:activate", (_event, confirmed: boolean) =>
   requestGateway("workspace.activate", { confirmed }),
@@ -2087,9 +2089,12 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("workspace.create", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly workspace_id?: unknown };
+    const payload = data as { readonly workspace_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Workspace creation confirmation is invalid.");
     const result = runtimeApplication.createWorkspace(
       parseWorkspaceText(payload.workspace_id, "Workspace ID"),
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies WorkspaceIdentity;

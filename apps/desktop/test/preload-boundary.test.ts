@@ -264,7 +264,7 @@ describe("Electron preload boundary", () => {
         setupSummary: () => unknown;
         workspaceIdentity: () => unknown;
         workspaceState: () => unknown;
-        createWorkspace: (workspaceId: string) => unknown;
+        createWorkspace: (workspaceId: string, confirmed: boolean) => unknown;
         activateWorkspace: (confirmed: boolean) => unknown;
         acquireWorkspaceLock: (reason: string) => unknown;
         releaseWorkspaceLock: (token: string) => unknown;
@@ -449,7 +449,7 @@ describe("Electron preload boundary", () => {
     api.setupSummary();
     api.workspaceIdentity();
     api.workspaceState();
-    api.createWorkspace("workspace-1");
+    api.createWorkspace("workspace-1", true);
     api.activateWorkspace(true);
     api.acquireWorkspaceLock("migration");
     api.releaseWorkspaceLock("lock-1");
@@ -772,7 +772,10 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(73, "nova:setup:summary");
     expect(invoke).toHaveBeenNthCalledWith(74, "nova:workspace:identity");
     expect(invoke).toHaveBeenNthCalledWith(75, "nova:workspace:state");
-    expect(invoke).toHaveBeenNthCalledWith(76, "nova:workspace:create", "workspace-1");
+    expect(invoke).toHaveBeenNthCalledWith(76, "nova:workspace:create", {
+      workspace_id: "workspace-1",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(77, "nova:workspace:activate", true);
     expect(invoke).toHaveBeenNthCalledWith(78, "nova:workspace:acquire-lock", "migration");
     expect(invoke).toHaveBeenNthCalledWith(79, "nova:workspace:release-lock", "lock-1");

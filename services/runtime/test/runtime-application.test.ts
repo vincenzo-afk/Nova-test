@@ -1665,6 +1665,15 @@ describe("RuntimeApplication", () => {
       value: { user_id: "user-1", workspace_id: "workspace-1" },
     });
     expect(application.workspaceState()).toMatchObject({ ok: true, value: "Created" });
+    expect(application.createWorkspace("workspace-1", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.workspaceState()).toMatchObject({ ok: true, value: "Created" });
+    expect(application.createWorkspace("workspace-1", true)).toMatchObject({
+      ok: true,
+      value: { user_id: "user-1", workspace_id: "workspace-1" },
+    });
     expect(application.activateWorkspace(false)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
