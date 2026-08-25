@@ -2,6 +2,8 @@
   "name": "@nova/desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "NOVA local-first desktop agent",
+  "author": "vincenzo-afk <itsmebk2007@gmail.com>",
   "type": "module",
   "main": "dist/main/main.js",
   "scripts": {
