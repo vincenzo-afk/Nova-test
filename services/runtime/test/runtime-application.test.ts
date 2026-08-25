@@ -854,6 +854,31 @@ describe("RuntimeApplication", () => {
     expect(fixed).toEqual(["safe-1"]);
   });
 
+  it("exposes held resource locks without queued request details", () => {
+    const resources = new ResourceManager({ now: () => 1000 });
+    resources.acquire("task-1", ["gpu", "disk"]);
+    resources.acquire("task-2", ["gpu"]);
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      resourceManager: resources,
+    });
+    applications.push(application);
+
+    expect(application.heldResourceLocks()).toEqual({
+      ok: true,
+      value: [
+        { resource: "disk", task_id: "task-1", acquired_at: 1000 },
+        { resource: "gpu", task_id: "task-1", acquired_at: 1000 },
+      ],
+    });
+  });
+
   it("delegates bounded resource locking, release, and expiry", () => {
     let now = 100;
     const resources = new ResourceManager({ maxLockDurationMs: 10, now: () => now });

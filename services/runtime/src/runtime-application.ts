@@ -163,7 +163,7 @@ import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
 import type { RepairManager, RepairRequest, RepairResult } from "./repair-manager.js";
-import type { LockGrant, ResourceManager } from "./resource-manager.js";
+import type { HeldResourceLock, LockGrant, ResourceManager } from "./resource-manager.js";
 import type {
   OfflineAction,
   OfflineActionQueue,
@@ -1022,6 +1022,10 @@ export class RuntimeApplication {
 
   public resourceHolder(resource: string): string | undefined {
     return this.resourceManager?.holder(resource);
+  }
+  public heldResourceLocks(): Result<readonly HeldResourceLock[]> {
+    if (!this.resourceManager) return err(this.resourceUnavailableError());
+    return ok(this.resourceManager.listHeldLocks());
   }
 
   public expireResourceLocks(): readonly string[] {

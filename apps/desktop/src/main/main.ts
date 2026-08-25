@@ -815,6 +815,7 @@ ipcMain.handle("nova:remote:pre-approvals", () =>
   requestGateway("remote.pre-approvals", undefined),
 );
 ipcMain.handle("nova:capability:list", () => requestGateway("capability.list", undefined));
+ipcMain.handle("nova:resources:held", () => requestGateway("resources.held", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1231,6 +1232,12 @@ const startGateway = async (): Promise<void> => {
   gateway.register("capability.list", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const result = runtimeApplication.listCapabilityRecords();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("resources.held", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.heldResourceLocks();
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

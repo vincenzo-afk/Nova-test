@@ -6,6 +6,12 @@ export interface LockGrant {
   readonly resources: readonly string[];
 }
 
+export interface HeldResourceLock {
+  readonly resource: string;
+  readonly task_id: string;
+  readonly acquired_at: number;
+}
+
 interface HeldLock {
   readonly task_id: string;
   readonly acquired_at: number;
@@ -78,6 +84,13 @@ export class ResourceManager {
 
   holder(resource: string): string | undefined {
     return this.held.get(resource)?.task_id;
+  }
+
+  listHeldLocks(): readonly HeldResourceLock[] {
+    return [...this.held.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .slice(0, 256)
+      .map(([resource, lock]) => ({ resource, ...lock }));
   }
 
   expireLocks(): readonly string[] {

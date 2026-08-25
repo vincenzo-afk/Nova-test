@@ -18,6 +18,17 @@ describe("ResourceManager", () => {
     expect(manager.holder("file:c")).toBe("task-b");
   });
 
+  it("lists held locks without exposing queued resource requests", () => {
+    const manager = new ResourceManager({ now: () => 1000 });
+    manager.acquire("task-a", ["file:b", "file:a"]);
+    manager.acquire("task-b", ["file:a", "file:c"]);
+
+    expect(manager.listHeldLocks()).toEqual([
+      { resource: "file:a", task_id: "task-a", acquired_at: 1000 },
+      { resource: "file:b", task_id: "task-a", acquired_at: 1000 },
+    ]);
+  });
+
   it("does not acquire a partial batch when any requested resource is held", () => {
     const manager = new ResourceManager();
     manager.acquire("task-a", ["file:a"]);

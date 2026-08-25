@@ -313,7 +313,9 @@ declare global {
           state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
         }[]
       >;
-
+      heldResourceLocks: () => Promise<
+        readonly { resource: string; task_id: string; acquired_at: number }[]
+      >;
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
