@@ -58,7 +58,7 @@ import {
   type TaskCheckpointPersistence,
 } from "./runtime-task-coordinator.js";
 import { TaskManager } from "./task-manager.js";
-import { PermissionGrantStore } from "./permission-grant-store.js";
+import { PermissionGrantStore, type StoredPermissionGrant } from "./permission-grant-store.js";
 import type { TaskScheduler, TaskSchedulerStatus } from "./task-scheduler.js";
 import type {
   WorkflowCheckpointSummary,
@@ -486,6 +486,25 @@ export class RuntimeApplication {
         options.authorizeTopics ??
         (({ topics }) => topics.every((topic) => topic === "task.progress")),
     });
+  }
+
+  public async setPermission(
+    source: string,
+    granted: boolean,
+    confirmed: boolean,
+  ): Promise<Result<readonly StoredPermissionGrant[]>> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Changing an observation permission requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    const updated = this.permissions.update(source, granted);
+    if (!updated.ok) return err(updated.error);
+    const observerSync = await this.syncObservers();
+    if (!observerSync.ok) return err(observerSync.error);
+    return ok(this.permissions.list());
   }
 
   public async start(): Promise<void> {

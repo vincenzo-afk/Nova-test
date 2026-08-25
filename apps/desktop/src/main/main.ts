@@ -1076,8 +1076,14 @@ ipcMain.handle("nova:permissions:get", () =>
 );
 ipcMain.handle(
   "nova:permissions:set",
-  (_event, payload: { readonly source: string; readonly granted: boolean }) =>
-    requestGateway<PermissionGrant[]>("permissions.set", payload),
+  (
+    _event,
+    payload: {
+      readonly source: string;
+      readonly granted: boolean;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway<PermissionGrant[]>("permissions.set", payload),
 );
 const configurationSections: ReadonlySet<string> = new Set([
   "capabilities",
@@ -2418,15 +2424,23 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("permissions.set", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly source?: string; readonly granted?: boolean };
+    const payload = data as {
+      readonly source?: string;
+      readonly granted?: boolean;
+      readonly confirmed?: boolean;
+    };
     if (!payload.source || typeof payload.granted !== "boolean") {
       throw new Error("Permission source and boolean grant are required.");
     }
-    const result = runtimeApplication.permissions.update(payload.source, payload.granted);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Permission change confirmation is invalid.");
+    const result = await runtimeApplication.setPermission(
+      payload.source,
+      payload.granted,
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
-    const observerSync = await runtimeApplication.syncObservers();
-    if (!observerSync.ok) throw new Error(observerSync.error.message);
-    return runtimeApplication.permissions.list();
+    return result.value;
   });
   gateway.register("config.get", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

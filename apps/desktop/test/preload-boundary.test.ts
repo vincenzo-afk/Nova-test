@@ -281,7 +281,7 @@ describe("Electron preload boundary", () => {
         executeUiAction: (request: unknown) => unknown;
         readAccessibilityState: (request: unknown) => unknown;
         getPermissions: () => unknown;
-        setPermission: (source: string, granted: boolean) => unknown;
+        setPermission: (source: string, granted: boolean, confirmed: boolean) => unknown;
         getConfig: () => unknown;
         updateConfig: (section: string, value: unknown) => unknown;
         evaluatePerformanceBudgets: (samples: unknown) => unknown;
@@ -484,7 +484,7 @@ describe("Electron preload boundary", () => {
       target: { name: "Save", control_type: "button" },
     });
     api.getPermissions();
-    api.setPermission("filesystem", true);
+    api.setPermission("filesystem", true, true);
     api.getConfig();
     api.updateConfig("personalization", { preferences: [] });
     api.evaluatePerformanceBudgets({
@@ -800,6 +800,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(97, "nova:permissions:set", {
       source: "filesystem",
       granted: true,
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(98, "nova:config:get");
     expect(invoke).toHaveBeenNthCalledWith(99, "nova:config:update", {

@@ -270,7 +270,7 @@ export const App = () => {
   };
 
   const togglePermission = async (source: string, granted: boolean) => {
-    const updated = await window.nova.setPermission(source, granted);
+    const updated = await window.nova.setPermission(source, granted, true);
     setPermissions(updated);
   };
 

@@ -37,6 +37,7 @@ import {
 import { RuntimeManager } from "../src/runtime-manager.js";
 import type { ServiceLifecycle } from "@nova/shared";
 import { PluginManager } from "../src/plugin-manager.js";
+import { PermissionGrantStore } from "../src/permission-grant-store.js";
 import { InMemoryJobStore, JobScheduler } from "../src/job-scheduler.js";
 import { SystemLifecycleOrchestrator } from "../src/system-lifecycle.js";
 import { NetworkDiscoveryManager } from "../src/networking.js";
@@ -92,6 +93,34 @@ afterEach(async () => {
 });
 
 describe("RuntimeApplication", () => {
+  it("requires explicit confirmation before changing observation permissions", async () => {
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      permissionStore: new PermissionGrantStore({
+        initial: [{ source: "browser_metadata", granted: false }],
+      }),
+    });
+    applications.push(application);
+
+    expect(await application.setPermission("browser_metadata", true, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.permissions.list()).toEqual([
+      { source: "browser_metadata", granted: false },
+    ]);
+    expect(await application.setPermission("browser_metadata", true, true)).toMatchObject({
+      ok: true,
+      value: [{ source: "browser_metadata", granted: true }],
+    });
+  });
+
   it("delegates explicit Android companion permissions and capability checks", () => {
     const companion = new AndroidCompanionManager("android-1", ["camera"]);
     const capability: CompanionCapability = {

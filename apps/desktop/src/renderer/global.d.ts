@@ -965,7 +965,11 @@ declare global {
         value?: string;
       }>;
       getPermissions: () => Promise<PermissionGrant[]>;
-      setPermission: (source: string, granted: boolean) => Promise<PermissionGrant[]>;
+      setPermission: (
+        source: string,
+        granted: boolean,
+        confirmed: boolean,
+      ) => Promise<PermissionGrant[]>;
       getConfig: () => Promise<NovaConfiguration>;
       updateConfig: (
         section: ConfigurationSectionName,

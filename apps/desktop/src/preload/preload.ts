@@ -180,8 +180,8 @@ const novaApi = {
   executeUiAction: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-action", request),
   readAccessibilityState: (request: unknown) => ipcRenderer.invoke("nova:desktop:ui-read", request),
   getPermissions: () => ipcRenderer.invoke("nova:permissions:get"),
-  setPermission: (source: string, granted: boolean) =>
-    ipcRenderer.invoke("nova:permissions:set", { source, granted }),
+  setPermission: (source: string, granted: boolean, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:permissions:set", { source, granted, confirmed }),
   getConfig: () => ipcRenderer.invoke("nova:config:get"),
   updateConfig: (section: string, value: unknown) =>
     ipcRenderer.invoke("nova:config:update", { section, value }),
