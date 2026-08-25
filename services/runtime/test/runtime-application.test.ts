@@ -1594,6 +1594,46 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("exposes bounded tool catalog summaries through the composed runtime", () => {
+    const application = createApplication();
+    applications.push(application);
+    application.toolRegistry.register({
+      tool_id: "builtin.filesystem",
+      execution_tier: "native_runtime",
+      deterministic: true,
+      dependencies: [],
+      target_entity_types: ["file"],
+      supported_actions: [
+        {
+          action_id: "read",
+          risk_tier: "read_only",
+          verification_signal: "file_hash",
+          lockable_resources: ["file"],
+          permission_scope: "filesystem.read",
+          estimated_latency_ms: 10,
+          estimated_cost_class: "free",
+          timeout_ms: 5_000,
+          idempotent: true,
+          input_schema: { type: "object" },
+          output_schema: { type: "string" },
+        },
+      ],
+    });
+
+    expect(application.listToolSummaries()).toEqual({
+      ok: true,
+      value: [
+        {
+          tool_id: "builtin.filesystem",
+          execution_tier: "native_runtime",
+          deterministic: true,
+          action_count: 1,
+          read_only_action_count: 1,
+        },
+      ],
+    });
+  });
+
   it("delegates trust-preserving plugin record inspection", () => {
     const manager = new PluginManager({ novaApiVersion: "1.0.0" });
     expect(

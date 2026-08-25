@@ -68,6 +68,34 @@ describe("ToolRegistry", () => {
     expect(result).toMatchObject({ ok: true, value: [fileTool] });
   });
 
+  it("lists bounded tool summaries without schemas or execution details", () => {
+    const registry = new ToolRegistry();
+    registry.register(fileTool);
+    registry.register({
+      ...fileTool,
+      tool_id: "builtin.browser",
+      target_entity_types: ["browser_tab"],
+      execution_tier: "api",
+    });
+
+    expect(registry.listSummaries()).toEqual([
+      {
+        tool_id: "builtin.browser",
+        execution_tier: "api",
+        deterministic: true,
+        action_count: 1,
+        read_only_action_count: 1,
+      },
+      {
+        tool_id: "builtin.filesystem",
+        execution_tier: "native_runtime",
+        deterministic: true,
+        action_count: 1,
+        read_only_action_count: 1,
+      },
+    ]);
+  });
+
   it("deregisters a tool and makes it unavailable to future lookups", () => {
     const registry = new ToolRegistry();
     registry.register(fileTool);

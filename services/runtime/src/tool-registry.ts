@@ -33,6 +33,14 @@ export interface RegisteredTool {
   readonly supported_actions: readonly RegisteredAction[];
 }
 
+export interface RegisteredToolSummary {
+  readonly tool_id: string;
+  readonly execution_tier: RegisteredTool["execution_tier"];
+  readonly deterministic: boolean;
+  readonly action_count: number;
+  readonly read_only_action_count: number;
+}
+
 const actionSchema = z.object({
   action_id: z.string().min(1),
   risk_tier: z.enum(["read_only", "reversible_write", "destructive_irreversible"]),
@@ -99,6 +107,21 @@ export class ToolRegistry {
   get(toolId: string): Result<RegisteredTool> {
     const tool = this.tools.get(toolId);
     return tool ? ok(tool) : err(this.unavailable(toolId));
+  }
+
+  listSummaries(): readonly RegisteredToolSummary[] {
+    return [...this.tools.values()]
+      .sort((left, right) => left.tool_id.localeCompare(right.tool_id))
+      .slice(0, 128)
+      .map((tool) => ({
+        tool_id: tool.tool_id,
+        execution_tier: tool.execution_tier,
+        deterministic: tool.deterministic,
+        action_count: tool.supported_actions.length,
+        read_only_action_count: tool.supported_actions.filter(
+          (action) => action.risk_tier === "read_only",
+        ).length,
+      }));
   }
 
   query(filters: {

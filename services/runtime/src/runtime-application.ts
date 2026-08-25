@@ -68,7 +68,7 @@ import type {
   Verifier,
   VerificationVerdict,
 } from "./orchestration.js";
-import { ToolRegistry, type RegisteredTool } from "./tool-registry.js";
+import { ToolRegistry, type RegisteredTool, type RegisteredToolSummary } from "./tool-registry.js";
 import type { TaskRecord } from "./task-manager.js";
 import type { CrossDeviceSyncManager, FlushResult, SyncResult } from "./cross-device-sync.js";
 import type {
@@ -843,6 +843,9 @@ export class RuntimeApplication {
   public pluginRecordSummaries(): Result<readonly PluginRecordSummary[]> {
     if (!this.pluginManager) return err(this.pluginManagerUnavailableError());
     return ok(this.pluginManager.listSummaries());
+  }
+  public listToolSummaries(): Result<readonly RegisteredToolSummary[]> {
+    return ok(this.toolRegistry.listSummaries());
   }
 
   public listScheduledJobStates(): Result<readonly JobState[]> {

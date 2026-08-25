@@ -189,6 +189,7 @@ const novaApi = {
   webhookHealthSummary: (webhookId: string) =>
     ipcRenderer.invoke("nova:webhook:health", { webhook_id: webhookId }),
   pluginRecordSummaries: () => ipcRenderer.invoke("nova:plugins:list"),
+  listToolSummaries: () => ipcRenderer.invoke("nova:tools:list"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

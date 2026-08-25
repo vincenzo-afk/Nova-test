@@ -535,6 +535,23 @@ declare global {
           required_permission_count: number;
         }[]
       >;
+      listToolSummaries: () => Promise<
+        readonly {
+          tool_id: string;
+          execution_tier:
+            | "native_runtime"
+            | "internal_function"
+            | "api"
+            | "mcp"
+            | "cli"
+            | "accessibility"
+            | "vision"
+            | "keyboard_mouse";
+          deterministic: boolean;
+          action_count: number;
+          read_only_action_count: number;
+        }[]
+      >;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;
