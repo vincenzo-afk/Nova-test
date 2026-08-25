@@ -99,6 +99,52 @@ export class RuntimeTaskCoordinator {
     return this.execute(taskId);
   }
 
+  public async confirmWaitingUser(taskId: string, confirmed: boolean): Promise<Result<TaskRecord>> {
+    if (!confirmed) {
+      return {
+        ok: false,
+        error: {
+          code: "NOVA-SEC001",
+          message: "Resolving a permission-blocked task requires explicit confirmation.",
+          retryable: false,
+        },
+      };
+    }
+    const current = this.options.tasks.get(taskId);
+    if (!current.ok) return current;
+    if (current.value.state !== "WaitingUser") {
+      return {
+        ok: false,
+        error: {
+          code: "NOVA-TL002",
+          message: "Only tasks waiting for user input can be resolved.",
+          retryable: false,
+          details: { taskId, state: current.value.state },
+        },
+      };
+    }
+    if (current.value.waiting_user_reason !== "permission_confirmation") {
+      return {
+        ok: false,
+        error: {
+          code: "NOVA-TL002",
+          message: "Clarification-blocked tasks require new user input before replanning.",
+          retryable: false,
+          details: {
+            taskId,
+            waitingUserReason: current.value.waiting_user_reason ?? "unknown",
+          },
+        },
+      };
+    }
+    const transitioned = this.options.tasks.transition(taskId, "Executing", "resumed");
+    if (!transitioned.ok) return transitioned;
+    const persisted = await this.persist(transitioned.value, "Valid");
+    if (!persisted.ok) return persisted;
+    await this.publish(transitioned.value);
+    return transitioned;
+  }
+
   public async execute(taskId: string): Promise<Result<TaskRecord>> {
     const current = this.options.tasks.get(taskId);
     if (!current.ok) return current;

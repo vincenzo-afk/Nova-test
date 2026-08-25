@@ -867,6 +867,12 @@ export class RuntimeApplication {
   public async resumePausedTask(taskId: string, confirmed: boolean): Promise<Result<TaskRecord>> {
     return this.coordinator.resumePaused(taskId, confirmed);
   }
+  public async confirmWaitingUserTask(
+    taskId: string,
+    confirmed: boolean,
+  ): Promise<Result<TaskRecord>> {
+    return this.coordinator.confirmWaitingUser(taskId, confirmed);
+  }
   public workflowCheckpointSummaries(
     workflowId: string,
   ): Result<readonly WorkflowCheckpointSummary[]> {

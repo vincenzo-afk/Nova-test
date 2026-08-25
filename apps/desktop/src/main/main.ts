@@ -835,6 +835,9 @@ ipcMain.handle("nova:task:retry", (_event, data) => requestGateway("task.retry",
 ipcMain.handle("nova:task:resume-paused", (_event, data) =>
   requestGateway("task.resume-paused", data),
 );
+ipcMain.handle("nova:task:confirm-waiting-user", (_event, data) =>
+  requestGateway("task.confirm-waiting-user", data),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1407,6 +1410,18 @@ const startGateway = async (): Promise<void> => {
     if (typeof payload.confirmed !== "boolean")
       throw new Error("Paused-task resume confirmation is invalid.");
     const result = await runtimeApplication.resumePausedTask(
+      parseWorkspaceText(payload.task_id, "Task ID"),
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("task.confirm-waiting-user", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly task_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Waiting-user confirmation is invalid.");
+    const result = await runtimeApplication.confirmWaitingUserTask(
       parseWorkspaceText(payload.task_id, "Task ID"),
       payload.confirmed,
     );

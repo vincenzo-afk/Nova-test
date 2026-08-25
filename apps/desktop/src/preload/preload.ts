@@ -197,6 +197,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:task:retry", { task_id: taskId, confirmed }),
   resumePausedTask: (taskId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:task:resume-paused", { task_id: taskId, confirmed }),
+  confirmWaitingUserTask: (taskId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:task:confirm-waiting-user", { task_id: taskId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);
