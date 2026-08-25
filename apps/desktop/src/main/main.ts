@@ -32,6 +32,8 @@ import {
   type HardwareProfile,
   type LocalModelDiscovery,
   type HealthState,
+  type BudgetSamples,
+  type PerformanceBudgetReport,
   type CapabilityGap,
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
@@ -159,6 +161,36 @@ const parseWorkspaceText = (value: unknown, field: string): string => {
   if (typeof value !== "string" || value.trim() === "")
     throw new Error(`${field} must be a non-empty string.`);
   return value;
+};
+
+const performanceSampleKeys = [
+  "chat_first_token_local_ms",
+  "chat_first_token_cloud_ms",
+  "memory_query_ms",
+  "app_cold_start_ms",
+  "voice_round_trip_ms",
+] as const;
+
+const parseBudgetSamples = (value: unknown): BudgetSamples => {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    throw new Error("Performance samples must be an object.");
+  const input = value as Record<string, unknown>;
+  const output: Partial<Record<(typeof performanceSampleKeys)[number], readonly number[]>> = {};
+  for (const key of Object.keys(input)) {
+    if (!performanceSampleKeys.includes(key as (typeof performanceSampleKeys)[number]))
+      throw new Error("Performance sample metric is invalid.");
+    const samples = input[key];
+    if (
+      !Array.isArray(samples) ||
+      samples.length > 1_000 ||
+      !samples.every(
+        (sample) => typeof sample === "number" && Number.isFinite(sample) && sample >= 0,
+      )
+    )
+      throw new Error("Performance samples must be bounded finite non-negative numbers.");
+    output[key as (typeof performanceSampleKeys)[number]] = samples;
+  }
+  return output as BudgetSamples;
 };
 
 const parseOfflineAction = (value: unknown): OfflineAction => {
@@ -721,6 +753,9 @@ ipcMain.handle("nova:models:discover", (_event, hardware: HardwareProfile) =>
 ipcMain.handle("nova:models:health", (_event, providerId: string) =>
   requestGateway("models.health", { provider_id: providerId }),
 );
+ipcMain.handle("nova:performance:budgets", (_event, samples: unknown) =>
+  requestGateway("performance.budgets", samples),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1178,6 +1213,12 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies HealthState;
+  });
+  gateway.register("performance.budgets", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.evaluatePerformanceBudgets(parseBudgetSamples(data));
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies PerformanceBudgetReport;
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

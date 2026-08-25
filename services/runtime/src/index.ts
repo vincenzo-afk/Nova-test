@@ -23,6 +23,7 @@ export * from "./local-model-manager.js";
 export * from "./hardware-detection.js";
 export * from "./setup-wizard.js";
 export * from "./workspace-manager.js";
+export * from "./performance-budgets.js";
 export * from "./personal-analytics.js";
 export * from "./adaptive-personalization.js";
 export * from "./incident-lifecycle.js";

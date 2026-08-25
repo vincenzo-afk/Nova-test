@@ -121,6 +121,7 @@ describe("Electron preload boundary", () => {
       "setPermission",
       "getConfig",
       "updateConfig",
+      "evaluatePerformanceBudgets",
     ]);
   });
 
@@ -236,6 +237,7 @@ describe("Electron preload boundary", () => {
         setPermission: (source: string, granted: boolean) => unknown;
         getConfig: () => unknown;
         updateConfig: (section: string, value: unknown) => unknown;
+        evaluatePerformanceBudgets: (samples: unknown) => unknown;
       },
     ];
 
@@ -398,6 +400,10 @@ describe("Electron preload boundary", () => {
     api.setPermission("filesystem", true);
     api.getConfig();
     api.updateConfig("personalization", { preferences: [] });
+    api.evaluatePerformanceBudgets({
+      chat_first_token_local_ms: [100, 120],
+      memory_query_ms: [100, 200],
+    });
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -649,6 +655,10 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(99, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(100, "nova:performance:budgets", {
+      chat_first_token_local_ms: [100, 120],
+      memory_query_ms: [100, 200],
     });
   });
 });

@@ -2,6 +2,8 @@ import type {
   ConfigurationSectionName,
   DeviceRuntimeMode,
   HealthState,
+  BudgetSamples,
+  PerformanceBudgetReport,
   SetupStepId,
   SetupState,
   SetupStepPatch,
@@ -438,6 +440,7 @@ declare global {
         }[]
       >;
       modelProviderHealth: (providerId: string) => Promise<HealthState>;
+      evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;

@@ -157,6 +157,8 @@ const novaApi = {
   getConfig: () => ipcRenderer.invoke("nova:config:get"),
   updateConfig: (section: string, value: unknown) =>
     ipcRenderer.invoke("nova:config:update", { section, value }),
+  evaluatePerformanceBudgets: (samples: unknown) =>
+    ipcRenderer.invoke("nova:performance:budgets", samples),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

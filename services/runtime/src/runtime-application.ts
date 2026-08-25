@@ -117,6 +117,11 @@ import type {
 } from "./provider-registry.js";
 import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
 import type { HealthState, ModelRouter } from "./model-router.js";
+import {
+  PerformanceBudgetEvaluator,
+  type BudgetSamples,
+  type PerformanceBudgetReport,
+} from "./performance-budgets.js";
 import type { HardwareProfile } from "./hardware-detection.js";
 import type { VoicePipeline, VoiceState } from "./voice-pipeline.js";
 import type {
@@ -210,6 +215,7 @@ export interface RuntimeApplicationOptions {
   readonly capabilityRegistry?: CapabilityRegistry;
   readonly localModelManager?: LocalModelManager;
   readonly modelRouter?: ModelRouter;
+  readonly performanceBudgetEvaluator?: PerformanceBudgetEvaluator;
   readonly voicePipeline?: VoicePipeline;
   readonly pluginDiscovery?: PluginDiscovery;
   readonly backupManager?: BackupManager;
@@ -262,6 +268,7 @@ export class RuntimeApplication {
   public readonly capabilityRegistry: CapabilityRegistry | undefined;
   public readonly localModelManager: LocalModelManager | undefined;
   public readonly modelRouter: ModelRouter | undefined;
+  public readonly performanceBudgetEvaluator: PerformanceBudgetEvaluator;
   public readonly voicePipeline: VoicePipeline | undefined;
   public readonly pluginDiscovery: PluginDiscovery | undefined;
   public readonly backupManager: BackupManager | undefined;
@@ -336,6 +343,8 @@ export class RuntimeApplication {
     this.capabilityRegistry = options.capabilityRegistry;
     this.localModelManager = options.localModelManager;
     this.modelRouter = options.modelRouter;
+    this.performanceBudgetEvaluator =
+      options.performanceBudgetEvaluator ?? new PerformanceBudgetEvaluator();
     this.voicePipeline = options.voicePipeline;
     this.pluginDiscovery = options.pluginDiscovery;
     this.backupManager = options.backupManager;
@@ -744,6 +753,10 @@ export class RuntimeApplication {
   public modelProviderHealth(providerId: string): Result<HealthState> {
     if (!this.modelRouter) return err(this.modelRouterUnavailableError());
     return ok(this.modelRouter.health(providerId));
+  }
+
+  public evaluatePerformanceBudgets(samples: BudgetSamples): Result<PerformanceBudgetReport> {
+    return ok(this.performanceBudgetEvaluator.evaluate(samples));
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {

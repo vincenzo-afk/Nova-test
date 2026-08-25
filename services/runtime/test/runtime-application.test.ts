@@ -27,6 +27,7 @@ import { HardwareDetector, type HardwareProbe } from "../src/hardware-detection.
 import { SetupWizard } from "../src/setup-wizard.js";
 import { WorkspaceManager } from "../src/workspace-manager.js";
 import { ModelRouter, type LlmProvider } from "../src/model-router.js";
+import { PerformanceBudgetEvaluator, type BudgetSamples } from "../src/performance-budgets.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1055,6 +1056,33 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("evaluates performance budgets without side effects", () => {
+    const samples: BudgetSamples = {
+      chat_first_token_local_ms: [100, 120],
+      memory_query_ms: [100, 200],
+    };
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      performanceBudgetEvaluator: new PerformanceBudgetEvaluator(),
+    });
+    applications.push(application);
+
+    expect(application.evaluatePerformanceBudgets(samples)).toMatchObject({
+      ok: true,
+      value: {
+        passed: false,
+        release_blocked: true,
+        violations: [{ budget: "memory_query_p95_ms" }],
+      },
     });
   });
 
