@@ -722,12 +722,19 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { stage: "Resolved" },
     });
-    expect(application.postmortemIncident("inc-1", "Added a health-check fallback.")).toMatchObject(
-      {
-        ok: true,
-        value: { stage: "Postmortem" },
-      },
-    );
+    expect(
+      application.postmortemIncident("inc-1", "Added a health-check fallback.", false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.incidentTimeline("inc-1")).toHaveLength(4);
+    expect(
+      application.postmortemIncident("inc-1", "Added a health-check fallback.", true),
+    ).toMatchObject({
+      ok: true,
+      value: { stage: "Postmortem" },
+    });
     expect(application.incidentTimeline("inc-1")).toHaveLength(5);
   });
 

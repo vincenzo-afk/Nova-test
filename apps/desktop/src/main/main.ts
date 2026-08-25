@@ -780,8 +780,14 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "nova:incident:postmortem",
-  (_event, payload: { readonly incident_id: string; readonly detail: string }) =>
-    requestGateway("incident.postmortem", payload),
+  (
+    _event,
+    payload: {
+      readonly incident_id: string;
+      readonly detail: string;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway("incident.postmortem", payload),
 );
 ipcMain.handle("nova:incident:timeline", (_event, incidentId: string) =>
   requestGateway("incident.timeline", { incident_id: incidentId }),
@@ -1375,11 +1381,18 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("incident.postmortem", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly incident_id?: unknown; readonly detail?: unknown };
+    const payload = data as {
+      readonly incident_id?: unknown;
+      readonly detail?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Incident postmortem confirmation is invalid.");
     return unwrapIncident(
       runtimeApplication.postmortemIncident(
         parseIncidentId(payload.incident_id),
         parseIncidentDetail(payload.detail),
+        payload.confirmed,
       ),
     );
   });

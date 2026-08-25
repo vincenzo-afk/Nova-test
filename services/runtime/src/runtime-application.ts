@@ -1582,7 +1582,18 @@ export class RuntimeApplication {
     return this.incidentManager.resolve(incidentId, detail);
   }
 
-  public postmortemIncident(incidentId: string, detail: string): Result<IncidentEntry> {
+  public postmortemIncident(
+    incidentId: string,
+    detail: string,
+    confirmed: boolean,
+  ): Result<IncidentEntry> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Recording an incident postmortem requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.incidentManager.postmortem(incidentId, detail);
   }
 

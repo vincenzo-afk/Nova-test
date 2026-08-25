@@ -430,6 +430,7 @@ declare global {
       postmortemIncident: (
         incidentId: string,
         detail: string,
+        confirmed: boolean,
       ) => Promise<{
         incident_id: string;
         stage: "Postmortem";
