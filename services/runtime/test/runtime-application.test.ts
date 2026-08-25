@@ -470,6 +470,46 @@ describe("RuntimeApplication", () => {
     }
   });
 
+  it("requires confirmation before resuming a workflow checkpoint", async () => {
+    const workflowEngine = new WorkflowEngine({
+      execute: async () =>
+        ok({
+          step_id: "unused",
+          status: "success",
+          evidence: { type: "none", value: null },
+          affected_resources: [],
+        }),
+      verify: () =>
+        ok({
+          step_id: "unused",
+          outcome: "verified",
+          confidence: 1,
+          verification_method: "ground_truth",
+          explanation: "test",
+        }),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      workflowEngine,
+    });
+    applications.push(application);
+
+    expect(await application.resumeWorkflowCheckpoint("missing", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.resumeWorkflowCheckpoint("missing", true)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-WFL002" },
+    });
+  });
+
   it("delegates personal analytics over caller-supplied permissioned records", () => {
     const input: AnalyticsInput = {
       period: { from: "2026-08-01T00:00:00.000Z", to: "2026-09-01T00:00:00.000Z" },

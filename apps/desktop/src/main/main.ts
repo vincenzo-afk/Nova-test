@@ -831,6 +831,7 @@ ipcMain.handle("nova:task-scheduler:status", () =>
 ipcMain.handle("nova:workflow:checkpoints", (_event, data) =>
   requestGateway("workflow.checkpoints", data),
 );
+ipcMain.handle("nova:workflow:resume", (_event, data) => requestGateway("workflow.resume", data));
 ipcMain.handle("nova:task:retry", (_event, data) => requestGateway("task.retry", data));
 ipcMain.handle("nova:task:resume-paused", (_event, data) =>
   requestGateway("task.resume-paused", data),
@@ -1388,6 +1389,18 @@ const startGateway = async (): Promise<void> => {
     const payload = data as { readonly workflow_id?: unknown };
     const result = runtimeApplication.workflowCheckpointSummaries(
       parseWorkspaceText(payload.workflow_id, "Workflow ID"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workflow.resume", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly checkpoint_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Workflow resume confirmation is invalid.");
+    const result = await runtimeApplication.resumeWorkflowCheckpoint(
+      parseWorkspaceText(payload.checkpoint_id, "Checkpoint ID"),
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;

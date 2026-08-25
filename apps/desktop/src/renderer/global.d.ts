@@ -567,6 +567,7 @@ declare global {
           created_at: string;
         }[]
       >;
+      resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => Promise<unknown>;
       retryTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       resumePausedTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       confirmWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;

@@ -60,7 +60,11 @@ import {
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore } from "./permission-grant-store.js";
 import type { TaskScheduler, TaskSchedulerStatus } from "./task-scheduler.js";
-import type { WorkflowCheckpointSummary, WorkflowEngine } from "./workflow-engine.js";
+import type {
+  WorkflowCheckpointSummary,
+  WorkflowEngine,
+  WorkflowResult,
+} from "./workflow-engine.js";
 import type {
   ExecutionResult,
   ExecutionStep,
@@ -884,6 +888,26 @@ export class RuntimeApplication {
       });
     }
     return ok(this.workflowEngine.checkpointSummaries(workflowId));
+  }
+  public async resumeWorkflowCheckpoint(
+    checkpointId: string,
+    confirmed: boolean,
+  ): Promise<Result<WorkflowResult>> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Resuming a workflow checkpoint requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    if (!this.workflowEngine) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Workflow engine is not configured for this runtime.",
+        retryable: false,
+      });
+    }
+    return this.workflowEngine.resume(checkpointId);
   }
 
   public listScheduledJobStates(): Result<readonly JobState[]> {
