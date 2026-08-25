@@ -5,6 +5,7 @@ import type {
   BudgetSamples,
   PerformanceBudgetReport,
   CompatibilityResult,
+  LogicalClockValue,
   PluginRecord,
   JobState,
   SetupStepId,
@@ -451,6 +452,10 @@ declare global {
       jobState: (jobId: string) => Promise<JobState>;
       systemStartupLog: () => Promise<readonly StartupStep[]>;
       systemShutdownLog: () => Promise<readonly ShutdownStep[]>;
+      compareLogicalClockValues: (
+        left: LogicalClockValue,
+        right: LogicalClockValue,
+      ) => Promise<number>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;

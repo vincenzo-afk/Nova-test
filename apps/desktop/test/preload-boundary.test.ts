@@ -128,6 +128,7 @@ describe("Electron preload boundary", () => {
       "jobState",
       "systemStartupLog",
       "systemShutdownLog",
+      "compareLogicalClockValues",
     ]);
   });
 
@@ -250,6 +251,7 @@ describe("Electron preload boundary", () => {
         jobState: (jobId: string) => unknown;
         systemStartupLog: () => unknown;
         systemShutdownLog: () => unknown;
+        compareLogicalClockValues: (left: unknown, right: unknown) => unknown;
       },
     ];
 
@@ -422,6 +424,10 @@ describe("Electron preload boundary", () => {
     api.jobState("briefing");
     api.systemStartupLog();
     api.systemShutdownLog();
+    api.compareLogicalClockValues(
+      { counter: 3, device_id: "device-a" },
+      { counter: 3, device_id: "device-b" },
+    );
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -684,5 +690,11 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(104, "nova:jobs:state", "briefing");
     expect(invoke).toHaveBeenNthCalledWith(105, "nova:system:startup-log");
     expect(invoke).toHaveBeenNthCalledWith(106, "nova:system:shutdown-log");
+    expect(invoke).toHaveBeenNthCalledWith(
+      107,
+      "nova:devices:logical-clock-compare",
+      { counter: 3, device_id: "device-a" },
+      { counter: 3, device_id: "device-b" },
+    );
   });
 });

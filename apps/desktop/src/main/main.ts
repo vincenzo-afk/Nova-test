@@ -35,6 +35,7 @@ import {
   type BudgetSamples,
   type PerformanceBudgetReport,
   type CompatibilityResult,
+  type LogicalClockValue,
   type PluginRecord,
   type JobState,
   type CapabilityGap,
@@ -176,6 +177,21 @@ const performanceSampleKeys = [
   "app_cold_start_ms",
   "voice_round_trip_ms",
 ] as const;
+
+const parseLogicalClockValue = (value: unknown, field: string): LogicalClockValue => {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    throw new Error(`${field} must be an object.`);
+  const input = value as { readonly counter?: unknown; readonly device_id?: unknown };
+  if (
+    typeof input.counter !== "number" ||
+    !Number.isSafeInteger(input.counter) ||
+    input.counter < 0 ||
+    typeof input.device_id !== "string" ||
+    input.device_id.trim() === ""
+  )
+    throw new Error(`${field} must contain a safe non-negative counter and device ID.`);
+  return { counter: input.counter, device_id: input.device_id };
+};
 
 const parseBudgetSamples = (value: unknown): BudgetSamples => {
   if (typeof value !== "object" || value === null || Array.isArray(value))
@@ -765,6 +781,9 @@ ipcMain.handle("nova:performance:budgets", (_event, samples: unknown) =>
 ipcMain.handle("nova:devices:compatibility", (_event, left: string, right: string) =>
   requestGateway("devices.compatibility", { left, right }),
 );
+ipcMain.handle("nova:devices:logical-clock-compare", (_event, left: unknown, right: unknown) =>
+  requestGateway("devices.logical-clock-compare", { left, right }),
+);
 ipcMain.handle("nova:runtime:service-health", (_event, serviceName: string) =>
   requestGateway("runtime.service-health", { service_name: serviceName }),
 );
@@ -1239,6 +1258,16 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.evaluatePerformanceBudgets(parseBudgetSamples(data));
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies PerformanceBudgetReport;
+  });
+  gateway.register("devices.logical-clock-compare", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly left?: unknown; readonly right?: unknown };
+    const result = runtimeApplication.compareLogicalClockValues(
+      parseLogicalClockValue(payload.left, "Left logical clock"),
+      parseLogicalClockValue(payload.right, "Right logical clock"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("devices.compatibility", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

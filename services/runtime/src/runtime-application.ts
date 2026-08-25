@@ -127,7 +127,12 @@ import {
   type PerformanceBudgetReport,
 } from "./performance-budgets.js";
 import type { HardwareProfile } from "./hardware-detection.js";
-import { compareDeviceVersions, type CompatibilityResult } from "./device-compatibility.js";
+import {
+  compareDeviceVersions,
+  LogicalClock,
+  type CompatibilityResult,
+  type LogicalClockValue,
+} from "./device-compatibility.js";
 import type { VoicePipeline, VoiceState } from "./voice-pipeline.js";
 import type {
   CapabilityGap,
@@ -777,6 +782,13 @@ export class RuntimeApplication {
 
   public compareDeviceVersions(left: string, right: string): Result<CompatibilityResult> {
     return ok(compareDeviceVersions(left, right));
+  }
+
+  public compareLogicalClockValues(
+    left: LogicalClockValue,
+    right: LogicalClockValue,
+  ): Result<number> {
+    return ok(LogicalClock.compare(left, right));
   }
 
   public evaluatePerformanceBudgets(samples: BudgetSamples): Result<PerformanceBudgetReport> {

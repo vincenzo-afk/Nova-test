@@ -28,7 +28,11 @@ import { SetupWizard } from "../src/setup-wizard.js";
 import { WorkspaceManager } from "../src/workspace-manager.js";
 import { ModelRouter, type LlmProvider } from "../src/model-router.js";
 import { PerformanceBudgetEvaluator, type BudgetSamples } from "../src/performance-budgets.js";
-import { compareDeviceVersions } from "../src/device-compatibility.js";
+import {
+  compareDeviceVersions,
+  LogicalClock,
+  type LogicalClockValue,
+} from "../src/device-compatibility.js";
 import { RuntimeManager } from "../src/runtime-manager.js";
 import type { ServiceLifecycle } from "@nova/shared";
 import { PluginManager } from "../src/plugin-manager.js";
@@ -1218,6 +1222,30 @@ describe("RuntimeApplication", () => {
     expect(application.runtimeServiceHealth("missing")).toMatchObject({
       ok: true,
       value: { state: "Failed" },
+    });
+  });
+
+  it("delegates pure logical-clock comparison without side effects", () => {
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+    });
+    applications.push(application);
+    const left: LogicalClockValue = { counter: 3, device_id: "device-a" };
+    const right: LogicalClockValue = { counter: 3, device_id: "device-b" };
+
+    expect(application.compareLogicalClockValues(left, right)).toEqual({
+      ok: true,
+      value: LogicalClock.compare(left, right),
+    });
+    expect(application.compareLogicalClockValues(right, left)).toMatchObject({
+      ok: true,
+      value: 1,
     });
   });
 

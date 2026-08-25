@@ -167,6 +167,8 @@ const novaApi = {
   jobState: (jobId: string) => ipcRenderer.invoke("nova:jobs:state", jobId),
   systemStartupLog: () => ipcRenderer.invoke("nova:system:startup-log"),
   systemShutdownLog: () => ipcRenderer.invoke("nova:system:shutdown-log"),
+  compareLogicalClockValues: (left: unknown, right: unknown) =>
+    ipcRenderer.invoke("nova:devices:logical-clock-compare", left, right),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);
