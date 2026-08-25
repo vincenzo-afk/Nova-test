@@ -1680,7 +1680,7 @@ export class RuntimeApplication {
     return ok(undefined);
   }
 
-  public startAndroidCompanionBackground(capabilityId: string): Result<void> {
+  public startAndroidCompanionBackground(capabilityId: string, confirmed: boolean): Result<void> {
     if (!this.androidCompanionManager) {
       return err({
         code: "NOVA-SEC001",
@@ -1692,6 +1692,13 @@ export class RuntimeApplication {
       return err({
         code: "NOVA-SEC001",
         message: "Android companion capability ID is required.",
+        retryable: false,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Starting Android companion background operation requires explicit confirmation.",
         retryable: false,
       });
     }

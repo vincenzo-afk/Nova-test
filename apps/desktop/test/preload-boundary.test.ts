@@ -188,7 +188,7 @@ describe("Electron preload boundary", () => {
         checkAndroidCompanionCapability: (input: unknown) => unknown;
         startAndroidCompanionForegroundService: (confirmed: boolean) => unknown;
         stopAndroidCompanionForegroundService: (confirmed: boolean) => unknown;
-        startAndroidCompanionBackground: (capabilityId: string) => unknown;
+        startAndroidCompanionBackground: (capabilityId: string, confirmed: boolean) => unknown;
         readEmail: (query: unknown) => unknown;
         draftEmail: (draft: unknown) => unknown;
         sendEmail: (draft: unknown, confirmed: boolean) => unknown;
@@ -349,7 +349,7 @@ describe("Electron preload boundary", () => {
     });
     api.startAndroidCompanionForegroundService(true);
     api.stopAndroidCompanionForegroundService(true);
-    api.startAndroidCompanionBackground("camera.capture");
+    api.startAndroidCompanionBackground("camera.capture", true);
     api.readEmail({ from: "alice@example.com" });
     api.draftEmail({ to: "bob@example.com", subject: "Update", body: "Complete." });
     api.sendEmail({ to: "bob@example.com", subject: "Update", body: "Complete." }, true);
@@ -574,6 +574,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(14, "nova:companion:foreground-stop", true);
     expect(invoke).toHaveBeenNthCalledWith(15, "nova:companion:background-start", {
       capability_id: "camera.capture",
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(16, "nova:email:read", { from: "alice@example.com" });
     expect(invoke).toHaveBeenNthCalledWith(17, "nova:email:draft", {

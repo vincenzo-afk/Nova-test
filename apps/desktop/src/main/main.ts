@@ -1028,7 +1028,7 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "nova:companion:background-start",
-  (_event, payload: { readonly capability_id: string }) =>
+  (_event, payload: { readonly capability_id: string; readonly confirmed: boolean }) =>
     requestGateway("companion.background-start", payload),
 );
 ipcMain.handle(
@@ -2206,10 +2206,18 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("companion.background-start", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly capability_id?: unknown };
+    const payload = data as {
+      readonly capability_id?: unknown;
+      readonly confirmed?: unknown;
+    };
     if (typeof payload.capability_id !== "string" || payload.capability_id.trim() === "")
       throw new Error("Companion capability ID is required.");
-    const result = runtimeApplication.startAndroidCompanionBackground(payload.capability_id);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Companion background-start confirmation is invalid.");
+    const result = runtimeApplication.startAndroidCompanionBackground(
+      payload.capability_id,
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });

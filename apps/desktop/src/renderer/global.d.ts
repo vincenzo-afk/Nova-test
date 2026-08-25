@@ -141,7 +141,10 @@ declare global {
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      startAndroidCompanionBackground: (capabilityId: string) => Promise<{
+      startAndroidCompanionBackground: (
+        capabilityId: string,
+        confirmed: boolean,
+      ) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;

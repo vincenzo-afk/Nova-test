@@ -190,7 +190,7 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
+    expect(application.startAndroidCompanionBackground("notifications", false)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
     });
@@ -199,7 +199,7 @@ describe("RuntimeApplication", () => {
       error: { code: "NOVA-SEC001" },
     });
     expect(application.startAndroidCompanionForegroundService(true)).toMatchObject({ ok: true });
-    expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
+    expect(application.startAndroidCompanionBackground("notifications", true)).toMatchObject({
       ok: true,
     });
     expect(application.stopAndroidCompanionForegroundService(false)).toMatchObject({
@@ -207,7 +207,7 @@ describe("RuntimeApplication", () => {
       error: { code: "NOVA-SEC001" },
     });
     expect(application.stopAndroidCompanionForegroundService(true)).toMatchObject({ ok: true });
-    expect(application.startAndroidCompanionBackground("notifications")).toMatchObject({
+    expect(application.startAndroidCompanionBackground("notifications", true)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
     });
