@@ -600,7 +600,15 @@ declare global {
       retryTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       resumePausedTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       confirmWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
-      resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => Promise<unknown>;
+      resumeWorkflowCheckpoint: (
+        checkpointId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        workflow_id: string;
+        state: "Running" | "Completed" | "Failed" | "Cancelled";
+        completed_node_count: number;
+        checkpoint_id: string;
+      }>;
       denyWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       pauseTask: (taskId: string, confirmed: boolean) => Promise<DesktopTaskSummary>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;

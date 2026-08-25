@@ -4,6 +4,7 @@ import type {
   PluginDiscoveryResult,
   PluginRecord,
   TaskRecord,
+  WorkflowResult,
 } from "@nova/runtime";
 
 export interface PairingOfferSummary {
@@ -104,4 +105,20 @@ export function projectTaskRecord(record: TaskRecord): TaskRecordSummary {
 
 export function projectTaskRecords(records: readonly TaskRecord[]): readonly TaskRecordSummary[] {
   return records.map(projectTaskRecord);
+}
+
+export interface WorkflowResultSummary {
+  readonly workflow_id: string;
+  readonly state: WorkflowResult["state"];
+  readonly completed_node_count: number;
+  readonly checkpoint_id: string;
+}
+
+export function projectWorkflowResult(result: WorkflowResult): WorkflowResultSummary {
+  return {
+    workflow_id: result.workflow_id,
+    state: result.state,
+    completed_node_count: result.completedNodeIds.length,
+    checkpoint_id: result.checkpointId,
+  };
 }

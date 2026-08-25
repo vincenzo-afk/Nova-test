@@ -11,6 +11,7 @@ All notable changes to Nova are documented in this file.
 - Plugin discovery and pending-proposal responses now use bounded identity and aggregate-count summaries and no longer expose source URLs, signature keys, capability arrays, or raw permission scopes to the renderer.
 - Desktop task pause and cancellation now route through RuntimeApplication-owned confirmation gates before TaskManager or scheduler mutation, preserving canonical task lifecycle errors and transitions.
 - Desktop task responses now expose only bounded lifecycle summaries; user goals, correlation IDs, step history, workflow context, and internal reasons remain outside the renderer boundary.
+- Confirmed workflow-resume responses now expose only workflow identity, lifecycle state, checkpoint identity, and an aggregate completed-node count; completed node IDs and execution context remain outside the renderer boundary.
 
 ### Added
 

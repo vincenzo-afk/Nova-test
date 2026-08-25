@@ -85,6 +85,7 @@ import {
   projectPluginRecord,
   projectTaskRecord,
   projectTaskRecords,
+  projectWorkflowResult,
 } from "./response-projections.js";
 
 interface TaskSnapshot {
@@ -1654,7 +1655,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectWorkflowResult(result.value);
   });
   gateway.register("task.retry", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
