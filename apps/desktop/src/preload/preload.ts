@@ -186,6 +186,8 @@ const novaApi = {
   reclaimableLocalModelSummaries: () => ipcRenderer.invoke("nova:models:reclaimable"),
   websocketUrl: () => ipcRenderer.invoke("nova:websocket:url"),
   restUrl: () => ipcRenderer.invoke("nova:rest:url"),
+  webhookHealthSummary: (webhookId: string) =>
+    ipcRenderer.invoke("nova:webhook:health", { webhook_id: webhookId }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

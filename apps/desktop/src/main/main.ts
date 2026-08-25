@@ -822,6 +822,7 @@ ipcMain.handle("nova:models:health-list", () => requestGateway("models.health-li
 ipcMain.handle("nova:models:reclaimable", () => requestGateway("models.reclaimable", undefined));
 ipcMain.handle("nova:websocket:url", () => requestGateway("websocket.url", undefined));
 ipcMain.handle("nova:rest:url", () => requestGateway("rest.url", undefined));
+ipcMain.handle("nova:webhook:health", (_event, data) => requestGateway("webhook.health", data));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1339,6 +1340,15 @@ const startGateway = async (): Promise<void> => {
   gateway.register("rest.url", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     return runtimeApplication.restUrl();
+  });
+  gateway.register("webhook.health", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly webhook_id?: unknown };
+    const result = runtimeApplication.webhookHealthSummary(
+      parseWorkspaceText(payload.webhook_id, "Webhook ID"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("performance.budgets", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

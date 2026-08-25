@@ -2178,6 +2178,25 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("exposes privacy-safe webhook health through the composed application", () => {
+    const application = createApplication();
+    applications.push(application);
+    const registration = application.webhook.register({
+      url: "https://example.test/nova",
+      topics: ["system.status"],
+    });
+
+    expect(application.webhookHealthSummary(registration.id)).toEqual({
+      ok: true,
+      value: {
+        id: registration.id,
+        topics: ["system.status"],
+        status: "healthy",
+        failure_count: 0,
+      },
+    });
+  });
+
   it("exposes the authenticated WebSocket URL from the same composed application", async () => {
     const application = createApplication();
     applications.push(application);

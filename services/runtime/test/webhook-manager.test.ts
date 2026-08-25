@@ -33,6 +33,21 @@ describe("WebhookManager", () => {
     });
   });
 
+  it("returns a privacy-safe health summary without callback URL or secret", () => {
+    const manager = new WebhookManager({});
+    const registration = manager.register({
+      url: "https://example.test/nova",
+      topics: ["system.status"],
+    });
+
+    expect(manager.healthSummary(registration.id)).toEqual({
+      id: registration.id,
+      topics: ["system.status"],
+      status: "healthy",
+      failure_count: 0,
+    });
+  });
+
   it("retries with backoff, flags unhealthy after exhaustion, and re-enables after a healthy delivery", async () => {
     let attempts = 0;
     const sleeps: number[] = [];

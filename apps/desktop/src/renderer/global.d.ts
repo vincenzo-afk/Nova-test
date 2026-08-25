@@ -513,6 +513,12 @@ declare global {
       >;
       websocketUrl: () => Promise<string>;
       restUrl: () => Promise<string>;
+      webhookHealthSummary: (webhookId: string) => Promise<{
+        id: string;
+        topics: readonly string[];
+        status: "healthy" | "unhealthy";
+        failure_count: number;
+      }>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

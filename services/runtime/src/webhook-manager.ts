@@ -11,6 +11,13 @@ export interface WebhookRegistration {
   readonly failure_count: number;
 }
 
+export interface WebhookHealthSummary {
+  readonly id: string;
+  readonly topics: readonly string[];
+  readonly status: WebhookStatus;
+  readonly failure_count: number;
+}
+
 export interface WebhookEvent {
   readonly event_id?: string;
   readonly topic: string;
@@ -89,6 +96,16 @@ export class WebhookManager {
 
   public health(id: string): WebhookRegistration {
     return this.snapshot(this.require(id));
+  }
+
+  public healthSummary(id: string): WebhookHealthSummary {
+    const registration = this.require(id);
+    return {
+      id: registration.id,
+      topics: [...registration.topics],
+      status: registration.status,
+      failure_count: registration.failure_count,
+    };
   }
 
   public async publish(event: WebhookEvent): Promise<void> {

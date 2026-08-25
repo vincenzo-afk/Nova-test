@@ -194,7 +194,7 @@ import {
   type DistributedPlacementInput,
   type DistributedPlacementResult,
 } from "./distributed-task-coordinator.js";
-import { WebhookManager } from "./webhook-manager.js";
+import { WebhookManager, type WebhookHealthSummary } from "./webhook-manager.js";
 import {
   CommunicationBusEventJournal,
   PublicWebSocketServer,
@@ -1454,6 +1454,17 @@ export class RuntimeApplication {
 
   public websocketUrl(): string {
     return this.websocket.url();
+  }
+  public webhookHealthSummary(id: string): Result<WebhookHealthSummary> {
+    try {
+      return ok(this.webhook.healthSummary(id));
+    } catch {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Webhook health is unavailable for the requested registration.",
+        retryable: false,
+      });
+    }
   }
 
   public async searchMemory(
