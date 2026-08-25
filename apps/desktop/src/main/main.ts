@@ -79,6 +79,7 @@ import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
 import { validateWorkflowDraft, type WorkflowDraft } from "./workflow-draft.js";
 import {
+  projectBackupRestore,
   projectPairingOffer,
   projectPluginDiscoveryProposals,
   projectPluginDiscoveryResult,
@@ -1914,7 +1915,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectBackupRestore(result.value);
   });
   gateway.register("restore.prepare", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

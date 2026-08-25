@@ -122,3 +122,12 @@ export function projectWorkflowResult(result: WorkflowResult): WorkflowResultSum
     checkpoint_id: result.checkpointId,
   };
 }
+
+export interface BackupRestoreSummary {
+  readonly restored: true;
+}
+
+export function projectBackupRestore(...state: readonly unknown[]): BackupRestoreSummary {
+  void state;
+  return { restored: true };
+}

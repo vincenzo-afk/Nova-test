@@ -705,7 +705,7 @@ declare global {
         created_at: number;
         reason: "scheduled" | "pre-update";
       }>;
-      restoreBackup: (snapshotId: string, confirmed: boolean) => Promise<unknown>;
+      restoreBackup: (snapshotId: string, confirmed: boolean) => Promise<{ restored: true }>;
       prepareRestore: (snapshotId: string) => Promise<{
         verified: true;
         staging: unknown;
