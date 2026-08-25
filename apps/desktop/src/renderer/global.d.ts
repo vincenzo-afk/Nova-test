@@ -406,6 +406,7 @@ declare global {
       mitigateIncident: (
         incidentId: string,
         detail: string,
+        confirmed: boolean,
       ) => Promise<{
         incident_id: string;
         stage: "Mitigated";

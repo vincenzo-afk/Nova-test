@@ -68,8 +68,8 @@ const novaApi = {
   detectIncident: (detail: string) => ipcRenderer.invoke("nova:incident:detect", detail),
   triageIncident: (incidentId: string, severity: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:incident:triage", { incident_id: incidentId, severity, confirmed }),
-  mitigateIncident: (incidentId: string, detail: string) =>
-    ipcRenderer.invoke("nova:incident:mitigate", { incident_id: incidentId, detail }),
+  mitigateIncident: (incidentId: string, detail: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:incident:mitigate", { incident_id: incidentId, detail, confirmed }),
   resolveIncident: (incidentId: string, detail: string) =>
     ipcRenderer.invoke("nova:incident:resolve", { incident_id: incidentId, detail }),
   postmortemIncident: (incidentId: string, detail: string) =>

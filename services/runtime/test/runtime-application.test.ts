@@ -700,7 +700,16 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { stage: "Triaged", severity: "High" },
     });
-    expect(application.mitigateIncident("inc-1", "Switched to local provider.")).toMatchObject({
+    expect(
+      application.mitigateIncident("inc-1", "Switched to local provider.", false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.incidentTimeline("inc-1")).toHaveLength(2);
+    expect(
+      application.mitigateIncident("inc-1", "Switched to local provider.", true),
+    ).toMatchObject({
       ok: true,
       value: { stage: "Mitigated" },
     });

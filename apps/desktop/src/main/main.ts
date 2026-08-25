@@ -758,8 +758,14 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "nova:incident:mitigate",
-  (_event, payload: { readonly incident_id: string; readonly detail: string }) =>
-    requestGateway("incident.mitigate", payload),
+  (
+    _event,
+    payload: {
+      readonly incident_id: string;
+      readonly detail: string;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway("incident.mitigate", payload),
 );
 ipcMain.handle(
   "nova:incident:resolve",
@@ -1329,11 +1335,18 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("incident.mitigate", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly incident_id?: unknown; readonly detail?: unknown };
+    const payload = data as {
+      readonly incident_id?: unknown;
+      readonly detail?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Incident mitigation confirmation is invalid.");
     return unwrapIncident(
       runtimeApplication.mitigateIncident(
         parseIncidentId(payload.incident_id),
         parseIncidentDetail(payload.detail),
+        payload.confirmed,
       ),
     );
   });
