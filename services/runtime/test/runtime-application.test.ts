@@ -739,9 +739,13 @@ describe("RuntimeApplication", () => {
   });
 
   it("delegates injected runbook handling without inventing recovery operations", async () => {
+    let fallbackCalls = 0;
     const operations = {
       restoreLastKnownGoodConfig: async () => false,
-      engageProviderFallback: async () => true,
+      engageProviderFallback: async () => {
+        fallbackCalls += 1;
+        return true;
+      },
       resumeSyncCheckpoint: async () => false,
       fullResync: async () => false,
       notifyDegraded: async () => undefined,
@@ -758,11 +762,20 @@ describe("RuntimeApplication", () => {
       runbookManager: runbook,
     });
     applications.push(application);
-
-    expect(await application.handleRunbook("provider-down" as RunbookIncident)).toMatchObject({
-      ok: true,
-      value: { state: "Resolved", action: "provider-fallback" },
+    expect(
+      await application.handleRunbook("provider-down" as RunbookIncident, false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
     });
+    expect(fallbackCalls).toBe(0);
+    expect(await application.handleRunbook("provider-down" as RunbookIncident, true)).toMatchObject(
+      {
+        ok: true,
+        value: { state: "Resolved", action: "provider-fallback" },
+      },
+    );
+    expect(fallbackCalls).toBe(1);
   });
 
   it("delegates capability registry inspection and live provider edits", () => {

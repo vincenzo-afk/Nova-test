@@ -217,7 +217,7 @@ describe("Electron preload boundary", () => {
         resolveIncident: (incidentId: string, detail: string, confirmed: boolean) => unknown;
         postmortemIncident: (incidentId: string, detail: string, confirmed: boolean) => unknown;
         incidentTimeline: (incidentId: string) => unknown;
-        handleRunbook: (incident: string) => unknown;
+        handleRunbook: (incident: string, confirmed: boolean) => unknown;
         getCapabilityRecord: (capabilityId: string) => unknown;
         setCapabilityProviderEnabled: (
           capabilityId: string,
@@ -400,7 +400,7 @@ describe("Electron preload boundary", () => {
     api.resolveIncident("inc-1", "Provider recovered.", true);
     api.postmortemIncident("inc-1", "Added a health-check fallback.", true);
     api.incidentTimeline("inc-1");
-    api.handleRunbook("provider-down");
+    api.handleRunbook("provider-down", true);
     api.getCapabilityRecord("llm");
     api.setCapabilityProviderEnabled("llm", "local-llm", false, true);
     api.setCapabilityProviderPriority("llm", "local-llm", 0, true);
@@ -666,7 +666,10 @@ describe("Electron preload boundary", () => {
       confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(38, "nova:incident:timeline", "inc-1");
-    expect(invoke).toHaveBeenNthCalledWith(39, "nova:runbook:handle", "provider-down");
+    expect(invoke).toHaveBeenNthCalledWith(39, "nova:runbook:handle", {
+      incident: "provider-down",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(40, "nova:capability:get", "llm");
     expect(invoke).toHaveBeenNthCalledWith(41, "nova:capability:provider-enabled", {
       capability_id: "llm",

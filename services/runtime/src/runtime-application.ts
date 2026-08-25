@@ -855,7 +855,17 @@ export class RuntimeApplication {
     return this.personalAnalytics.generate(input);
   }
 
-  public async handleRunbook(incident: RunbookIncident): Promise<Result<RunbookResult>> {
+  public async handleRunbook(
+    incident: RunbookIncident,
+    confirmed: boolean,
+  ): Promise<Result<RunbookResult>> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Executing a recovery runbook requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     if (!this.runbookManager) {
       return err({
         code: "NOVA-SEC001",

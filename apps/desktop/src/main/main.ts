@@ -792,8 +792,10 @@ ipcMain.handle(
 ipcMain.handle("nova:incident:timeline", (_event, incidentId: string) =>
   requestGateway("incident.timeline", { incident_id: incidentId }),
 );
-ipcMain.handle("nova:runbook:handle", (_event, incident: RunbookIncident) =>
-  requestGateway("runbook.handle", { incident }),
+ipcMain.handle(
+  "nova:runbook:handle",
+  (_event, payload: { readonly incident: RunbookIncident; readonly confirmed: boolean }) =>
+    requestGateway("runbook.handle", payload),
 );
 ipcMain.handle("nova:capability:get", (_event, capabilityId: string) =>
   requestGateway("capability.get", { capability_id: capabilityId }),
@@ -1444,8 +1446,13 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("runbook.handle", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly incident?: unknown };
-    const result = await runtimeApplication.handleRunbook(parseRunbookIncident(payload.incident));
+    const payload = data as { readonly incident?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Recovery runbook confirmation is invalid.");
+    const result = await runtimeApplication.handleRunbook(
+      parseRunbookIncident(payload.incident),
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies RunbookResult;
   });

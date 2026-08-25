@@ -76,7 +76,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:incident:postmortem", { incident_id: incidentId, detail, confirmed }),
   incidentTimeline: (incidentId: string) =>
     ipcRenderer.invoke("nova:incident:timeline", incidentId),
-  handleRunbook: (incident: string) => ipcRenderer.invoke("nova:runbook:handle", incident),
+  handleRunbook: (incident: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:runbook:handle", { incident, confirmed }),
   getCapabilityRecord: (capabilityId: string) =>
     ipcRenderer.invoke("nova:capability:get", capabilityId),
   setCapabilityProviderEnabled: (
