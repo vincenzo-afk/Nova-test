@@ -213,6 +213,14 @@ import {
   type PublicWebSocketServerOptions,
 } from "./websocket-api.js";
 
+const cancellableTaskStates: ReadonlySet<TaskRecord["state"]> = new Set([
+  "Created",
+  "Planning",
+  "WaitingResources",
+  "Paused",
+  "WaitingUser",
+]);
+
 export interface TaskRecoveryPersistence {
   recoverAfterCrash(): Promise<Result<readonly TaskRecord[]>>;
 }
@@ -1018,6 +1026,51 @@ export class RuntimeApplication {
     }
     return ok(this.scheduler.status());
   }
+  public cancelTask(taskId: string, confirmed: boolean): Result<TaskRecord> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Cancelling a task requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    const current = this.tasks.get(taskId);
+    if (!current.ok) return current;
+    if (current.value.state === "Cancelled") return current;
+    this.scheduler?.cancel(taskId);
+    if (!cancellableTaskStates.has(current.value.state)) {
+      return err({
+        code: "NOVA-TL003",
+        message: "Running task cancellation is not supported by the current executor.",
+        retryable: false,
+        details: { taskId, state: current.value.state },
+      });
+    }
+    return this.tasks.transition(taskId, "Cancelled");
+  }
+
+  public pauseTask(taskId: string, confirmed: boolean): Result<TaskRecord> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Pausing a task requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    const current = this.tasks.get(taskId);
+    if (!current.ok) return current;
+    if (current.value.state !== "Created") {
+      return err({
+        code: "NOVA-TL003",
+        message: "Active task execution cannot be interrupted by the current scheduler.",
+        retryable: false,
+        details: { taskId, state: current.value.state },
+      });
+    }
+    this.scheduler?.cancel(taskId);
+    return this.tasks.transition(taskId, "Paused");
+  }
+
   public async retryTask(taskId: string, confirmed: boolean): Promise<Result<TaskRecord>> {
     return this.coordinator.retry(taskId, confirmed);
   }

@@ -2976,4 +2976,41 @@ describe("RuntimeApplication", () => {
       edges: [{ id: "edge-1" }],
     });
   });
+
+  it("owns task cancellation confirmation before mutating the TaskManager", () => {
+    const application = createApplication();
+    applications.push(application);
+    const task = application.tasks.create({ goal: "cancel me" });
+    expect(task.ok).toBe(true);
+    if (!task.ok) return;
+
+    expect(application.cancelTask(task.value.task_id, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.tasks.get(task.value.task_id)).toMatchObject({
+      ok: true,
+      value: { state: "Created" },
+    });
+    expect(application.cancelTask(task.value.task_id, true)).toMatchObject({
+      ok: true,
+      value: { state: "Cancelled" },
+    });
+
+    const pausedTask = application.tasks.create({ goal: "pause me" });
+    expect(pausedTask.ok).toBe(true);
+    if (!pausedTask.ok) return;
+    expect(application.pauseTask(pausedTask.value.task_id, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.tasks.get(pausedTask.value.task_id)).toMatchObject({
+      ok: true,
+      value: { state: "Created" },
+    });
+    expect(application.pauseTask(pausedTask.value.task_id, true)).toMatchObject({
+      ok: true,
+      value: { state: "Paused" },
+    });
+  });
 });

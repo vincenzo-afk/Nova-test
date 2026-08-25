@@ -73,12 +73,7 @@ import {
   type AccessibilityReadRequest,
   type UiActionRequest,
 } from "./desktop-agent.js";
-import {
-  cancelDesktopTask,
-  listDesktopTasks,
-  pauseDesktopTask,
-  type DesktopTaskListPage,
-} from "./task-controls.js";
+import { listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
 import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
@@ -2558,12 +2553,7 @@ const startGateway = async (): Promise<void> => {
     if (!payload.task_id) throw new Error("Task ID is required.");
     if (typeof payload.confirmed !== "boolean")
       throw new Error("Task cancellation confirmation is invalid.");
-    const cancelled = cancelDesktopTask(
-      runtimeApplication.tasks,
-      runtimeApplication.scheduler,
-      payload.task_id,
-      payload.confirmed,
-    );
+    const cancelled = await runtimeApplication.cancelTask(payload.task_id, payload.confirmed);
     if (!cancelled.ok) throw new Error(cancelled.error.message);
     return cancelled.value;
   });
@@ -2573,12 +2563,7 @@ const startGateway = async (): Promise<void> => {
     if (!payload.task_id) throw new Error("Task ID is required.");
     if (typeof payload.confirmed !== "boolean")
       throw new Error("Task pause confirmation is invalid.");
-    const paused = pauseDesktopTask(
-      runtimeApplication.tasks,
-      runtimeApplication.scheduler,
-      payload.task_id,
-      payload.confirmed,
-    );
+    const paused = await runtimeApplication.pauseTask(payload.task_id, payload.confirmed);
     if (!paused.ok) throw new Error(paused.error.message);
     return paused.value;
   });
