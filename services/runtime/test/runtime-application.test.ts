@@ -360,6 +360,35 @@ describe("RuntimeApplication", () => {
     expect(configurationStore.snapshot().personalization.preferences).toHaveLength(0);
   });
 
+  it("exposes only bounded metadata for pending adaptive proposals", () => {
+    const adaptive = new AdaptivePersonalization(
+      new ConfigurationStore({ initial: configuration }),
+    );
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      adaptivePersonalization: adaptive,
+    });
+    applications.push(application);
+
+    expect(
+      application.proposeAdaptivePreference({
+        id: "tone.secret",
+        category: "tone",
+        value: { secret: "must-not-cross-ipc" },
+      }),
+    ).toMatchObject({ ok: true });
+
+    expect(application.pendingAdaptivePreferenceSummaries()).toEqual([
+      { proposal_id: "tone.secret", status: "pending", category: "tone" },
+    ]);
+  });
+
   it("binds the default adaptive personalization manager to the shared configuration store", () => {
     const application = createApplication();
     applications.push(application);

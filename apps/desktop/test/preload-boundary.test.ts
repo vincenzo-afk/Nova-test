@@ -132,6 +132,7 @@ describe("Electron preload boundary", () => {
       "networkState",
       "systemInventorySummary",
       "sessionDeviceSnapshots",
+      "pendingAdaptivePreferenceSummaries",
     ]);
   });
 
@@ -258,6 +259,7 @@ describe("Electron preload boundary", () => {
         networkState: () => unknown;
         systemInventorySummary: () => unknown;
         sessionDeviceSnapshots: () => unknown;
+        pendingAdaptivePreferenceSummaries: () => unknown;
       },
     ];
 
@@ -437,6 +439,7 @@ describe("Electron preload boundary", () => {
     api.networkState();
     api.systemInventorySummary();
     api.sessionDeviceSnapshots();
+    api.pendingAdaptivePreferenceSummaries();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -708,5 +711,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(108, "nova:network:state");
     expect(invoke).toHaveBeenNthCalledWith(109, "nova:system:inventory-summary");
     expect(invoke).toHaveBeenNthCalledWith(110, "nova:session:devices");
+    expect(invoke).toHaveBeenNthCalledWith(111, "nova:personalization:pending-summaries");
   });
 });

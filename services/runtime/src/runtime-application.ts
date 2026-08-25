@@ -101,6 +101,7 @@ import {
   AdaptivePersonalization,
   type AdaptivePreferenceInput,
   type AdaptivePreferenceProposal,
+  type AdaptivePreferenceSummary,
 } from "./adaptive-personalization.js";
 import {
   PersonalAnalytics,
@@ -1155,6 +1156,9 @@ export class RuntimeApplication {
 
   public pendingAdaptivePreferences(): readonly AdaptivePreferenceProposal[] {
     return this.adaptivePersonalization?.pending() ?? [];
+  }
+  public pendingAdaptivePreferenceSummaries(): readonly AdaptivePreferenceSummary[] {
+    return this.adaptivePersonalization?.pendingSummaries() ?? [];
   }
 
   public resetAdaptivePreference(preferenceId?: string): Result<void> {

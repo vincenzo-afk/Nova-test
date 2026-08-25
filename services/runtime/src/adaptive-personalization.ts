@@ -17,6 +17,12 @@ export interface AdaptivePreferenceProposal {
   readonly preference: PersonalizationPreferenceRecord;
 }
 
+export interface AdaptivePreferenceSummary {
+  readonly proposal_id: string;
+  readonly status: "pending";
+  readonly category: PersonalizationCategory;
+}
+
 export interface RoutingPreferenceSuggestionInput {
   readonly capability_id: string;
   readonly provider_id: string;
@@ -123,6 +129,14 @@ export class AdaptivePersonalization {
 
   public pending(): readonly AdaptivePreferenceProposal[] {
     return [...this.proposals.values()].map(clone);
+  }
+
+  public pendingSummaries(): readonly AdaptivePreferenceSummary[] {
+    return [...this.proposals.values()].map(({ proposal_id, status, preference }) => ({
+      proposal_id,
+      status,
+      category: preference.category,
+    }));
   }
 
   public reset(preferenceId?: string): Result<void> {

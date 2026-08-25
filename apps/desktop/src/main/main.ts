@@ -803,6 +803,9 @@ ipcMain.handle("nova:system:inventory-summary", () =>
   requestGateway("system.inventory-summary", undefined),
 );
 ipcMain.handle("nova:session:devices", () => requestGateway("session.devices", undefined));
+ipcMain.handle("nova:personalization:pending-summaries", () =>
+  requestGateway("personalization.pending-summaries", undefined),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1187,6 +1190,10 @@ const startGateway = async (): Promise<void> => {
     const payload = data as { readonly incident_id?: unknown };
     const incidentId = parseIncidentId(payload.incident_id);
     return runtimeApplication.incidentTimeline(incidentId);
+  });
+  gateway.register("personalization.pending-summaries", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.pendingAdaptivePreferenceSummaries();
   });
   gateway.register("runbook.handle", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

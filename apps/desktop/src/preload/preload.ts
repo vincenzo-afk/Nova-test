@@ -172,6 +172,8 @@ const novaApi = {
   networkState: () => ipcRenderer.invoke("nova:network:state"),
   systemInventorySummary: () => ipcRenderer.invoke("nova:system:inventory-summary"),
   sessionDeviceSnapshots: () => ipcRenderer.invoke("nova:session:devices"),
+  pendingAdaptivePreferenceSummaries: () =>
+    ipcRenderer.invoke("nova:personalization:pending-summaries"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

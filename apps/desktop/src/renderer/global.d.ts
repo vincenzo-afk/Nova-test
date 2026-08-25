@@ -266,6 +266,18 @@ declare global {
           };
         }[]
       >;
+      pendingAdaptivePreferenceSummaries: () => Promise<
+        readonly {
+          proposal_id: string;
+          status: "pending";
+          category:
+            | "tool-default"
+            | "provider-default"
+            | "proactive-timing"
+            | "routing-preference"
+            | "tone";
+        }[]
+      >;
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
