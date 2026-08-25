@@ -992,7 +992,9 @@ ipcMain.handle(
 ipcMain.handle("nova:offline:reconnect", (_event, confirmed: boolean) =>
   requestGateway("offline.reconnect", { confirmed }),
 );
-ipcMain.handle("nova:setup:start", () => requestGateway("setup.start", undefined));
+ipcMain.handle("nova:setup:start", (_event, confirmed: boolean) =>
+  requestGateway("setup.start", { confirmed }),
+);
 ipcMain.handle("nova:setup:rerun", () => requestGateway("setup.rerun", undefined));
 ipcMain.handle(
   "nova:setup:complete",
@@ -1948,9 +1950,12 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies readonly OfflineActionResult[];
   });
-  gateway.register("setup.start", async () => {
+  gateway.register("setup.start", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.startSetupWizard();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Setup start confirmation is invalid.");
+    const result = await runtimeApplication.startSetupWizard(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

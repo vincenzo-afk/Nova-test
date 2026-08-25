@@ -257,7 +257,7 @@ describe("Electron preload boundary", () => {
         releaseArbitratedResource: (resource: string, requestId: string) => unknown;
         submitOfflineAction: (action: unknown, confirmed: boolean) => unknown;
         reconnectOfflineActions: (confirmed: boolean) => unknown;
-        startSetupWizard: () => unknown;
+        startSetupWizard: (confirmed: boolean) => unknown;
         rerunSetupWizard: (confirmed: boolean) => unknown;
         completeSetupStep: (step: string, patch: unknown, confirmed: boolean) => unknown;
         deferSetupStep: (step: string, confirmed: boolean) => unknown;
@@ -442,7 +442,7 @@ describe("Electron preload boundary", () => {
     api.releaseArbitratedResource("microphone", "remote-1");
     api.submitOfflineAction({ action_id: "remote-1", description: "sync" }, true);
     api.reconnectOfflineActions(true);
-    api.startSetupWizard();
+    api.startSetupWizard(true);
     api.rerunSetupWizard(true);
     api.completeSetupStep("core-llm", { section: "capabilities", value: {} }, true);
     api.deferSetupStep("perception", true);
@@ -745,7 +745,7 @@ describe("Electron preload boundary", () => {
       confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(68, "nova:offline:reconnect", true);
-    expect(invoke).toHaveBeenNthCalledWith(69, "nova:setup:start");
+    expect(invoke).toHaveBeenNthCalledWith(69, "nova:setup:start", true);
     expect(invoke).toHaveBeenNthCalledWith(70, "nova:setup:rerun", true);
     expect(invoke).toHaveBeenNthCalledWith(71, "nova:setup:complete", {
       step: "core-llm",

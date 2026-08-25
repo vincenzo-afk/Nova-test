@@ -1420,7 +1420,15 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    const started = await application.startSetupWizard();
+    expect(await application.startSetupWizard(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.setupSummary()).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    const started = await application.startSetupWizard(true);
     expect(started).toMatchObject({ ok: true, value: { current_step: "core-llm" } });
     expect(await application.rerunSetupWizard(false)).toMatchObject({
       ok: false,

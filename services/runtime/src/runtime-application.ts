@@ -1191,8 +1191,15 @@ export class RuntimeApplication {
     return ok(this.workspaceManager.canSync());
   }
 
-  public async startSetupWizard(): Promise<Result<SetupState>> {
+  public async startSetupWizard(confirmed: boolean): Promise<Result<SetupState>> {
     if (!this.setupWizard) return err(this.setupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Starting the setup wizard requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     try {
       return ok(await this.setupWizard.start());
     } catch {
