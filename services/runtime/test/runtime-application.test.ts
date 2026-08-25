@@ -1000,6 +1000,58 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("exposes only the cached high-level hardware capability summary", async () => {
+    const detector = new HardwareDetector(async () => ({
+      cpu_architecture: "x86_64",
+      cpu_cores: 8,
+      avx2: true,
+      avx512: false,
+      gpu_vendor: "nvidia",
+      gpu_vram_gb: 12,
+      gpu_accelerator: "cuda",
+      system_ram_gb: 32,
+      available_disk_gb: 100,
+      os: "linux",
+      battery_powered: false,
+    }));
+    await detector.scan();
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      hardwareDetector: detector,
+    });
+    applications.push(application);
+
+    expect(application.hardwareCapabilitySummary()).toEqual({
+      ok: true,
+      value: {
+        scanned_at: expect.any(String),
+        overall_tier: "Standard",
+        recommendations: {
+          llm: "local-or-cloud",
+          vision: "local-or-cloud",
+          speech: "local-or-cloud",
+        },
+      },
+    });
+    expect(application.hardwareCapabilitySummary()).not.toHaveProperty("value.signals");
+  });
+
+  it("fails closed when hardware capability summary is unavailable", () => {
+    const application = createApplication();
+    applications.push(application);
+
+    expect(application.hardwareCapabilitySummary()).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001", retryable: true },
+    });
+  });
+
   it("fails closed when setup wizard hardware composition is unavailable", async () => {
     const application = createApplication();
     applications.push(application);

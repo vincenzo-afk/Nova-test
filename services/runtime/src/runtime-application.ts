@@ -127,7 +127,11 @@ import {
   type BudgetSamples,
   type PerformanceBudgetReport,
 } from "./performance-budgets.js";
-import type { HardwareProfile } from "./hardware-detection.js";
+import type {
+  HardwareCapabilitySummary,
+  HardwareDetector,
+  HardwareProfile,
+} from "./hardware-detection.js";
 import {
   compareDeviceVersions,
   LogicalClock,
@@ -244,6 +248,7 @@ export interface RuntimeApplicationOptions {
   readonly systemLifecycle?: SystemLifecycleOrchestrator;
   readonly networkDiscovery?: NetworkDiscoveryManager;
   readonly systemInventory?: WindowsSystemInventory;
+  readonly hardwareDetector?: HardwareDetector;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -303,6 +308,7 @@ export class RuntimeApplication {
   public readonly systemLifecycle: SystemLifecycleOrchestrator | undefined;
   public readonly networkDiscovery: NetworkDiscoveryManager | undefined;
   public readonly systemInventory: WindowsSystemInventory | undefined;
+  public readonly hardwareDetector: HardwareDetector | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -385,6 +391,7 @@ export class RuntimeApplication {
     this.systemLifecycle = options.systemLifecycle;
     this.networkDiscovery = options.networkDiscovery;
     this.systemInventory = options.systemInventory;
+    this.hardwareDetector = options.hardwareDetector;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -838,6 +845,11 @@ export class RuntimeApplication {
     return ok(this.networkDiscovery.state());
   }
 
+  public hardwareCapabilitySummary(): Result<HardwareCapabilitySummary> {
+    const summary = this.hardwareDetector?.lastCapabilitySummary();
+    if (!summary) return err(this.hardwareSummaryUnavailableError());
+    return ok(summary);
+  }
   public async systemInventorySummary(): Promise<Result<SystemInventorySummary>> {
     if (!this.systemInventory) return err(this.systemInventoryUnavailableError());
     try {
@@ -1433,6 +1445,17 @@ export class RuntimeApplication {
     };
   }
 
+  private hardwareSummaryUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: true;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Hardware capability summary is unavailable until a scan completes.",
+      retryable: true,
+    };
+  }
   private systemInventoryUnavailableError(): {
     code: "NOVA-SEC001";
     message: string;

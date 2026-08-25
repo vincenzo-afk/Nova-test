@@ -9,6 +9,7 @@ import type {
   ConnectionState,
   SystemInventorySummary,
   DeviceSnapshot,
+  HardwareCapabilitySummary,
   PluginRecord,
   JobState,
   SetupStepId,
@@ -278,6 +279,8 @@ declare global {
             | "tone";
         }[]
       >;
+      hardwareCapabilitySummary: () => Promise<HardwareCapabilitySummary>;
+
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };

@@ -806,6 +806,7 @@ ipcMain.handle("nova:session:devices", () => requestGateway("session.devices", u
 ipcMain.handle("nova:personalization:pending-summaries", () =>
   requestGateway("personalization.pending-summaries", undefined),
 );
+ipcMain.handle("nova:hardware:summary", () => requestGateway("hardware.summary", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1194,6 +1195,12 @@ const startGateway = async (): Promise<void> => {
   gateway.register("personalization.pending-summaries", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     return runtimeApplication.pendingAdaptivePreferenceSummaries();
+  });
+  gateway.register("hardware.summary", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.hardwareCapabilitySummary();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
   });
   gateway.register("runbook.handle", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

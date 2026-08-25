@@ -26,6 +26,12 @@ export interface HardwareProfile {
   };
 }
 
+export interface HardwareCapabilitySummary {
+  readonly scanned_at: string;
+  readonly overall_tier: HardwareTier;
+  readonly recommendations: HardwareProfile["recommendations"];
+}
+
 export class HardwareDetector {
   private profile: HardwareProfile | undefined;
 
@@ -44,6 +50,16 @@ export class HardwareDetector {
 
   public lastProfile(): HardwareProfile | undefined {
     return this.profile;
+  }
+
+  public lastCapabilitySummary(): HardwareCapabilitySummary | undefined {
+    const profile = this.profile;
+    if (!profile) return undefined;
+    return {
+      scanned_at: profile.scanned_at,
+      overall_tier: profile.overall_tier,
+      recommendations: { ...profile.recommendations },
+    };
   }
 
   private classify(signals: HardwareProbe): HardwareProfile {
