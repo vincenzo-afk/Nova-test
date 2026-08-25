@@ -557,6 +557,43 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("exposes reclaimable local-model summaries without storage metadata", () => {
+    const models = new LocalModelManager({
+      storagePath: "/tmp/nova-test-models",
+      catalog: [],
+      fetchModel: async () => new Uint8Array(),
+      loadAdapter: async () => ({}),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      localModelManager: models,
+    });
+    applications.push(application);
+
+    expect(application.reclaimableLocalModelSummaries()).toEqual({ ok: true, value: [] });
+
+    const unavailable = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+    });
+    applications.push(unavailable);
+    expect(unavailable.reclaimableLocalModelSummaries()).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001", retryable: false },
+    });
+  });
+
   it("delegates catalog-backed local-model discovery without downloading model bytes", () => {
     const entry: LocalModelCatalogEntry = {
       model_id: "whisper-small",

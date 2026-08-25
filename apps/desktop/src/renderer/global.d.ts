@@ -503,6 +503,14 @@ declare global {
       listModelProviderHealthStatuses: () => Promise<
         readonly { provider_id: string; health: HealthState }[]
       >;
+      reclaimableLocalModelSummaries: () => Promise<
+        readonly {
+          model_id: string;
+          provider_id: string;
+          domain: string;
+          status: "reclaimable";
+        }[]
+      >;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

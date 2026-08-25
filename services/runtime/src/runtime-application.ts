@@ -123,7 +123,11 @@ import type {
   CapabilityRecord,
   CapabilityRegistry,
 } from "./provider-registry.js";
-import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
+import type {
+  LocalModelDiscovery,
+  LocalModelManager,
+  ReclaimableLocalModelSummary,
+} from "./local-model-manager.js";
 import type { HealthState, ModelRouter, ProviderHealthStatus } from "./model-router.js";
 import type { RuntimeManager } from "./runtime-manager.js";
 import {
@@ -797,6 +801,10 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+  public reclaimableLocalModelSummaries(): Result<readonly ReclaimableLocalModelSummary[]> {
+    if (!this.localModelManager) return err(this.localModelManagerUnavailableError());
+    return ok(this.localModelManager.reclaimableSummaries());
   }
 
   public modelProviderHealth(providerId: string): Result<HealthState> {
@@ -1587,6 +1595,17 @@ export class RuntimeApplication {
     };
   }
 
+  private localModelManagerUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Local model manager is not configured for this runtime.",
+      retryable: false,
+    };
+  }
   private modelRouterUnavailableError(): {
     code: "NOVA-SEC001";
     message: string;

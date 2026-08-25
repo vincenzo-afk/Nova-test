@@ -174,6 +174,26 @@ describe("LocalModelManager", () => {
     }
   });
 
+  it("lists reclaimable models without paths, URLs, or checksums", async () => {
+    const root = await mkdtemp(join(tmpdir(), "nova-models-"));
+    try {
+      const manager = await makeManager(root);
+      await manager.download("whisper-small-v1");
+      expect(manager.markRetired("whisper-small-v1")).toMatchObject({ ok: true });
+
+      expect(manager.reclaimableSummaries()).toEqual([
+        {
+          model_id: "whisper-small-v1",
+          provider_id: "local.whisper.small",
+          domain: "speech-to-text",
+          status: "reclaimable",
+        },
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("loads a verified model and tracks explicit retirement without deleting bytes", async () => {
     const root = await mkdtemp(join(tmpdir(), "nova-models-"));
     try {

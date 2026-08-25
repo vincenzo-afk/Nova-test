@@ -51,6 +51,13 @@ export interface LocalModelRetirementResult {
   readonly status: "reclaimable";
 }
 
+export interface ReclaimableLocalModelSummary {
+  readonly model_id: string;
+  readonly provider_id: string;
+  readonly domain: CapabilityDomain;
+  readonly status: "reclaimable";
+}
+
 export interface LocalModelManagerOptions {
   readonly storagePath: string;
   readonly catalog: readonly LocalModelCatalogEntry[];
@@ -147,6 +154,19 @@ export class LocalModelManager {
     return [...this.entries.values()].filter(
       (entry) => this.statuses.get(entry.model_id) === "reclaimable",
     );
+  }
+
+  public reclaimableSummaries(): readonly ReclaimableLocalModelSummary[] {
+    return [...this.entries.values()]
+      .filter((entry) => this.statuses.get(entry.model_id) === "reclaimable")
+      .sort((left, right) => left.model_id.localeCompare(right.model_id))
+      .slice(0, 128)
+      .map(({ model_id, provider_id, domain }) => ({
+        model_id,
+        provider_id,
+        domain,
+        status: "reclaimable",
+      }));
   }
 
   private async downloadInternal(modelId: string): Promise<Result<LocalModelDownloadResult>> {
