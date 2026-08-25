@@ -159,6 +159,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:config:update", { section, value }),
   evaluatePerformanceBudgets: (samples: unknown) =>
     ipcRenderer.invoke("nova:performance:budgets", samples),
+  compareDeviceVersions: (left: string, right: string) =>
+    ipcRenderer.invoke("nova:devices:compatibility", left, right),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

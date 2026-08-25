@@ -28,6 +28,7 @@ import { SetupWizard } from "../src/setup-wizard.js";
 import { WorkspaceManager } from "../src/workspace-manager.js";
 import { ModelRouter, type LlmProvider } from "../src/model-router.js";
 import { PerformanceBudgetEvaluator, type BudgetSamples } from "../src/performance-budgets.js";
+import { compareDeviceVersions } from "../src/device-compatibility.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1056,6 +1057,32 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("delegates device-version compatibility evaluation without side effects", () => {
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+    });
+    applications.push(application);
+
+    expect(application.compareDeviceVersions("5.2.0", "5.2.0")).toEqual({
+      ok: true,
+      value: compareDeviceVersions("5.2.0", "5.2.0"),
+    });
+    expect(application.compareDeviceVersions("5.2.0", "5.3.0")).toMatchObject({
+      ok: true,
+      value: { compatible: true, mode: "degraded" },
+    });
+    expect(application.compareDeviceVersions("4.9.0", "5.0.0")).toMatchObject({
+      ok: true,
+      value: { compatible: false, mode: "incompatible" },
     });
   });
 

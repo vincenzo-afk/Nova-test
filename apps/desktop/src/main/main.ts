@@ -34,6 +34,7 @@ import {
   type HealthState,
   type BudgetSamples,
   type PerformanceBudgetReport,
+  type CompatibilityResult,
   type CapabilityGap,
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
@@ -756,6 +757,9 @@ ipcMain.handle("nova:models:health", (_event, providerId: string) =>
 ipcMain.handle("nova:performance:budgets", (_event, samples: unknown) =>
   requestGateway("performance.budgets", samples),
 );
+ipcMain.handle("nova:devices:compatibility", (_event, left: string, right: string) =>
+  requestGateway("devices.compatibility", { left, right }),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1219,6 +1223,16 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.evaluatePerformanceBudgets(parseBudgetSamples(data));
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies PerformanceBudgetReport;
+  });
+  gateway.register("devices.compatibility", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly left?: unknown; readonly right?: unknown };
+    const result = runtimeApplication.compareDeviceVersions(
+      parseWorkspaceText(payload.left, "Left device version"),
+      parseWorkspaceText(payload.right, "Right device version"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies CompatibilityResult;
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

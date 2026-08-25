@@ -123,6 +123,7 @@ import {
   type PerformanceBudgetReport,
 } from "./performance-budgets.js";
 import type { HardwareProfile } from "./hardware-detection.js";
+import { compareDeviceVersions, type CompatibilityResult } from "./device-compatibility.js";
 import type { VoicePipeline, VoiceState } from "./voice-pipeline.js";
 import type {
   CapabilityGap,
@@ -753,6 +754,10 @@ export class RuntimeApplication {
   public modelProviderHealth(providerId: string): Result<HealthState> {
     if (!this.modelRouter) return err(this.modelRouterUnavailableError());
     return ok(this.modelRouter.health(providerId));
+  }
+
+  public compareDeviceVersions(left: string, right: string): Result<CompatibilityResult> {
+    return ok(compareDeviceVersions(left, right));
   }
 
   public evaluatePerformanceBudgets(samples: BudgetSamples): Result<PerformanceBudgetReport> {

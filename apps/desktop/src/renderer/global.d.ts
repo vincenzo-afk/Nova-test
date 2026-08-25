@@ -4,6 +4,7 @@ import type {
   HealthState,
   BudgetSamples,
   PerformanceBudgetReport,
+  CompatibilityResult,
   SetupStepId,
   SetupState,
   SetupStepPatch,
@@ -441,6 +442,7 @@ declare global {
       >;
       modelProviderHealth: (providerId: string) => Promise<HealthState>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
+      compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;
