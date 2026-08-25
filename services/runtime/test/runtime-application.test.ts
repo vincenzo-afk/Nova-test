@@ -1590,7 +1590,12 @@ describe("RuntimeApplication", () => {
       value: { user_id: "user-1", workspace_id: "workspace-1" },
     });
     expect(application.workspaceState()).toMatchObject({ ok: true, value: "Created" });
-    expect(application.activateWorkspace()).toMatchObject({ ok: true });
+    expect(application.activateWorkspace(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.workspaceState()).toMatchObject({ ok: true, value: "Created" });
+    expect(application.activateWorkspace(true)).toMatchObject({ ok: true });
     const lock = application.acquireWorkspaceLock("migration");
     expect(lock).toMatchObject({ ok: true, value: { state: "Locked" } });
     expect(application.workspaceCanSync()).toMatchObject({ ok: true, value: false });

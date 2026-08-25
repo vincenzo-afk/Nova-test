@@ -1008,7 +1008,9 @@ ipcMain.handle("nova:workspace:state", () => requestGateway("workspace.state", u
 ipcMain.handle("nova:workspace:create", (_event, workspaceId: string) =>
   requestGateway("workspace.create", { workspace_id: workspaceId }),
 );
-ipcMain.handle("nova:workspace:activate", () => requestGateway("workspace.activate", undefined));
+ipcMain.handle("nova:workspace:activate", (_event, confirmed: boolean) =>
+  requestGateway("workspace.activate", { confirmed }),
+);
 ipcMain.handle("nova:workspace:acquire-lock", (_event, reason: string) =>
   requestGateway("workspace.acquire-lock", { reason }),
 );
@@ -2014,9 +2016,12 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies WorkspaceIdentity;
   });
-  gateway.register("workspace.activate", async () => {
+  gateway.register("workspace.activate", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = runtimeApplication.activateWorkspace();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Workspace activation confirmation is invalid.");
+    const result = runtimeApplication.activateWorkspace(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });
