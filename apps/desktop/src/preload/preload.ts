@@ -188,6 +188,7 @@ const novaApi = {
   restUrl: () => ipcRenderer.invoke("nova:rest:url"),
   webhookHealthSummary: (webhookId: string) =>
     ipcRenderer.invoke("nova:webhook:health", { webhook_id: webhookId }),
+  pluginRecordSummaries: () => ipcRenderer.invoke("nova:plugins:list"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

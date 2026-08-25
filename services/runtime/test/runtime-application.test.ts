@@ -1625,6 +1625,18 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { manifest: { plugin_id: "com.example.reader" }, state: "Installed" },
     });
+    expect(application.pluginRecordSummaries()).toEqual({
+      ok: true,
+      value: [
+        {
+          plugin_id: "com.example.reader",
+          version: "1.0.0",
+          state: "Installed",
+          provided_tool_count: 1,
+          required_permission_count: 1,
+        },
+      ],
+    });
     expect(application.pluginRecord("missing-plugin")).toMatchObject({
       ok: false,
       error: { code: "NOVA-PLG005" },

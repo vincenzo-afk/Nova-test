@@ -82,6 +82,14 @@ export interface PluginRecord {
   readonly granted_permissions: readonly string[];
 }
 
+export interface PluginRecordSummary {
+  readonly plugin_id: string;
+  readonly version: string;
+  readonly state: PluginState;
+  readonly provided_tool_count: number;
+  readonly required_permission_count: number;
+}
+
 type MutablePluginRecord = {
   manifest: PluginManifest;
   state: PluginState;
@@ -532,6 +540,19 @@ export class PluginManager {
     return record
       ? ok(this.publicRecord(record))
       : err(lifecycleFailure("Plugin is not installed.", { pluginId }));
+  }
+
+  public listSummaries(): readonly PluginRecordSummary[] {
+    return [...this.plugins.values()]
+      .sort((left, right) => left.manifest.plugin_id.localeCompare(right.manifest.plugin_id))
+      .slice(0, 128)
+      .map((record) => ({
+        plugin_id: record.manifest.plugin_id,
+        version: record.manifest.version,
+        state: record.state,
+        provided_tool_count: record.manifest.provided_tools.length,
+        required_permission_count: record.manifest.required_permissions.length,
+      }));
   }
 
   private enabledDependents(pluginId: string): string[] {

@@ -146,6 +146,7 @@ describe("Electron preload boundary", () => {
       "websocketUrl",
       "restUrl",
       "webhookHealthSummary",
+      "pluginRecordSummaries",
     ]);
   });
 
@@ -286,6 +287,7 @@ describe("Electron preload boundary", () => {
         websocketUrl: () => unknown;
         restUrl: () => unknown;
         webhookHealthSummary: (webhookId: string) => unknown;
+        pluginRecordSummaries: () => unknown;
       },
     ];
 
@@ -479,6 +481,7 @@ describe("Electron preload boundary", () => {
     api.websocketUrl();
     api.restUrl();
     api.webhookHealthSummary("webhook-1");
+    api.pluginRecordSummaries();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -764,5 +767,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(122, "nova:websocket:url");
     expect(invoke).toHaveBeenNthCalledWith(123, "nova:rest:url");
     expect(invoke).toHaveBeenNthCalledWith(124, "nova:webhook:health", { webhook_id: "webhook-1" });
+    expect(invoke).toHaveBeenNthCalledWith(125, "nova:plugins:list");
   });
 });

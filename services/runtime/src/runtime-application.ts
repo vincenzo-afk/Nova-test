@@ -153,7 +153,7 @@ import type {
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
 } from "./plugin-discovery.js";
-import type { PluginManager, PluginRecord } from "./plugin-manager.js";
+import type { PluginManager, PluginRecord, PluginRecordSummary } from "./plugin-manager.js";
 import type { JobScheduler, JobState } from "./job-scheduler.js";
 import type { SystemLifecycleOrchestrator } from "./system-lifecycle.js";
 import type { ConnectionState, NetworkDiscoveryManager } from "./networking.js";
@@ -839,6 +839,10 @@ export class RuntimeApplication {
   public pluginRecord(pluginId: string): Result<PluginRecord> {
     if (!this.pluginManager) return err(this.pluginManagerUnavailableError());
     return this.pluginManager.get(pluginId);
+  }
+  public pluginRecordSummaries(): Result<readonly PluginRecordSummary[]> {
+    if (!this.pluginManager) return err(this.pluginManagerUnavailableError());
+    return ok(this.pluginManager.listSummaries());
   }
 
   public listScheduledJobStates(): Result<readonly JobState[]> {

@@ -519,6 +519,22 @@ declare global {
         status: "healthy" | "unhealthy";
         failure_count: number;
       }>;
+      pluginRecordSummaries: () => Promise<
+        readonly {
+          plugin_id: string;
+          version: string;
+          state:
+            | "Installed"
+            | "Enabled"
+            | "Disabled"
+            | "Updating"
+            | "Failed"
+            | "Deprecated"
+            | "Uninstalled";
+          provided_tool_count: number;
+          required_permission_count: number;
+        }[]
+      >;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

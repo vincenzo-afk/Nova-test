@@ -49,6 +49,36 @@ describe("PluginManager", () => {
     expect(pluginProcess.start).toHaveBeenCalledOnce();
   });
 
+  it("lists bounded plugin state summaries without manifest or execution metadata", () => {
+    const manager = new PluginManager({ novaApiVersion: "1.1.0" });
+    manager.install(manifest({ plugin_id: "com.example.zeta", provided_tools: ["tool.z"] }));
+    manager.install(
+      manifest({
+        plugin_id: "com.example.alpha",
+        provided_tools: ["tool.a", "tool.b"],
+        required_permissions: ["files.read", "memory.read"],
+        entry_point: "/sensitive/plugin/path.js",
+      }),
+    );
+
+    expect(manager.listSummaries()).toEqual([
+      {
+        plugin_id: "com.example.alpha",
+        version: "1.0.0",
+        state: "Installed",
+        provided_tool_count: 2,
+        required_permission_count: 2,
+      },
+      {
+        plugin_id: "com.example.zeta",
+        version: "1.0.0",
+        state: "Installed",
+        provided_tool_count: 1,
+        required_permission_count: 1,
+      },
+    ]);
+  });
+
   it("rejects malformed manifests without installing them", () => {
     const manager = new PluginManager({ novaApiVersion: "1.1.0" });
     const invalid = { ...manifest(), version: "not-semver", provided_tools: [""] };

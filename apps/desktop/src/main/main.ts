@@ -823,6 +823,7 @@ ipcMain.handle("nova:models:reclaimable", () => requestGateway("models.reclaimab
 ipcMain.handle("nova:websocket:url", () => requestGateway("websocket.url", undefined));
 ipcMain.handle("nova:rest:url", () => requestGateway("rest.url", undefined));
 ipcMain.handle("nova:webhook:health", (_event, data) => requestGateway("webhook.health", data));
+ipcMain.handle("nova:plugins:list", () => requestGateway("plugins.list", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1347,6 +1348,12 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.webhookHealthSummary(
       parseWorkspaceText(payload.webhook_id, "Webhook ID"),
     );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("plugins.list", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.pluginRecordSummaries();
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });
