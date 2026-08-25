@@ -64,6 +64,29 @@ const provider = (
 });
 
 describe("CapabilityRegistry and ProviderRouter", () => {
+  it("declares an unconfigured capability before a provider is installed", () => {
+    const registry = new CapabilityRegistry();
+
+    expect(registry.declareCapability("vision", "vision")).toMatchObject({
+      ok: true,
+      value: {
+        capability_id: "vision",
+        domain: "vision",
+        providers: [],
+        state: "Unconfigured",
+      },
+    });
+    expect(registry.listCapabilities()).toEqual([
+      {
+        capability_id: "vision",
+        domain: "vision",
+        providers: [],
+        active_policy: { policy: "privacy-first" },
+        state: "Unconfigured",
+      },
+    ]);
+  });
+
   it("registers providers, rejects duplicates, and exposes active capability state", () => {
     const registry = new CapabilityRegistry();
     const local = provider();

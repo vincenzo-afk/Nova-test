@@ -108,6 +108,32 @@ export class CapabilityRegistry {
     this.logger = logger;
   }
 
+  public declareCapability(
+    capabilityId: string,
+    domain: CapabilityDomain,
+  ): Result<CapabilityRecord> {
+    if (capabilityId.trim() === "") {
+      return err(this.failure("Capability ID is required.", { capabilityId }));
+    }
+    if (this.capabilities.has(capabilityId)) {
+      return err(this.failure("Capability is already registered.", { capabilityId }));
+    }
+    const record: MutableCapabilityRecord = {
+      capability_id: capabilityId,
+      domain,
+      providers: new Map(),
+      health: new Map(),
+      active_policy: { policy: "privacy-first" },
+      state: "Unconfigured",
+    };
+    this.capabilities.set(capabilityId, record);
+    this.logger?.info("capability.declared", {
+      capability_id: capabilityId,
+      domain,
+    });
+    return ok(this.publicRecord(record));
+  }
+
   public register(capabilityId: string, provider: Provider): Result<CapabilityRecord> {
     if (this.providers.has(provider.descriptor.provider_id)) {
       return err(

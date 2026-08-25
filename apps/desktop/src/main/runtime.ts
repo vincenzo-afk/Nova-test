@@ -13,6 +13,7 @@ import {
   type RuntimeApplicationOptions,
 } from "@nova/runtime";
 import { openDesktopPersistence } from "./persistence.js";
+import { createDesktopCapabilityRegistry } from "./capability-catalog.js";
 import {
   createDesktopAccessibilityDefinition,
   createDesktopAccessibilityTool,
@@ -115,6 +116,7 @@ export async function createDesktopRuntime(
       logger,
     ),
     verifier: new Verifier(logger),
+    capabilityRegistry: createDesktopCapabilityRegistry(logger),
     persistence: persistence.checkpointStore,
     memoryStore: persistence.memoryStore,
     dispose: persistence.close,

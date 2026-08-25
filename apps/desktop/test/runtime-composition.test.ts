@@ -46,6 +46,34 @@ describe("desktop runtime composition", () => {
     expect(JSON.stringify(sink.records())).not.toContain(userDataPath);
   });
 
+  it("seeds the complete capability catalog as unconfigured until providers are installed", async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-capabilities-"));
+    temporaryDirectories.push(userDataPath);
+    const runtime = await createDesktopRuntime({ userDataPath });
+    runtimes.push(runtime);
+
+    expect(runtime.listCapabilityRecords()).toEqual({
+      ok: true,
+      value: [
+        "embeddings",
+        "messaging-channel",
+        "ocr",
+        "remote-control",
+        "reranking",
+        "speech-to-text",
+        "text-generation",
+        "text-to-speech",
+        "vision",
+      ].map((capability_id) => ({
+        capability_id,
+        domain: capability_id === "text-generation" ? "llm" : capability_id,
+        providers: [],
+        active_policy: { policy: "privacy-first" },
+        state: "Unconfigured",
+      })),
+    });
+  });
+
   it("starts the native observer only after both grants and feeds ephemeral World Model focus state", async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), "nova-desktop-observer-"));
     temporaryDirectories.push(userDataPath);
