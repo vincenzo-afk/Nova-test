@@ -133,6 +133,7 @@ import type {
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
 } from "./plugin-discovery.js";
+import type { PluginManager, PluginRecord } from "./plugin-manager.js";
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
@@ -222,6 +223,7 @@ export interface RuntimeApplicationOptions {
   readonly performanceBudgetEvaluator?: PerformanceBudgetEvaluator;
   readonly voicePipeline?: VoicePipeline;
   readonly pluginDiscovery?: PluginDiscovery;
+  readonly pluginManager?: PluginManager;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -276,6 +278,7 @@ export class RuntimeApplication {
   public readonly performanceBudgetEvaluator: PerformanceBudgetEvaluator;
   public readonly voicePipeline: VoicePipeline | undefined;
   public readonly pluginDiscovery: PluginDiscovery | undefined;
+  public readonly pluginManager: PluginManager | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -353,6 +356,7 @@ export class RuntimeApplication {
       options.performanceBudgetEvaluator ?? new PerformanceBudgetEvaluator();
     this.voicePipeline = options.voicePipeline;
     this.pluginDiscovery = options.pluginDiscovery;
+    this.pluginManager = options.pluginManager;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -772,6 +776,11 @@ export class RuntimeApplication {
   public runtimeServiceHealth(serviceName: string): Result<ServiceHealth> {
     if (!this.runtimeManager) return err(this.runtimeManagerUnavailableError());
     return ok(this.runtimeManager.health(serviceName));
+  }
+
+  public pluginRecord(pluginId: string): Result<PluginRecord> {
+    if (!this.pluginManager) return err(this.pluginManagerUnavailableError());
+    return this.pluginManager.get(pluginId);
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1334,6 +1343,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private pluginManagerUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Plugin manager is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private runtimeManagerUnavailableError(): {

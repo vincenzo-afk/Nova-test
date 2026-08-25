@@ -37,6 +37,7 @@ export * from "./resource-arbitration.js";
 export * from "./job-scheduler.js";
 export * from "./background-assistant.js";
 export * from "./plugin-discovery.js";
+export * from "./plugin-manager.js";
 export * from "./groq-provider.js";
 export * from "./system-inventory.js";
 export * from "./configuration-store.js";

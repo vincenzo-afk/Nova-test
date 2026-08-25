@@ -35,6 +35,7 @@ import {
   type BudgetSamples,
   type PerformanceBudgetReport,
   type CompatibilityResult,
+  type PluginRecord,
   type CapabilityGap,
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
@@ -764,6 +765,9 @@ ipcMain.handle("nova:devices:compatibility", (_event, left: string, right: strin
 ipcMain.handle("nova:runtime:service-health", (_event, serviceName: string) =>
   requestGateway("runtime.service-health", { service_name: serviceName }),
 );
+ipcMain.handle("nova:plugins:record", (_event, pluginId: string) =>
+  requestGateway("plugins.record", { plugin_id: pluginId }),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1246,6 +1250,15 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies ServiceHealth;
+  });
+  gateway.register("plugins.record", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly plugin_id?: unknown };
+    const result = runtimeApplication.pluginRecord(
+      parseWorkspaceText(payload.plugin_id, "Plugin ID"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies PluginRecord;
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

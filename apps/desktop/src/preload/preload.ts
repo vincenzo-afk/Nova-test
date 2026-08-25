@@ -163,6 +163,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:devices:compatibility", left, right),
   runtimeServiceHealth: (serviceName: string) =>
     ipcRenderer.invoke("nova:runtime:service-health", serviceName),
+  pluginRecord: (pluginId: string) => ipcRenderer.invoke("nova:plugins:record", pluginId),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

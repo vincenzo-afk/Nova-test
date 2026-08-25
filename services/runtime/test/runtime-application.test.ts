@@ -31,6 +31,7 @@ import { PerformanceBudgetEvaluator, type BudgetSamples } from "../src/performan
 import { compareDeviceVersions } from "../src/device-compatibility.js";
 import { RuntimeManager } from "../src/runtime-manager.js";
 import type { ServiceLifecycle } from "@nova/shared";
+import { PluginManager } from "../src/plugin-manager.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1059,6 +1060,43 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("delegates trust-preserving plugin record inspection", () => {
+    const manager = new PluginManager({ novaApiVersion: "1.0.0" });
+    expect(
+      manager.install({
+        plugin_id: "com.example.reader",
+        version: "1.0.0",
+        nova_api_version_range: ">=1.0.0",
+        display_name: "Reader",
+        description: "Read-only plugin metadata.",
+        provided_tools: ["reader.read"],
+        required_permissions: ["files.read"],
+        dependencies: [],
+        entry_point: "index.js",
+      }),
+    ).toMatchObject({ ok: true, value: { state: "Installed" } });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      pluginManager: manager,
+    });
+    applications.push(application);
+
+    expect(application.pluginRecord("com.example.reader")).toMatchObject({
+      ok: true,
+      value: { manifest: { plugin_id: "com.example.reader" }, state: "Installed" },
+    });
+    expect(application.pluginRecord("missing-plugin")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-PLG005" },
     });
   });
 
