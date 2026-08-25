@@ -710,8 +710,10 @@ ipcMain.handle("nova:background:deliver", (_event, briefing: Briefing) =>
 ipcMain.handle("nova:personalization:propose", (_event, input: AdaptivePreferenceInput) =>
   requestGateway("personalization.propose", input),
 );
-ipcMain.handle("nova:personalization:approve", (_event, proposalId: string) =>
-  requestGateway("personalization.approve", { proposal_id: proposalId }),
+ipcMain.handle(
+  "nova:personalization:approve",
+  (_event, payload: { readonly proposal_id: string; readonly confirmed: boolean }) =>
+    requestGateway("personalization.approve", payload),
 );
 ipcMain.handle("nova:personalization:dismiss", (_event, proposalId: string) =>
   requestGateway("personalization.dismiss", { proposal_id: proposalId }),
@@ -1165,10 +1167,15 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("personalization.approve", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly proposal_id?: unknown };
+    const payload = data as { readonly proposal_id?: unknown; readonly confirmed?: unknown };
     if (typeof payload.proposal_id !== "string" || payload.proposal_id.trim() === "")
       throw new Error("Adaptive proposal ID is required.");
-    const result = runtimeApplication.approveAdaptivePreference(payload.proposal_id);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Adaptive preference approval confirmation is invalid.");
+    const result = runtimeApplication.approveAdaptivePreference(
+      payload.proposal_id,
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });

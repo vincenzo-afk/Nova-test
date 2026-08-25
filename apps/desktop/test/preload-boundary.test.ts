@@ -196,7 +196,7 @@ describe("Electron preload boundary", () => {
         generateBackgroundBriefing: (trigger: string) => unknown;
         deliverBackgroundBriefing: (briefing: unknown) => unknown;
         proposeAdaptivePreference: (input: unknown) => unknown;
-        approveAdaptivePreference: (proposalId: string) => unknown;
+        approveAdaptivePreference: (proposalId: string, confirmed: boolean) => unknown;
         dismissAdaptivePreference: (proposalId: string) => unknown;
         pendingAdaptivePreferences: () => unknown;
         resetAdaptivePreference: (preferenceId?: string) => unknown;
@@ -365,7 +365,7 @@ describe("Electron preload boundary", () => {
       category: "tool-default",
       value: { style: "concise" },
     });
-    api.approveAdaptivePreference("email.concise");
+    api.approveAdaptivePreference("email.concise", true);
     api.dismissAdaptivePreference("email.concise");
     api.pendingAdaptivePreferences();
     api.resetAdaptivePreference("email.concise");
@@ -598,7 +598,10 @@ describe("Electron preload boundary", () => {
       category: "tool-default",
       value: { style: "concise" },
     });
-    expect(invoke).toHaveBeenNthCalledWith(28, "nova:personalization:approve", "email.concise");
+    expect(invoke).toHaveBeenNthCalledWith(28, "nova:personalization:approve", {
+      proposal_id: "email.concise",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(29, "nova:personalization:dismiss", "email.concise");
     expect(invoke).toHaveBeenNthCalledWith(30, "nova:personalization:pending");
     expect(invoke).toHaveBeenNthCalledWith(31, "nova:personalization:reset", "email.concise");

@@ -49,8 +49,11 @@ const novaApi = {
     ipcRenderer.invoke("nova:background:deliver", briefing),
   proposeAdaptivePreference: (input: unknown) =>
     ipcRenderer.invoke("nova:personalization:propose", input),
-  approveAdaptivePreference: (proposalId: string) =>
-    ipcRenderer.invoke("nova:personalization:approve", proposalId),
+  approveAdaptivePreference: (proposalId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:personalization:approve", {
+      proposal_id: proposalId,
+      confirmed,
+    }),
   dismissAdaptivePreference: (proposalId: string) =>
     ipcRenderer.invoke("nova:personalization:dismiss", proposalId),
   pendingAdaptivePreferences: () => ipcRenderer.invoke("nova:personalization:pending"),

@@ -363,7 +363,14 @@ describe("RuntimeApplication", () => {
     });
     expect(proposal).toMatchObject({ ok: true, value: { status: "pending" } });
     expect(application.pendingAdaptivePreferences()).toHaveLength(1);
-    expect(application.approveAdaptivePreference("email.concise")).toMatchObject({ ok: true });
+    expect(application.approveAdaptivePreference("email.concise", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(configurationStore.snapshot().personalization.preferences).toHaveLength(0);
+    expect(application.approveAdaptivePreference("email.concise", true)).toMatchObject({
+      ok: true,
+    });
     expect(configurationStore.snapshot().personalization.preferences).toHaveLength(1);
     expect(application.resetAdaptivePreference("email.concise")).toMatchObject({ ok: true });
     expect(configurationStore.snapshot().personalization.preferences).toHaveLength(0);
@@ -409,7 +416,7 @@ describe("RuntimeApplication", () => {
         value: { style: "concise" },
       }),
     ).toMatchObject({ ok: true });
-    expect(application.approveAdaptivePreference("tone.concise")).toMatchObject({ ok: true });
+    expect(application.approveAdaptivePreference("tone.concise", true)).toMatchObject({ ok: true });
     expect(application.configuration.snapshot().personalization.preferences).toMatchObject([
       { id: "tone.concise", source: "feedback" },
     ]);

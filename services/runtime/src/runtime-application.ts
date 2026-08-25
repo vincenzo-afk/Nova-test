@@ -1316,8 +1316,15 @@ export class RuntimeApplication {
     return this.adaptivePersonalization.propose(input);
   }
 
-  public approveAdaptivePreference(proposalId: string): Result<void> {
+  public approveAdaptivePreference(proposalId: string, confirmed: boolean): Result<void> {
     if (!this.adaptivePersonalization) return err(this.adaptiveUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Approving an adaptive preference requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.adaptivePersonalization.approve(proposalId);
   }
 
