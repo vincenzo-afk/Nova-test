@@ -184,6 +184,7 @@ const novaApi = {
   activeScheduledJobConcurrencyGroups: () => ipcRenderer.invoke("nova:jobs:active-groups"),
   listModelProviderHealthStatuses: () => ipcRenderer.invoke("nova:models:health-list"),
   reclaimableLocalModelSummaries: () => ipcRenderer.invoke("nova:models:reclaimable"),
+  websocketUrl: () => ipcRenderer.invoke("nova:websocket:url"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

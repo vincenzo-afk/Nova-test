@@ -511,6 +511,7 @@ declare global {
           status: "reclaimable";
         }[]
       >;
+      websocketUrl: () => Promise<string>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

@@ -820,6 +820,7 @@ ipcMain.handle("nova:jobs:list", () => requestGateway("jobs.list", undefined));
 ipcMain.handle("nova:jobs:active-groups", () => requestGateway("jobs.active-groups", undefined));
 ipcMain.handle("nova:models:health-list", () => requestGateway("models.health-list", undefined));
 ipcMain.handle("nova:models:reclaimable", () => requestGateway("models.reclaimable", undefined));
+ipcMain.handle("nova:websocket:url", () => requestGateway("websocket.url", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1329,6 +1330,10 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.reclaimableLocalModelSummaries();
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
+  });
+  gateway.register("websocket.url", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return runtimeApplication.websocketUrl();
   });
   gateway.register("performance.budgets", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

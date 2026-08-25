@@ -143,6 +143,7 @@ describe("Electron preload boundary", () => {
       "activeScheduledJobConcurrencyGroups",
       "listModelProviderHealthStatuses",
       "reclaimableLocalModelSummaries",
+      "websocketUrl",
     ]);
   });
 
@@ -280,6 +281,7 @@ describe("Electron preload boundary", () => {
         activeScheduledJobConcurrencyGroups: () => unknown;
         listModelProviderHealthStatuses: () => unknown;
         reclaimableLocalModelSummaries: () => unknown;
+        websocketUrl: () => unknown;
       },
     ];
 
@@ -470,6 +472,7 @@ describe("Electron preload boundary", () => {
     api.activeScheduledJobConcurrencyGroups();
     api.listModelProviderHealthStatuses();
     api.reclaimableLocalModelSummaries();
+    api.websocketUrl();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -752,5 +755,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(119, "nova:jobs:active-groups");
     expect(invoke).toHaveBeenNthCalledWith(120, "nova:models:health-list");
     expect(invoke).toHaveBeenNthCalledWith(121, "nova:models:reclaimable");
+    expect(invoke).toHaveBeenNthCalledWith(122, "nova:websocket:url");
   });
 });
