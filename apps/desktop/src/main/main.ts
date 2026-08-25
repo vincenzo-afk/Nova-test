@@ -666,8 +666,14 @@ ipcMain.handle("nova:companion:permission", (_event, permission: string) =>
 );
 ipcMain.handle(
   "nova:companion:permission-set",
-  (_event, payload: { readonly permission: string; readonly granted: boolean }) =>
-    requestGateway("companion.permission-set", payload),
+  (
+    _event,
+    payload: {
+      readonly permission: string;
+      readonly granted: boolean;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway("companion.permission-set", payload),
 );
 ipcMain.handle("nova:companion:foreground-start", () =>
   requestGateway("companion.foreground-start", undefined),
@@ -2212,13 +2218,20 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("companion.permission-set", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly permission?: unknown; readonly granted?: unknown };
+    const payload = data as {
+      readonly permission?: unknown;
+      readonly granted?: unknown;
+      readonly confirmed?: unknown;
+    };
     if (typeof payload.permission !== "string" || payload.permission.trim() === "")
       throw new Error("Companion permission is required.");
     if (typeof payload.granted !== "boolean") throw new Error("Companion grant state is required.");
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Companion permission confirmation is invalid.");
     const result = runtimeApplication.setAndroidCompanionPermission(
       payload.permission,
       payload.granted,
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result;

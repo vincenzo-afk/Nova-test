@@ -160,12 +160,20 @@ describe("RuntimeApplication", () => {
       ok: false,
       error: { code: "NOVA-SEC001" },
     });
-    expect(application.setAndroidCompanionPermission("camera", true)).toMatchObject({ ok: true });
+    expect(application.setAndroidCompanionPermission("camera", true, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.setAndroidCompanionPermission("camera", true, true)).toMatchObject({
+      ok: true,
+    });
     expect(application.checkAndroidCompanionCapability(capability)).toMatchObject({
       ok: true,
       value: { status: "Available", device_id: "android-1" },
     });
-    expect(application.setAndroidCompanionPermission("camera", false)).toMatchObject({ ok: true });
+    expect(application.setAndroidCompanionPermission("camera", false, true)).toMatchObject({
+      ok: true,
+    });
   });
 
   it("controls the Android companion foreground service before background use", () => {

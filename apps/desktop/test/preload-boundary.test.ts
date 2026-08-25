@@ -180,7 +180,11 @@ describe("Electron preload boundary", () => {
         syncDevices: () => unknown;
         flushDeviceSync: (confirmed: boolean) => unknown;
         getAndroidCompanionPermission: (permission: string) => unknown;
-        setAndroidCompanionPermission: (permission: string, granted: boolean) => unknown;
+        setAndroidCompanionPermission: (
+          permission: string,
+          granted: boolean,
+          confirmed: boolean,
+        ) => unknown;
         checkAndroidCompanionCapability: (input: unknown) => unknown;
         startAndroidCompanionForegroundService: () => unknown;
         stopAndroidCompanionForegroundService: () => unknown;
@@ -338,7 +342,7 @@ describe("Electron preload boundary", () => {
     api.syncDevices();
     api.flushDeviceSync(true);
     api.getAndroidCompanionPermission("camera");
-    api.setAndroidCompanionPermission("camera", true);
+    api.setAndroidCompanionPermission("camera", true, true);
     api.checkAndroidCompanionCapability({
       capability_id: "camera.capture",
       required_permissions: ["camera"],
@@ -560,6 +564,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(11, "nova:companion:permission-set", {
       permission: "camera",
       granted: true,
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(12, "nova:companion:capability", {
       capability_id: "camera.capture",

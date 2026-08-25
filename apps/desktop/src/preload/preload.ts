@@ -15,8 +15,8 @@ const novaApi = {
   flushDeviceSync: (confirmed: boolean) => ipcRenderer.invoke("nova:devices:sync-flush", confirmed),
   getAndroidCompanionPermission: (permission: string) =>
     ipcRenderer.invoke("nova:companion:permission", permission),
-  setAndroidCompanionPermission: (permission: string, granted: boolean) =>
-    ipcRenderer.invoke("nova:companion:permission-set", { permission, granted }),
+  setAndroidCompanionPermission: (permission: string, granted: boolean, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:companion:permission-set", { permission, granted, confirmed }),
   checkAndroidCompanionCapability: (input: unknown) =>
     ipcRenderer.invoke("nova:companion:capability", input),
   startAndroidCompanionForegroundService: () =>

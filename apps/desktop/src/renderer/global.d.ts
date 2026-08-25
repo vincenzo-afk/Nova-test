@@ -120,6 +120,7 @@ declare global {
       setAndroidCompanionPermission: (
         permission: string,
         granted: boolean,
+        confirmed: boolean,
       ) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };

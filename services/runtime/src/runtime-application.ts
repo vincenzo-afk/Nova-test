@@ -792,12 +792,23 @@ export class RuntimeApplication {
     return ok(this.androidCompanionManager.permission(permission));
   }
 
-  public setAndroidCompanionPermission(permission: string, granted: boolean): Result<void> {
+  public setAndroidCompanionPermission(
+    permission: string,
+    granted: boolean,
+    confirmed: boolean,
+  ): Result<void> {
     if (!this.androidCompanionManager) {
       return err({
         code: "NOVA-SEC001",
         message: "Android companion is not configured for this runtime.",
         retryable: true,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Changing an Android companion permission requires explicit confirmation.",
+        retryable: false,
       });
     }
     return granted
