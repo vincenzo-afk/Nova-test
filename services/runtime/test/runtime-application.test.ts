@@ -2296,7 +2296,12 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    expect(application.revokeTrustedDevice("android-1")).toMatchObject({ ok: true });
+    expect(application.revokeTrustedDevice("android-1", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.listTrustedDevices()).toHaveLength(1);
+    expect(application.revokeTrustedDevice("android-1", true)).toMatchObject({ ok: true });
     expect(application.listTrustedDevices()).toEqual([]);
     expect(application.listDeviceSnapshots()).toEqual([]);
     expect(
@@ -2306,7 +2311,7 @@ describe("RuntimeApplication", () => {
         destructive: false,
       }),
     ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
-    expect(application.revokeTrustedDevice("android-1")).toMatchObject({
+    expect(application.revokeTrustedDevice("android-1", true)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
     });

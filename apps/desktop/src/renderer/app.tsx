@@ -2113,7 +2113,7 @@ const DevicesView = ({
     setRevokingDeviceId(deviceId);
     setRevokeError(null);
     try {
-      const result = await window.nova.revokeTrustedDevice(deviceId);
+      const result = await window.nova.revokeTrustedDevice(deviceId, true);
       if (!result.ok) {
         setRevokeError(result.error?.message ?? "Device access could not be revoked.");
         return;

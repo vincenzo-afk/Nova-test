@@ -994,8 +994,10 @@ ipcMain.handle(
   (_event, payload: { readonly code: string; readonly request: PairingRequest }) =>
     requestGateway("devices.pairing-complete", payload),
 );
-ipcMain.handle("nova:devices:revoke", (_event, payload: { readonly device_id: string }) =>
-  requestGateway("devices.revoke", payload),
+ipcMain.handle(
+  "nova:devices:revoke",
+  (_event, payload: { readonly device_id: string; readonly confirmed: boolean }) =>
+    requestGateway("devices.revoke", payload),
 );
 ipcMain.handle("nova:devices:trusted", () => requestGateway("devices.trusted", undefined));
 ipcMain.handle("nova:devices:snapshots", () => requestGateway("devices.snapshots", undefined));
@@ -2126,9 +2128,11 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("devices.revoke", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly device_id?: string };
+    const payload = data as { readonly device_id?: string; readonly confirmed?: unknown };
     if (!payload.device_id) throw new Error("Device ID is required.");
-    const result = runtimeApplication.revokeTrustedDevice(payload.device_id);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Trusted-device revocation confirmation is invalid.");
+    const result = runtimeApplication.revokeTrustedDevice(payload.device_id, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });

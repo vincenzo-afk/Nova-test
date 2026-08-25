@@ -828,7 +828,10 @@ declare global {
         };
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      revokeTrustedDevice: (deviceId: string) => Promise<{
+      revokeTrustedDevice: (
+        deviceId: string,
+        confirmed: boolean,
+      ) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };
       }>;

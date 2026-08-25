@@ -145,8 +145,8 @@ const novaApi = {
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
-  revokeTrustedDevice: (deviceId: string) =>
-    ipcRenderer.invoke("nova:devices:revoke", { device_id: deviceId }),
+  revokeTrustedDevice: (deviceId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:devices:revoke", { device_id: deviceId, confirmed }),
   getTrustedDevices: () => ipcRenderer.invoke("nova:devices:trusted"),
   getDeviceSnapshots: () => ipcRenderer.invoke("nova:devices:snapshots"),
   negotiateDeviceCapability: (deviceId: string, capabilityId: string) =>

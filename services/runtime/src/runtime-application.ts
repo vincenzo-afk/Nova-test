@@ -1522,12 +1522,19 @@ export class RuntimeApplication {
     return this.sessionContinuityManager?.listDevices() ?? [];
   }
 
-  public revokeTrustedDevice(deviceId: string): Result<void> {
+  public revokeTrustedDevice(deviceId: string, confirmed: boolean): Result<void> {
     if (!this.devicePairingManager) {
       return err({
         code: "NOVA-SEC001",
         message: "Device pairing is not configured for this runtime.",
         retryable: true,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Revoking a trusted device requires explicit confirmation.",
+        retryable: false,
       });
     }
     const result = this.devicePairingManager.unpair(deviceId);

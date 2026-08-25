@@ -262,7 +262,7 @@ describe("Electron preload boundary", () => {
         workspaceCanSync: () => unknown;
         createPairingOffer: (input: unknown) => unknown;
         completePairing: (code: string, request: unknown) => unknown;
-        revokeTrustedDevice: (deviceId: string) => unknown;
+        revokeTrustedDevice: (deviceId: string, confirmed: boolean) => unknown;
         getTrustedDevices: () => unknown;
         getDeviceSnapshots: () => unknown;
         negotiateDeviceCapability: (deviceId: string, capabilityId: string) => unknown;
@@ -448,7 +448,7 @@ describe("Electron preload boundary", () => {
       runtime_mode: "Companion",
       confirmed: true,
     });
-    api.revokeTrustedDevice("phone-1");
+    api.revokeTrustedDevice("phone-1", true);
     api.getTrustedDevices();
     api.getDeviceSnapshots();
     api.negotiateDeviceCapability("phone-1", "camera");
@@ -733,6 +733,7 @@ describe("Electron preload boundary", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(86, "nova:devices:revoke", {
       device_id: "phone-1",
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(87, "nova:devices:trusted");
     expect(invoke).toHaveBeenNthCalledWith(88, "nova:devices:snapshots");
