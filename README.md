@@ -121,7 +121,7 @@ For a Windows source checkout, run the repository bootstrap command from the che
 pnpm install:windows
 ```
 
-This command is deliberately a **bootstrap**, not a packaged Windows installer. It refuses to run on non-Windows hosts, installs the locked workspace dependencies, builds the Electron desktop package, and creates the user-scoped Nova data directories under `%LOCALAPPDATA%\\Nova`. It does not register a Windows service, install third-party software, delete data, download arbitrary files, or start observers. The packaged Windows installer and service-registration assets described by the deployment documentation are not present in this repository yet.
+This command is deliberately a **bootstrap**, not a packaged Windows installer. It refuses to run on non-Windows hosts, installs the locked workspace dependencies, builds the Electron desktop package, and creates the user-scoped Nova data directories under `%LOCALAPPDATA%\\Nova`. It does not register a Windows service or browser Native Messaging host, install third-party software, delete data, download arbitrary files, or start observers. The packaged Windows installer is built separately with `pnpm package:windows` on a Windows build host; service and browser-host registration remain explicit post-install commands.
 
 After the command completes, launch the desktop application from the built package or the development workflow. First launch must present the permission center; Nova must not begin source-specific observation or initial scanning until the user grants the corresponding permission. Initial discovery is limited to the explicitly approved folders and sources.
 
@@ -134,7 +134,7 @@ pnpm --filter @nova/browser-extension typecheck
 pnpm --filter @nova/browser-extension build
 ```
 
-The output is written to `apps/browser-extension/dist`. Install the extension through the browser’s unpacked-extension workflow, then install the Native Messaging host manifest from `dist/native-host/com.nova.browser.json` using an explicit Windows installation step. Replace `__NOVA_EXTENSION_ID__` with the installed extension ID and `__NOVA_NATIVE_HOST_PATH__` with the absolute host executable path; the repository’s source-checkout bootstrap intentionally does not claim to perform this registration. The extension requests only the Chrome `tabs` permission and has no content scripts. Page content, DOM automation, screenshots, and vision fallback are separate future slices, not hidden behavior of this surface. No live browser or Windows validation is claimed in the current sandbox.
+The output is written to `apps/browser-extension/dist`. Install the extension through the browser’s unpacked-extension workflow, then register the Native Messaging host on Windows with the explicit `pnpm register:windows-browser-host` command using the installed extension ID, absolute host executable path, and user-scoped manifest directory. The helper materializes the manifest placeholders and writes only the current user’s Chrome registry key; the repository’s source-checkout bootstrap intentionally does not perform this registration. The extension requests only the Chrome `tabs` permission and has no content scripts. Page content, DOM automation, screenshots, and vision fallback are separate future slices, not hidden behavior of this surface. No live browser or Windows registry validation is claimed in the current sandbox.
 
 ### Local diagnostics
 
@@ -160,7 +160,7 @@ For renderer-only development, the desktop package exposes:
 pnpm --filter @nova/desktop dev
 ```
 
-The current repository does not define a packaged installer or release command. Do not treat the Vite development server as a complete Electron distribution, and do not describe `pnpm install:windows` as a packaged installer.
+The repository defines `pnpm package:windows` for the per-user NSIS artifact, but it must run on a Windows build host and is not a signed or published release workflow. Do not treat the Vite development server as a complete Electron distribution, and do not describe `pnpm install:windows` as a packaged installer.
 
 ### Configuration
 
@@ -345,7 +345,7 @@ The repository currently contains 57 test files and 222 passing tests in the mai
 
 ## Deployment
 
-There is no Dockerfile, Kubernetes manifest, packaged installer, Windows service-registration asset, or hosted deployment configuration in the current repository. Nova is developed as a local-first desktop application. The Windows source-checkout bootstrap is intended for development and verification only; a production deployment or release process should be added only after the target operating systems, packaging format, signing requirements, update channel, and runtime model-distribution strategy are selected.
+Nova includes a per-user NSIS packaging configuration and explicit Windows service/browser-host registration helpers, but no signing configuration, release publication workflow, Dockerfile, Kubernetes manifest, or hosted deployment configuration. Nova is developed as a local-first desktop application. The Windows source-checkout bootstrap is intended for development and verification only; service and browser-host registration are separate explicit actions, and a production release process still requires target-specific signing, update-channel, and publication decisions.
 
 For local validation, use the Electron production build command:
 

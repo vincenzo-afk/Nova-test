@@ -28,7 +28,7 @@ pnpm --filter @nova/browser-extension build
 | `__NOVA_EXTENSION_ID__`     | The actual installed Chrome extension ID, used in `allowed_origins`             |
 | `__NOVA_NATIVE_HOST_PATH__` | The absolute path to the installed Native Messaging host executable or launcher |
 
-The host connects only to Nova’s local named-pipe API path. `NOVA_API_PIPE_PATH` may be supplied by the host-local installation environment; it is not a browser-provided message field. The current `pnpm install:windows` source-checkout bootstrap does not register the host, create registry entries, or claim to be a packaged installer. Do not treat the template as installed until the browser reports the Native Messaging host as available.
+The host connects only to Nova’s local named-pipe API path. `NOVA_API_PIPE_PATH` may be supplied by the host-local installation environment; it is not a browser-provided message field. The current `pnpm install:windows` source-checkout bootstrap does not register the host, create registry entries, or claim to be a packaged installer. On Windows, an explicit post-install step may run `pnpm register:windows-browser-host` with `NOVA_BROWSER_EXTENSION_ID`, `NOVA_NATIVE_HOST_EXECUTABLE`, and `NOVA_NATIVE_HOST_MANIFEST_DIR`; it materializes the manifest and registers only the current user’s Chrome registry key. Do not treat the template or generated manifest as installed until the browser reports the Native Messaging host as available.
 
 ## Message flow
 
@@ -50,4 +50,4 @@ The Native Messaging host validates the message size and primitive fields, wraps
 
 ## Current validation status
 
-The package has sandbox structural tests, JavaScript syntax checks, manifest validation, and build output checks. No Windows host or live browser is connected to this task, so Chrome installation, Native Messaging registration, named-pipe interoperability on Windows, and real tab lifecycle delivery remain deferred and are not represented as passing evidence.
+The package has sandbox structural tests, JavaScript syntax checks, manifest validation, build output checks, and plan/execution tests for the explicit Windows registration helper. No Windows host or live browser is connected to this task, so Chrome installation, registry execution, named-pipe interoperability on Windows, and real tab lifecycle delivery remain deferred and are not represented as passing evidence.

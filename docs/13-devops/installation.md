@@ -37,7 +37,9 @@ The repository currently provides `pnpm install:windows` as a non-destructive so
 
 A packaged host can be registered separately with `pnpm register:windows-service` on Windows. The command requires `NOVA_HOST_EXECUTABLE` and `NOVA_SERVICE_ACCOUNT`, creates an auto-start `NovaHost` service with Service Control Manager restart recovery, and prompts for the account password only while executing the registration. The command refuses non-Windows hosts and never accepts the password through an environment variable or stores it in the service plan.
 
-The standard NSIS artifact is built with `pnpm package:windows` on a Windows build host. The build uses the Electron main entry, renderer assets, runtime workspace packages, Prisma client, migrations, and a per-user installation configuration. The source-checkout bootstrap remains intentionally separate from this packaging command.
+The browser Native Messaging host can be registered separately with `pnpm register:windows-browser-host` on Windows after the extension has been installed. Set `NOVA_BROWSER_EXTENSION_ID` to the installed 32-character Chrome extension ID, `NOVA_NATIVE_HOST_EXECUTABLE` to the absolute host executable or launcher path, and `NOVA_NATIVE_HOST_MANIFEST_DIR` to an absolute user-scoped directory for `com.nova.browser.json`. The command materializes a placeholder-free manifest and registers it under the current user’s Chrome Native Messaging registry key with `reg.exe`; it does not modify machine-wide registry state, install the extension, or start observation. It refuses non-Windows hosts and must be rerun if the extension ID or host path changes.
+
+The standard NSIS artifact is built with `pnpm package:windows` on a Windows build host. The build uses the Electron main entry, renderer assets, runtime workspace packages, Prisma client, migrations, and a per-user installation configuration. The source-checkout bootstrap and explicit service/browser-host registration commands remain separate from this packaging command.
 
 ## No silent background activity before consent
 
