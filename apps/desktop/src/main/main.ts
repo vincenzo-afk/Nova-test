@@ -809,6 +809,11 @@ ipcMain.handle(
   (_event, payload: { readonly model_id: string; readonly confirmed: boolean }) =>
     requestGateway("models.download", payload),
 );
+ipcMain.handle(
+  "nova:models:load",
+  (_event, payload: { readonly model_id: string; readonly confirmed: boolean }) =>
+    requestGateway("models.load", payload),
+);
 ipcMain.handle("nova:models:health", (_event, providerId: string) =>
   requestGateway("models.health", { provider_id: providerId }),
 );
@@ -1434,6 +1439,22 @@ const startGateway = async (): Promise<void> => {
       provider_id: result.value.provider_id,
       bytes: result.value.bytes,
       status: result.value.status,
+    };
+  });
+  gateway.register("models.load", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly model_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Local model load confirmation is invalid.");
+    const result = await runtimeApplication.loadLocalModel(
+      parseModelId(payload.model_id),
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return {
+      model_id: result.value.model_id,
+      provider_id: result.value.provider_id,
+      status: "loaded" as const,
     };
   });
   gateway.register("models.health", async (data) => {

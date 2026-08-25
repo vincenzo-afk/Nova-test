@@ -997,6 +997,14 @@ declare global {
         bytes: number;
         status: "downloaded" | "already-present";
       }>;
+      loadLocalModel: (
+        modelId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        model_id: string;
+        provider_id: string;
+        status: "loaded";
+      }>;
     };
   }
 }

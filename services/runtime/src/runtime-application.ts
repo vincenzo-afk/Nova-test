@@ -131,6 +131,7 @@ import type {
 import type {
   LocalModelDiscovery,
   LocalModelDownloadResult,
+  LocalModelLoadResult,
   LocalModelManager,
   ReclaimableLocalModelSummary,
 } from "./local-model-manager.js";
@@ -840,6 +841,20 @@ export class RuntimeApplication {
       bytes: result.value.bytes,
       status: result.value.status,
     });
+  }
+  public async loadLocalModel(
+    modelId: string,
+    confirmed: boolean,
+  ): Promise<Result<LocalModelLoadResult>> {
+    if (!this.localModelManager) return err(this.localModelManagerUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Loading a local model requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    return await this.localModelManager.load(modelId);
   }
   public reclaimableLocalModelSummaries(): Result<readonly ReclaimableLocalModelSummary[]> {
     if (!this.localModelManager) return err(this.localModelManagerUnavailableError());

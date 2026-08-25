@@ -899,6 +899,17 @@ describe("RuntimeApplication", () => {
         status: "downloaded",
       },
     });
+    expect(await application.loadLocalModel("whisper-small", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(await application.loadLocalModel("whisper-small", true)).toMatchObject({
+      ok: true,
+      value: {
+        model_id: "whisper-small",
+        provider_id: "whisper-local",
+      },
+    });
     await rm(storagePath, { recursive: true, force: true });
   });
 
