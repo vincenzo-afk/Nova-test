@@ -172,7 +172,7 @@ describe("Electron preload boundary", () => {
         getMemoryRecord: (recordId: string) => unknown;
         queryGraph: (input: unknown) => unknown;
         syncDevices: () => unknown;
-        flushDeviceSync: () => unknown;
+        flushDeviceSync: (confirmed: boolean) => unknown;
         getAndroidCompanionPermission: (permission: string) => unknown;
         setAndroidCompanionPermission: (permission: string, granted: boolean) => unknown;
         checkAndroidCompanionCapability: (input: unknown) => unknown;
@@ -322,7 +322,7 @@ describe("Electron preload boundary", () => {
     api.getMemoryRecord("memory-1");
     api.queryGraph({ node_id: "file-1", direction: "out", depth: 1 });
     api.syncDevices();
-    api.flushDeviceSync();
+    api.flushDeviceSync(true);
     api.getAndroidCompanionPermission("camera");
     api.setAndroidCompanionPermission("camera", true);
     api.checkAndroidCompanionCapability({
@@ -535,7 +535,7 @@ describe("Electron preload boundary", () => {
       depth: 1,
     });
     expect(invoke).toHaveBeenNthCalledWith(8, "nova:devices:sync");
-    expect(invoke).toHaveBeenNthCalledWith(9, "nova:devices:sync-flush");
+    expect(invoke).toHaveBeenNthCalledWith(9, "nova:devices:sync-flush", true);
     expect(invoke).toHaveBeenNthCalledWith(10, "nova:companion:permission", "camera");
     expect(invoke).toHaveBeenNthCalledWith(11, "nova:companion:permission-set", {
       permission: "camera",

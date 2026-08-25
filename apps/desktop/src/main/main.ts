@@ -981,7 +981,9 @@ ipcMain.handle(
   (_event, payload: { readonly capability_id: string; readonly required_permissions: string[] }) =>
     requestGateway("companion.capability", payload),
 );
-ipcMain.handle("nova:devices:sync-flush", () => requestGateway("devices.sync-flush", undefined));
+ipcMain.handle("nova:devices:sync-flush", (_event, confirmed: boolean) =>
+  requestGateway("devices.sync-flush", { confirmed }),
+);
 ipcMain.handle(
   "nova:devices:pairing-offer",
   (
@@ -2090,9 +2092,12 @@ const startGateway = async (): Promise<void> => {
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });
-  gateway.register("devices.sync-flush", async () => {
+  gateway.register("devices.sync-flush", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const result = await runtimeApplication.flushDeviceSync();
+    const payload = data as { readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Device-sync flush confirmation is invalid.");
+    const result = await runtimeApplication.flushDeviceSync(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result;
   });

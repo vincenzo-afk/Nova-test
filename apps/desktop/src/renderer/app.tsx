@@ -2142,7 +2142,8 @@ const DevicesView = ({
           `Checkpoint ${result.value.checkpoint}; applied ${result.value.applied_change_ids.length} change(s).`,
         );
       } else {
-        const result = await window.nova.flushDeviceSync();
+        if (!window.confirm("Push local device-sync changes to other devices?")) return;
+        const result = await window.nova.flushDeviceSync(true);
         if (!result.ok || !result.value) {
           setSyncStatus(result.error?.message ?? "Local sync changes could not be flushed.");
           return;

@@ -2180,9 +2180,13 @@ describe("RuntimeApplication", () => {
   });
 
   it("syncs and flushes through the composed cross-device manager", async () => {
+    const pushed: string[][] = [];
     const sync = new CrossDeviceSyncManager(
       {
         pull: async () => ({ next_clock: 3, envelopes: [] }),
+        push: async (envelopes) => {
+          pushed.push([...envelopes]);
+        },
         encrypt: (payload) => payload,
         decrypt: (payload) => payload,
       },
@@ -2204,10 +2208,24 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { checkpoint: 3, applied_change_ids: [] },
     });
-    expect(await application.flushDeviceSync()).toMatchObject({
-      ok: true,
-      value: { pushed_change_ids: [] },
+    sync.applyLocal({
+      change_id: "local-1",
+      entity_id: "task-1",
+      category: "task_state",
+      logical_clock: 4,
+      partition: "security",
+      fields: { state: "Paused" },
     });
+    expect(await application.flushDeviceSync(false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(pushed).toEqual([]);
+    expect(await application.flushDeviceSync(true)).toMatchObject({
+      ok: true,
+      value: { pushed_change_ids: ["local-1"] },
+    });
+    expect(pushed).toHaveLength(1);
   });
 
   it("routes pairing offer creation and completion through the composed runtime", () => {

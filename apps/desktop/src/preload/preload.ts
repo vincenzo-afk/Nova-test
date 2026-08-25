@@ -12,7 +12,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:memory:record", { record_id: recordId }),
   queryGraph: (input: unknown) => ipcRenderer.invoke("nova:graph:query", input),
   syncDevices: () => ipcRenderer.invoke("nova:devices:sync"),
-  flushDeviceSync: () => ipcRenderer.invoke("nova:devices:sync-flush"),
+  flushDeviceSync: (confirmed: boolean) => ipcRenderer.invoke("nova:devices:sync-flush", confirmed),
   getAndroidCompanionPermission: (permission: string) =>
     ipcRenderer.invoke("nova:companion:permission", permission),
   setAndroidCompanionPermission: (permission: string, granted: boolean) =>

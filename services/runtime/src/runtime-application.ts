@@ -722,12 +722,19 @@ export class RuntimeApplication {
     return await this.crossDeviceSyncManager.sync();
   }
 
-  public async flushDeviceSync(): Promise<Result<FlushResult>> {
+  public async flushDeviceSync(confirmed: boolean): Promise<Result<FlushResult>> {
     if (!this.crossDeviceSyncManager) {
       return err({
         code: "NOVA-EVT001",
         message: "Cross-device synchronization is not configured for this runtime.",
         retryable: true,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Pushing device-sync changes requires explicit confirmation.",
+        retryable: false,
       });
     }
     return await this.crossDeviceSyncManager.flush();

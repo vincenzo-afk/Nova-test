@@ -107,7 +107,7 @@ declare global {
         value?: { checkpoint: number; applied_change_ids: string[] };
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      flushDeviceSync: () => Promise<{
+      flushDeviceSync: (confirmed: boolean) => Promise<{
         ok: boolean;
         value?: { pushed_change_ids: string[] };
         error?: { code: string; message: string; retryable: boolean };
