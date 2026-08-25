@@ -1693,6 +1693,7 @@ describe("RuntimeApplication", () => {
           deterministic: true,
           action_count: 1,
           read_only_action_count: 1,
+          compensation_action_count: 0,
         },
       ],
     });

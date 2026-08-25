@@ -85,6 +85,7 @@ describe("ToolRegistry", () => {
         deterministic: true,
         action_count: 1,
         read_only_action_count: 1,
+        compensation_action_count: 0,
       },
       {
         tool_id: "builtin.filesystem",
@@ -92,6 +93,33 @@ describe("ToolRegistry", () => {
         deterministic: true,
         action_count: 1,
         read_only_action_count: 1,
+        compensation_action_count: 0,
+      },
+    ]);
+  });
+
+  it("reports aggregate compensation availability without exposing compensation identifiers", () => {
+    const registry = new ToolRegistry();
+    registry.register({
+      ...fileTool,
+      tool_id: "builtin.reversible",
+      supported_actions: [
+        {
+          ...fileTool.supported_actions[0],
+          risk_tier: "reversible_write",
+          compensation_action_id: "restore_file",
+        },
+      ],
+    });
+
+    expect(registry.listSummaries()).toEqual([
+      {
+        tool_id: "builtin.reversible",
+        execution_tier: "native_runtime",
+        deterministic: true,
+        action_count: 1,
+        read_only_action_count: 0,
+        compensation_action_count: 1,
       },
     ]);
   });

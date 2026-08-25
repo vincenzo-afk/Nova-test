@@ -550,6 +550,7 @@ declare global {
           deterministic: boolean;
           action_count: number;
           read_only_action_count: number;
+          compensation_action_count: number;
         }[]
       >;
       taskSchedulerStatus: () => Promise<{

@@ -12,6 +12,7 @@ export interface RegisteredAction {
   readonly estimated_cost_class: "free" | "low" | "medium" | "high";
   readonly timeout_ms: number;
   readonly idempotent: boolean;
+  readonly compensation_action_id?: string;
   readonly input_schema: Readonly<Record<string, unknown>>;
   readonly output_schema: Readonly<Record<string, unknown>>;
 }
@@ -39,6 +40,7 @@ export interface RegisteredToolSummary {
   readonly deterministic: boolean;
   readonly action_count: number;
   readonly read_only_action_count: number;
+  readonly compensation_action_count: number;
 }
 
 const actionSchema = z.object({
@@ -57,6 +59,7 @@ const actionSchema = z.object({
   estimated_cost_class: z.enum(["free", "low", "medium", "high"]),
   timeout_ms: z.number().int().positive(),
   idempotent: z.boolean(),
+  compensation_action_id: z.string().min(1).optional(),
   input_schema: z.record(z.string(), z.unknown()),
   output_schema: z.record(z.string(), z.unknown()),
 });
@@ -120,6 +123,9 @@ export class ToolRegistry {
         action_count: tool.supported_actions.length,
         read_only_action_count: tool.supported_actions.filter(
           (action) => action.risk_tier === "read_only",
+        ).length,
+        compensation_action_count: tool.supported_actions.filter(
+          (action) => action.compensation_action_id !== undefined,
         ).length,
       }));
   }
