@@ -193,6 +193,8 @@ const novaApi = {
   taskSchedulerStatus: () => ipcRenderer.invoke("nova:task-scheduler:status"),
   workflowCheckpointSummaries: (workflowId: string) =>
     ipcRenderer.invoke("nova:workflow:checkpoints", { workflow_id: workflowId }),
+  retryTask: (taskId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:task:retry", { task_id: taskId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

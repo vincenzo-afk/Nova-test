@@ -137,6 +137,40 @@ describe("RuntimeTaskCoordinator", () => {
     expect(deniedExecute).not.toHaveBeenCalled();
   });
 
+  it("requires explicit confirmation before retrying and then reuses the authoritative execution path", async () => {
+    const tasks = new TaskManager();
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map([["retry me", step]]) }),
+      executor: new Executor(
+        new PermissionManager({
+          allowedToolIds: new Set([tool.tool_id]),
+          confirmationTimeoutMs: 30_000,
+        }),
+        new Map([[tool.tool_id, tool]]),
+      ),
+      verifier: new Verifier(),
+      events: new InMemoryCommunicationBus(),
+    });
+    const submitted = tasks.create({ goal: "retry me" });
+    if (!submitted.ok) throw new Error("Task creation failed.");
+    expect(tasks.transition(submitted.value.task_id, "Planning")).toMatchObject({ ok: true });
+    expect(tasks.transition(submitted.value.task_id, "Failed", "retryable failure")).toMatchObject({
+      ok: true,
+    });
+
+    expect(await coordinator.retry(submitted.value.task_id, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    const retried = await coordinator.retry(submitted.value.task_id, true);
+
+    expect(retried).toMatchObject({
+      ok: true,
+      value: { state: "Completed", retry_count: 1 },
+    });
+  });
+
   it("never reports Completed when execution has no verification evidence", async () => {
     const tasks = new TaskManager();
     const coordinator = new RuntimeTaskCoordinator({

@@ -861,6 +861,9 @@ export class RuntimeApplication {
     }
     return ok(this.scheduler.status());
   }
+  public async retryTask(taskId: string, confirmed: boolean): Promise<Result<TaskRecord>> {
+    return this.coordinator.retry(taskId, confirmed);
+  }
   public workflowCheckpointSummaries(
     workflowId: string,
   ): Result<readonly WorkflowCheckpointSummary[]> {

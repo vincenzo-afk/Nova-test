@@ -53,6 +53,25 @@ export class RuntimeTaskCoordinator {
     return created;
   }
 
+  public async retry(taskId: string, confirmed: boolean): Promise<Result<TaskRecord>> {
+    if (!confirmed) {
+      return {
+        ok: false,
+        error: {
+          code: "NOVA-SEC001",
+          message: "Retrying a task requires explicit confirmation.",
+          retryable: false,
+        },
+      };
+    }
+    const transitioned = this.options.tasks.transition(taskId, "Retrying");
+    if (!transitioned.ok) return transitioned;
+    const persisted = await this.persist(transitioned.value, "Valid");
+    if (!persisted.ok) return persisted;
+    await this.publish(transitioned.value);
+    return this.execute(taskId);
+  }
+
   public async execute(taskId: string): Promise<Result<TaskRecord>> {
     const current = this.options.tasks.get(taskId);
     if (!current.ok) return current;

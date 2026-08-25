@@ -831,6 +831,7 @@ ipcMain.handle("nova:task-scheduler:status", () =>
 ipcMain.handle("nova:workflow:checkpoints", (_event, data) =>
   requestGateway("workflow.checkpoints", data),
 );
+ipcMain.handle("nova:task:retry", (_event, data) => requestGateway("task.retry", data));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1381,6 +1382,18 @@ const startGateway = async (): Promise<void> => {
     const payload = data as { readonly workflow_id?: unknown };
     const result = runtimeApplication.workflowCheckpointSummaries(
       parseWorkspaceText(payload.workflow_id, "Workflow ID"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("task.retry", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly task_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Task retry confirmation is invalid.");
+    const result = await runtimeApplication.retryTask(
+      parseWorkspaceText(payload.task_id, "Task ID"),
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
