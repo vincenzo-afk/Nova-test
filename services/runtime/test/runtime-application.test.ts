@@ -2538,6 +2538,7 @@ describe("RuntimeApplication", () => {
       devicePairingManager: pairing,
     });
     applications.push(application);
+    const completePairing = vi.spyOn(pairing, "completePairing");
 
     const deniedOffer = application.createPairingOffer(
       {
@@ -2564,6 +2565,17 @@ describe("RuntimeApplication", () => {
       },
     });
     if (!offer.ok) return;
+    expect(
+      application.completePairing(offer.value.code, {
+        device_id: "android-1",
+        device_public_key: "public-key",
+        challenge: "challenge",
+        signature: "signature",
+        runtime_mode: "Companion",
+        confirmed: false,
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(completePairing).not.toHaveBeenCalled();
     expect(
       application.completePairing(offer.value.code, {
         device_id: "android-1",

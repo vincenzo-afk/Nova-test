@@ -1773,9 +1773,15 @@ export class RuntimeApplication {
         retryable: true,
       });
     }
+    if (!request.confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Completing device pairing requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.devicePairingManager.completePairing(code, request);
   }
-
   public listDeviceSnapshots(): readonly DeviceSnapshot[] {
     return this.sessionContinuityManager?.listDevices() ?? [];
   }
