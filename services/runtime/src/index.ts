@@ -26,6 +26,7 @@ export * from "./workspace-manager.js";
 export * from "./performance-budgets.js";
 export * from "./device-compatibility.js";
 export * from "./networking.js";
+export * from "./session-continuity.js";
 export * from "./personal-analytics.js";
 export * from "./adaptive-personalization.js";
 export * from "./incident-lifecycle.js";

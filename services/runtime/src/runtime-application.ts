@@ -144,6 +144,7 @@ import type { PluginManager, PluginRecord } from "./plugin-manager.js";
 import type { JobScheduler, JobState } from "./job-scheduler.js";
 import type { SystemLifecycleOrchestrator } from "./system-lifecycle.js";
 import type { ConnectionState, NetworkDiscoveryManager } from "./networking.js";
+import type { DeviceSnapshot, SessionContinuityManager } from "./session-continuity.js";
 import {
   summarizeSystemInventory,
   type SystemInventorySummary,
@@ -175,7 +176,6 @@ import type {
   PairingRequest,
   TrustedDevice,
 } from "./device-pairing.js";
-import type { DeviceSnapshot, SessionContinuityManager } from "./session-continuity.js";
 import {
   DistributedTaskCoordinator,
   type DistributedPlacementInput,
@@ -243,6 +243,7 @@ export interface RuntimeApplicationOptions {
   readonly systemLifecycle?: SystemLifecycleOrchestrator;
   readonly networkDiscovery?: NetworkDiscoveryManager;
   readonly systemInventory?: WindowsSystemInventory;
+  readonly sessionContinuity?: SessionContinuityManager;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -302,6 +303,7 @@ export class RuntimeApplication {
   public readonly systemLifecycle: SystemLifecycleOrchestrator | undefined;
   public readonly networkDiscovery: NetworkDiscoveryManager | undefined;
   public readonly systemInventory: WindowsSystemInventory | undefined;
+  public readonly sessionContinuity: SessionContinuityManager | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -384,6 +386,7 @@ export class RuntimeApplication {
     this.systemLifecycle = options.systemLifecycle;
     this.networkDiscovery = options.networkDiscovery;
     this.systemInventory = options.systemInventory;
+    this.sessionContinuity = options.sessionContinuity;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -848,6 +851,11 @@ export class RuntimeApplication {
         retryable: true,
       });
     }
+  }
+
+  public sessionDeviceSnapshots(): Result<readonly DeviceSnapshot[]> {
+    if (!this.sessionContinuity) return err(this.sessionContinuityUnavailableError());
+    return ok(this.sessionContinuity.listDevices());
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1410,6 +1418,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private sessionContinuityUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Session continuity is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private systemInventoryUnavailableError(): {

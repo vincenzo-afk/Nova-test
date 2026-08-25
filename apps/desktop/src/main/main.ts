@@ -36,6 +36,7 @@ import {
   type PerformanceBudgetReport,
   type ConnectionState,
   type SystemInventorySummary,
+  type DeviceSnapshot,
   type CompatibilityResult,
   type LogicalClockValue,
   type PluginRecord,
@@ -801,6 +802,7 @@ ipcMain.handle("nova:network:state", () => requestGateway("network.state", undef
 ipcMain.handle("nova:system:inventory-summary", () =>
   requestGateway("system.inventory-summary", undefined),
 );
+ipcMain.handle("nova:session:devices", () => requestGateway("session.devices", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1333,6 +1335,12 @@ const startGateway = async (): Promise<void> => {
     const result = await runtimeApplication.systemInventorySummary();
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies SystemInventorySummary;
+  });
+  gateway.register("session.devices", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.sessionDeviceSnapshots();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies readonly DeviceSnapshot[];
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

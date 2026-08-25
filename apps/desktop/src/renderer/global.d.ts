@@ -8,6 +8,7 @@ import type {
   LogicalClockValue,
   ConnectionState,
   SystemInventorySummary,
+  DeviceSnapshot,
   PluginRecord,
   JobState,
   SetupStepId,
@@ -460,6 +461,7 @@ declare global {
       ) => Promise<number>;
       networkState: () => Promise<ConnectionState>;
       systemInventorySummary: () => Promise<SystemInventorySummary>;
+      sessionDeviceSnapshots: () => Promise<readonly DeviceSnapshot[]>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;

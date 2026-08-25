@@ -40,6 +40,7 @@ import { InMemoryJobStore, JobScheduler } from "../src/job-scheduler.js";
 import { SystemLifecycleOrchestrator } from "../src/system-lifecycle.js";
 import { NetworkDiscoveryManager } from "../src/networking.js";
 import { WindowsSystemInventory } from "../src/system-inventory.js";
+import { SessionContinuityManager } from "../src/session-continuity.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1068,6 +1069,37 @@ describe("RuntimeApplication", () => {
     expect(application.modelProviderHealth("missing-model")).toMatchObject({
       ok: true,
       value: "down",
+    });
+  });
+
+  it("delegates read-only session device snapshots without exposing message content", () => {
+    const sessions = new SessionContinuityManager({ now: () => 0 });
+    expect(
+      sessions.registerDevice("phone-1", [{ capability_id: "camera", status: "Degraded" }]),
+    ).toMatchObject({
+      ok: true,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      sessionContinuity: sessions,
+    });
+    applications.push(application);
+
+    expect(application.sessionDeviceSnapshots()).toMatchObject({
+      ok: true,
+      value: [
+        {
+          device_id: "phone-1",
+          presence: "Online",
+          capabilities: [{ capability_id: "camera", status: "Degraded" }],
+        },
+      ],
     });
   });
 

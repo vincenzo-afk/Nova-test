@@ -171,6 +171,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:devices:logical-clock-compare", left, right),
   networkState: () => ipcRenderer.invoke("nova:network:state"),
   systemInventorySummary: () => ipcRenderer.invoke("nova:system:inventory-summary"),
+  sessionDeviceSnapshots: () => ipcRenderer.invoke("nova:session:devices"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);
