@@ -82,6 +82,33 @@ describe("CapabilityRegistry and ProviderRouter", () => {
     });
   });
 
+  it("lists public capability records without exposing provider implementations", () => {
+    const registry = new CapabilityRegistry();
+    registry.register("text-generation", provider({ provider_id: "local.test" }));
+    registry.register(
+      "vision",
+      provider({ provider_id: "cloud.test", domain: "vision", privacy_class: "cloud" }),
+    );
+
+    expect(registry.listCapabilities()).toEqual([
+      {
+        capability_id: "text-generation",
+        domain: "llm",
+        providers: [{ provider_id: "local.test", enabled: true, priority: 1 }],
+        active_policy: { policy: "privacy-first" },
+        state: "Active",
+      },
+      {
+        capability_id: "vision",
+        domain: "vision",
+        providers: [{ provider_id: "cloud.test", enabled: true, priority: 1 }],
+        active_policy: { policy: "privacy-first" },
+        state: "Active",
+      },
+    ]);
+    expect(registry.listCapabilities()).not.toContainEqual(expect.objectContaining({ provider }));
+  });
+
   it("supports explicit provider disable and removal lifecycle", () => {
     const registry = new CapabilityRegistry();
     const local = provider();

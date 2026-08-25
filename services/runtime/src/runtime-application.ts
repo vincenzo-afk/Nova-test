@@ -1122,6 +1122,10 @@ export class RuntimeApplication {
     if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
     return this.capabilityRegistry.get(capabilityId);
   }
+  public listCapabilityRecords(): Result<readonly CapabilityRecord[]> {
+    if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    return ok(this.capabilityRegistry.listCapabilities());
+  }
 
   public setCapabilityProviderEnabled(
     capabilityId: string,

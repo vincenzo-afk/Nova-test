@@ -1157,6 +1157,49 @@ describe("RuntimeApplication", () => {
     expect(application.workspaceCanSync()).toMatchObject({ ok: true, value: true });
   });
 
+  it("lists public capability records without provider implementations", () => {
+    const capabilities = new CapabilityRegistry();
+    capabilities.register("text-generation", {
+      descriptor: {
+        provider_id: "local.test",
+        domain: "llm",
+        privacy_class: "local",
+        schema_version: "1.0.0",
+        capabilities: ["text_generation"],
+        cost_per_request: 0,
+        latency_p50_ms: 20,
+      },
+      healthCheck: async () => "reachable",
+      invoke: async () => ({ secret: "hidden" }),
+      cancel: () => undefined,
+      shutdown: () => undefined,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      capabilityRegistry: capabilities,
+    });
+    applications.push(application);
+
+    expect(application.listCapabilityRecords()).toEqual({
+      ok: true,
+      value: [
+        {
+          capability_id: "text-generation",
+          domain: "llm",
+          providers: [{ provider_id: "local.test", enabled: true, priority: 1 }],
+          active_policy: { policy: "privacy-first" },
+          state: "Active",
+        },
+      ],
+    });
+  });
+
   it("delegates privacy-safe model provider health inspection", () => {
     const provider: LlmProvider = {
       descriptor: {

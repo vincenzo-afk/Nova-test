@@ -292,6 +292,27 @@ declare global {
       remoteControlPreApprovalStatuses: () => Promise<
         readonly { device_id: string; expires_at: number }[]
       >;
+      listCapabilityRecords: () => Promise<
+        readonly {
+          capability_id: string;
+          domain:
+            | "llm"
+            | "vision"
+            | "speech-to-text"
+            | "text-to-speech"
+            | "embeddings"
+            | "ocr"
+            | "reranking"
+            | "messaging-channel"
+            | "remote-control";
+          providers: readonly { provider_id: string; enabled: boolean; priority: number }[];
+          active_policy: {
+            policy: "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
+            manual_override?: string;
+          };
+          state: "Unconfigured" | "Configured, disabled" | "Active" | "Degraded";
+        }[]
+      >;
 
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;

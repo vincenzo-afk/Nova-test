@@ -76,6 +76,7 @@ export interface ProviderRequest {
 
 const STREAMING_CAPABILITY = "streaming";
 const MAX_ROUTING_LOG_PROVIDERS = 32;
+const MAX_PUBLIC_CAPABILITIES = 128;
 
 export interface RoutingElimination {
   readonly provider_id: string;
@@ -261,6 +262,13 @@ export class CapabilityRegistry {
     return record
       ? ok(this.publicRecord(record))
       : err(this.failure("Capability is not registered.", { capabilityId }));
+  }
+
+  public listCapabilities(): readonly CapabilityRecord[] {
+    return [...this.capabilities.values()]
+      .sort((left, right) => left.capability_id.localeCompare(right.capability_id))
+      .slice(0, MAX_PUBLIC_CAPABILITIES)
+      .map((record) => this.publicRecord(record));
   }
 
   public provider(capabilityId: string, providerId: string): Provider | undefined {

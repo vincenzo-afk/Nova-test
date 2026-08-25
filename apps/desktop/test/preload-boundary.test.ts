@@ -137,6 +137,7 @@ describe("Electron preload boundary", () => {
       "rescanHardwareCapabilitySummary",
       "remoteControlSessionStatuses",
       "remoteControlPreApprovalStatuses",
+      "listCapabilityRecords",
     ]);
   });
 
@@ -268,6 +269,7 @@ describe("Electron preload boundary", () => {
         rescanHardwareCapabilitySummary: () => unknown;
         remoteControlSessionStatuses: () => unknown;
         remoteControlPreApprovalStatuses: () => unknown;
+        listCapabilityRecords: () => unknown;
       },
     ];
 
@@ -452,6 +454,7 @@ describe("Electron preload boundary", () => {
     api.rescanHardwareCapabilitySummary();
     api.remoteControlSessionStatuses();
     api.remoteControlPreApprovalStatuses();
+    api.listCapabilityRecords();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -728,5 +731,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(113, "nova:hardware:rescan-summary");
     expect(invoke).toHaveBeenNthCalledWith(114, "nova:remote:sessions");
     expect(invoke).toHaveBeenNthCalledWith(115, "nova:remote:pre-approvals");
+    expect(invoke).toHaveBeenNthCalledWith(116, "nova:capability:list");
   });
 });
