@@ -10,7 +10,6 @@ import type {
   SystemInventorySummary,
   DeviceSnapshot,
   HardwareCapabilitySummary,
-  PluginRecord,
   JobState,
   SetupStepId,
   SetupState,
@@ -607,7 +606,13 @@ declare global {
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;
-      pluginRecord: (pluginId: string) => Promise<PluginRecord>;
+      pluginRecord: (pluginId: string) => Promise<{
+        plugin_id: string;
+        version: string;
+        state: string;
+        provided_tool_count: number;
+        required_permission_count: number;
+      }>;
       jobState: (jobId: string) => Promise<JobState>;
       systemStartupLog: () => Promise<readonly StartupStep[]>;
       systemShutdownLog: () => Promise<readonly ShutdownStep[]>;
@@ -1009,17 +1014,21 @@ declare global {
         pluginId: string,
         confirmed: boolean,
       ) => Promise<{
-        manifest: unknown;
+        plugin_id: string;
+        version: string;
         state: string;
-        granted_permissions: readonly string[];
+        provided_tool_count: number;
+        required_permission_count: number;
       }>;
       disablePlugin: (
         pluginId: string,
         confirmed: boolean,
       ) => Promise<{
-        manifest: unknown;
+        plugin_id: string;
+        version: string;
         state: string;
-        granted_permissions: readonly string[];
+        provided_tool_count: number;
+        required_permission_count: number;
       }>;
       uninstallPlugin: (pluginId: string, confirmed: boolean) => Promise<void>;
       downloadLocalModel: (

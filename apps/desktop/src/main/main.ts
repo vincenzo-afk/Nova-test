@@ -39,7 +39,6 @@ import {
   type DeviceSnapshot,
   type CompatibilityResult,
   type LogicalClockValue,
-  type PluginRecord,
   type JobState,
   type CapabilityGap,
   type PluginDiscoveryProposal,
@@ -86,7 +85,7 @@ import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
 import { validateWorkflowDraft, type WorkflowDraft } from "./workflow-draft.js";
-import { projectPairingOffer } from "./response-projections.js";
+import { projectPairingOffer, projectPluginRecord } from "./response-projections.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
@@ -1746,7 +1745,7 @@ const startGateway = async (): Promise<void> => {
       parseWorkspaceText(payload.plugin_id, "Plugin ID"),
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value satisfies PluginRecord;
+    return projectPluginRecord(result.value);
   });
   gateway.register("jobs.state", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1849,7 +1848,7 @@ const startGateway = async (): Promise<void> => {
       throw new Error("Plugin enable confirmation is invalid.");
     const result = await runtimeApplication.enablePlugin(pluginId, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectPluginRecord(result.value);
   });
   gateway.register("plugins.disable", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1859,7 +1858,7 @@ const startGateway = async (): Promise<void> => {
       throw new Error("Plugin disable confirmation is invalid.");
     const result = await runtimeApplication.disablePlugin(pluginId, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectPluginRecord(result.value);
   });
   gateway.register("plugins.uninstall", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

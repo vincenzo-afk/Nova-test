@@ -7,6 +7,7 @@ All notable changes to Nova are documented in this file.
 ### Security
 
 - Pairing-offer responses now use a bounded renderer projection that excludes the short-lived channel credential while preserving non-secret pairing metadata.
+- Plugin record, enable, and disable responses now use bounded lifecycle summaries and no longer expose manifests, entry points, or raw granted permission lists to the renderer.
 
 ### Added
 
