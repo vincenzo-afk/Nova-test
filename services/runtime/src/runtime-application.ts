@@ -833,6 +833,10 @@ export class RuntimeApplication {
     if (!this.jobScheduler) return err(this.jobSchedulerUnavailableError());
     return ok(this.jobScheduler.listStates());
   }
+  public activeScheduledJobConcurrencyGroups(): Result<readonly string[]> {
+    if (!this.jobScheduler) return err(this.jobSchedulerUnavailableError());
+    return ok(this.jobScheduler.activeGroups());
+  }
 
   public jobState(jobId: string): Result<JobState> {
     if (!this.jobScheduler) return err(this.jobSchedulerUnavailableError());

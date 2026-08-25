@@ -317,6 +317,7 @@ declare global {
         readonly { resource: string; task_id: string; acquired_at: number }[]
       >;
       listScheduledJobStates: () => Promise<readonly JobState[]>;
+      activeScheduledJobConcurrencyGroups: () => Promise<readonly string[]>;
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;
         error?: { code: string; message: string; retryable: boolean };

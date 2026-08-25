@@ -104,6 +104,23 @@ describe("JobScheduler", () => {
     ]);
   });
 
+  it("reports active concurrency groups while a job is running", async () => {
+    let release: (() => void) | undefined;
+    const scheduler = new JobScheduler(new InMemoryJobStore(), {
+      now: () => Date.parse("2026-08-24T10:00:00.000Z"),
+      runner: async () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    });
+    scheduler.register(definition({ concurrency_group: "background" }));
+    const running = scheduler.runDue();
+    await vi.waitFor(() => expect(scheduler.activeGroups()).toEqual(["background"]));
+    expect(scheduler.activeGroups()).toEqual(["background"]);
+    release?.();
+    await running;
+  });
+
   it("cancels a running job through its abort signal and records a safe diagnostic", async () => {
     const sink = new MemoryLogSink();
     let resolveRun: (() => void) | undefined;

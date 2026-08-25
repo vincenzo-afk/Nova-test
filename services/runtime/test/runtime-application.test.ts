@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ok } from "@nova/shared";
 import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
@@ -1437,6 +1437,46 @@ describe("RuntimeApplication", () => {
         { definition: { job_id: "zeta" }, status: "scheduled" },
       ],
     });
+  });
+
+  it("exposes active scheduled-job concurrency groups without mutation", async () => {
+    let release: (() => void) | undefined;
+    const jobs = new JobScheduler(new InMemoryJobStore(), {
+      now: () => Date.parse("2026-08-24T10:00:00.000Z"),
+      runner: async () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    });
+    jobs.register({
+      job_id: "briefing",
+      type: "recurring",
+      schedule: "1h",
+      dependencies: [],
+      priority: "low",
+      concurrency_group: "background",
+      idempotent: true,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      jobScheduler: jobs,
+    });
+    applications.push(application);
+    const running = jobs.runDue();
+    await vi.waitFor(() =>
+      expect(application.activeScheduledJobConcurrencyGroups()).toEqual({
+        ok: true,
+        value: ["background"],
+      }),
+    );
+    release?.();
+    await running;
   });
 
   it("delegates read-only scheduled-job state inspection", () => {
