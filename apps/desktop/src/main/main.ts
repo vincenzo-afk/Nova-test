@@ -816,6 +816,7 @@ ipcMain.handle("nova:remote:pre-approvals", () =>
 );
 ipcMain.handle("nova:capability:list", () => requestGateway("capability.list", undefined));
 ipcMain.handle("nova:resources:held", () => requestGateway("resources.held", undefined));
+ipcMain.handle("nova:jobs:list", () => requestGateway("jobs.list", undefined));
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1364,6 +1365,12 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.jobState(parseWorkspaceText(payload.job_id, "Job ID"));
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies JobState;
+  });
+  gateway.register("jobs.list", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.listScheduledJobStates();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies readonly JobState[];
   });
   gateway.register("system.startup-log", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

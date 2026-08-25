@@ -829,6 +829,11 @@ export class RuntimeApplication {
     return this.pluginManager.get(pluginId);
   }
 
+  public listScheduledJobStates(): Result<readonly JobState[]> {
+    if (!this.jobScheduler) return err(this.jobSchedulerUnavailableError());
+    return ok(this.jobScheduler.listStates());
+  }
+
   public jobState(jobId: string): Result<JobState> {
     if (!this.jobScheduler) return err(this.jobSchedulerUnavailableError());
     return this.jobScheduler.get(jobId);

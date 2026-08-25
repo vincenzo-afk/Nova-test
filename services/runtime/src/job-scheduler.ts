@@ -165,6 +165,13 @@ export class JobScheduler {
     return state ? ok(clone(state)) : err(this.failure("Job is not registered."));
   }
 
+  public listStates(): readonly JobState[] {
+    return [...this.jobs.values()]
+      .sort((left, right) => left.definition.job_id.localeCompare(right.definition.job_id))
+      .slice(0, 256)
+      .map((state) => clone(state));
+  }
+
   public cancel(jobId: string): Result<void> {
     const state = this.jobs.get(jobId);
     if (!state) return err(this.failure("Job is not registered."));

@@ -91,6 +91,19 @@ describe("JobScheduler", () => {
     });
   });
 
+  it("lists scheduled job states without running or mutating jobs", () => {
+    const scheduler = new JobScheduler(new InMemoryJobStore(), {
+      now: () => Date.parse("2026-08-24T10:00:00.000Z"),
+    });
+    scheduler.register(definition({ job_id: "zeta", priority: "normal" }));
+    scheduler.register(definition({ job_id: "alpha", priority: "low" }));
+
+    expect(scheduler.listStates()).toMatchObject([
+      { definition: { job_id: "alpha" }, status: "scheduled" },
+      { definition: { job_id: "zeta" }, status: "scheduled" },
+    ]);
+  });
+
   it("cancels a running job through its abort signal and records a safe diagnostic", async () => {
     const sink = new MemoryLogSink();
     let resolveRun: (() => void) | undefined;

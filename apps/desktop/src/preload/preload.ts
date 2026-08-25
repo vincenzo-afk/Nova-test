@@ -180,6 +180,7 @@ const novaApi = {
   remoteControlPreApprovalStatuses: () => ipcRenderer.invoke("nova:remote:pre-approvals"),
   listCapabilityRecords: () => ipcRenderer.invoke("nova:capability:list"),
   heldResourceLocks: () => ipcRenderer.invoke("nova:resources:held"),
+  listScheduledJobStates: () => ipcRenderer.invoke("nova:jobs:list"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

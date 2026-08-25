@@ -1396,6 +1396,49 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("lists scheduled-job states without running or cancelling jobs", () => {
+    const jobs = new JobScheduler(new InMemoryJobStore(), {
+      now: () => Date.parse("2026-08-24T10:00:00.000Z"),
+    });
+    jobs.register({
+      job_id: "zeta",
+      type: "recurring",
+      schedule: "1h",
+      dependencies: [],
+      priority: "normal",
+      concurrency_group: "background",
+      idempotent: true,
+    });
+    jobs.register({
+      job_id: "alpha",
+      type: "recurring",
+      schedule: "1h",
+      dependencies: [],
+      priority: "low",
+      concurrency_group: "background",
+      idempotent: true,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      jobScheduler: jobs,
+    });
+    applications.push(application);
+
+    expect(application.listScheduledJobStates()).toMatchObject({
+      ok: true,
+      value: [
+        { definition: { job_id: "alpha" }, status: "scheduled" },
+        { definition: { job_id: "zeta" }, status: "scheduled" },
+      ],
+    });
+  });
+
   it("delegates read-only scheduled-job state inspection", () => {
     const scheduler = new JobScheduler(new InMemoryJobStore(), {
       runner: async () => undefined,

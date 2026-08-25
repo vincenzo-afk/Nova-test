@@ -139,6 +139,7 @@ describe("Electron preload boundary", () => {
       "remoteControlPreApprovalStatuses",
       "listCapabilityRecords",
       "heldResourceLocks",
+      "listScheduledJobStates",
     ]);
   });
 
@@ -272,6 +273,7 @@ describe("Electron preload boundary", () => {
         remoteControlPreApprovalStatuses: () => unknown;
         listCapabilityRecords: () => unknown;
         heldResourceLocks: () => unknown;
+        listScheduledJobStates: () => unknown;
       },
     ];
 
@@ -458,6 +460,7 @@ describe("Electron preload boundary", () => {
     api.remoteControlPreApprovalStatuses();
     api.listCapabilityRecords();
     api.heldResourceLocks();
+    api.listScheduledJobStates();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -736,5 +739,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(115, "nova:remote:pre-approvals");
     expect(invoke).toHaveBeenNthCalledWith(116, "nova:capability:list");
     expect(invoke).toHaveBeenNthCalledWith(117, "nova:resources:held");
+    expect(invoke).toHaveBeenNthCalledWith(118, "nova:jobs:list");
   });
 });
