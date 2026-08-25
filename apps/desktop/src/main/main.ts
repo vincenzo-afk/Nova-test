@@ -769,6 +769,7 @@ ipcMain.handle(
       readonly capability_id: string;
       readonly provider_id: string;
       readonly enabled: boolean;
+      readonly confirmed: boolean;
     },
   ) => requestGateway("capability.provider-enabled", payload),
 );
@@ -1342,12 +1343,16 @@ const startGateway = async (): Promise<void> => {
       readonly capability_id?: unknown;
       readonly provider_id?: unknown;
       readonly enabled?: unknown;
+      readonly confirmed?: unknown;
     };
     if (typeof payload.enabled !== "boolean") throw new Error("Provider enabled flag is invalid.");
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Provider enabled-state confirmation is invalid.");
     const result = runtimeApplication.setCapabilityProviderEnabled(
       parseCapabilityId(payload.capability_id),
       parseProviderId(payload.provider_id),
       payload.enabled,
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies CapabilityRecord;

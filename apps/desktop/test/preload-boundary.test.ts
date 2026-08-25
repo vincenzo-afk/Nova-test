@@ -216,6 +216,7 @@ describe("Electron preload boundary", () => {
           capabilityId: string,
           providerId: string,
           enabled: boolean,
+          confirmed: boolean,
         ) => unknown;
         setCapabilityProviderPriority: (
           capabilityId: string,
@@ -390,7 +391,7 @@ describe("Electron preload boundary", () => {
     api.incidentTimeline("inc-1");
     api.handleRunbook("provider-down");
     api.getCapabilityRecord("llm");
-    api.setCapabilityProviderEnabled("llm", "local-llm", false);
+    api.setCapabilityProviderEnabled("llm", "local-llm", false, true);
     api.setCapabilityProviderPriority("llm", "local-llm", 0);
     api.setCapabilityPolicy("llm", { policy: "manual", manual_override: "local-llm" });
     api.discoverLocalModels({
@@ -648,6 +649,7 @@ describe("Electron preload boundary", () => {
       capability_id: "llm",
       provider_id: "local-llm",
       enabled: false,
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(42, "nova:capability:provider-priority", {
       capability_id: "llm",

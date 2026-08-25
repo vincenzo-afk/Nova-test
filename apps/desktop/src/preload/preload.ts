@@ -75,11 +75,17 @@ const novaApi = {
   handleRunbook: (incident: string) => ipcRenderer.invoke("nova:runbook:handle", incident),
   getCapabilityRecord: (capabilityId: string) =>
     ipcRenderer.invoke("nova:capability:get", capabilityId),
-  setCapabilityProviderEnabled: (capabilityId: string, providerId: string, enabled: boolean) =>
+  setCapabilityProviderEnabled: (
+    capabilityId: string,
+    providerId: string,
+    enabled: boolean,
+    confirmed: boolean,
+  ) =>
     ipcRenderer.invoke("nova:capability:provider-enabled", {
       capability_id: capabilityId,
       provider_id: providerId,
       enabled,
+      confirmed,
     }),
   setCapabilityProviderPriority: (capabilityId: string, providerId: string, priority: number) =>
     ipcRenderer.invoke("nova:capability:provider-priority", {

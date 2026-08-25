@@ -1307,8 +1307,16 @@ export class RuntimeApplication {
     capabilityId: string,
     providerId: string,
     enabled: boolean,
+    confirmed: boolean,
   ): Result<CapabilityRecord> {
     if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Changing a capability provider enabled state requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.capabilityRegistry.setEnabled(capabilityId, providerId, enabled);
   }
 
