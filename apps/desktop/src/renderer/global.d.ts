@@ -707,11 +707,11 @@ declare global {
       }>;
       restoreBackup: (snapshotId: string, confirmed: boolean) => Promise<{ restored: true }>;
       prepareRestore: (snapshotId: string) => Promise<{
+        restore_id: string;
         verified: true;
-        staging: unknown;
       }>;
       applyPreparedRestore: (
-        prepared: { verified: true; staging: unknown },
+        restoreId: string,
         confirmed: boolean,
       ) => Promise<{
         ok: boolean;

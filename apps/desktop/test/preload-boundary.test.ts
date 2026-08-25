@@ -246,7 +246,7 @@ describe("Electron preload boundary", () => {
         preUpdateBackup: (state: unknown, confirmed: boolean) => unknown;
         restoreBackup: (snapshotId: string, confirmed: boolean) => unknown;
         prepareRestore: (snapshotId: string) => unknown;
-        applyPreparedRestore: (prepared: unknown, confirmed: boolean) => unknown;
+        applyPreparedRestore: (restoreId: string, confirmed: boolean) => unknown;
         upgradeRuntime: (request: unknown, confirmed: boolean) => unknown;
         repairRuntime: (request?: { apply: boolean }, confirmed?: boolean) => unknown;
         acquireResources: (taskId: string, resources: readonly string[]) => unknown;
@@ -428,7 +428,7 @@ describe("Electron preload boundary", () => {
     api.preUpdateBackup({ theme: "dark" }, true);
     api.restoreBackup("snapshot-1", true);
     api.prepareRestore("snapshot-1");
-    api.applyPreparedRestore({ verified: true, staging: { theme: "dark" } }, true);
+    api.applyPreparedRestore("restore-handle-1", true);
     api.upgradeRuntime({ current_version: 1, target_version: 2 }, true);
     api.repairRuntime({ apply: false }, false);
     api.acquireResources("task-1", ["gpu"]);
@@ -727,7 +727,7 @@ describe("Electron preload boundary", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(57, "nova:restore:prepare", "snapshot-1");
     expect(invoke).toHaveBeenNthCalledWith(58, "nova:restore:apply", {
-      prepared: { verified: true, staging: { theme: "dark" } },
+      restore_id: "restore-handle-1",
       confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(59, "nova:upgrade:run", {

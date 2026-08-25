@@ -14,6 +14,7 @@ All notable changes to Nova are documented in this file.
 - Confirmed workflow-resume responses now expose only workflow identity, lifecycle state, checkpoint identity, and an aggregate completed-node count; completed node IDs and execution context remain outside the renderer boundary.
 - Confirmed backup restoration now returns only a success acknowledgement to the renderer; restored snapshot contents remain in the privileged runtime.
 - Confirmed email and channel-send responses now return bounded delivery receipts without message bodies, content, recipient addresses, or chat identifiers.
+- Restore preparation now keeps staged state in privileged main-process memory and exposes only a one-time opaque handle to the renderer for confirmed apply.
 
 ### Added
 

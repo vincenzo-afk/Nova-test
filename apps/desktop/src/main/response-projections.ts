@@ -134,6 +134,15 @@ export function projectBackupRestore(...state: readonly unknown[]): BackupRestor
   return { restored: true };
 }
 
+export interface PreparedRestoreSummary {
+  readonly restore_id: string;
+  readonly verified: true;
+}
+
+export function projectPreparedRestore(restoreId: string): PreparedRestoreSummary {
+  return { restore_id: restoreId, verified: true };
+}
+
 export interface EmailSendReceiptSummary {
   readonly message_id: string;
   readonly sent: true;

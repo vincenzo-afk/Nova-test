@@ -83,6 +83,7 @@ import {
   projectChannelDeliveryReceipt,
   projectEmailSendReceipt,
   projectPairingOffer,
+  projectPreparedRestore,
   projectPluginDiscoveryProposals,
   projectPluginDiscoveryResult,
   projectPluginRecord,
@@ -299,13 +300,6 @@ const parseUpgradeRequest = (value: unknown): UpgradeRequest => {
   )
     throw new Error("Upgrade request is invalid.");
   return request as UpgradeRequest;
-};
-
-const parsePreparedRestore = (value: unknown): PreparedRestore => {
-  const prepared = value as { readonly verified?: unknown; readonly staging?: unknown };
-  if (prepared.verified !== true || prepared.staging === undefined)
-    throw new Error("Prepared restore is invalid or unverified.");
-  return prepared as PreparedRestore;
 };
 
 const parseSnapshotId = (value: unknown): string => {
@@ -555,6 +549,7 @@ const parseBriefing = (data: unknown): Briefing => {
 let gatewayBus: NamedPipeCommunicationBus | undefined;
 let runtimeApplication: RuntimeApplication | undefined;
 let desktopAgent: DesktopAgentController | undefined;
+const preparedRestores = new Map<string, PreparedRestore>();
 
 const createWindow = async (): Promise<void> => {
   const window = new BrowserWindow({
@@ -1924,16 +1919,20 @@ const startGateway = async (): Promise<void> => {
     const payload = data as { readonly snapshot_id?: unknown };
     const result = await runtimeApplication.prepareRestore(parseSnapshotId(payload.snapshot_id));
     if (!result.ok) throw new Error(result.error.message);
-    return result.value satisfies PreparedRestore;
+    const restoreId = randomUUID();
+    preparedRestores.set(restoreId, result.value);
+    return projectPreparedRestore(restoreId);
   });
   gateway.register("restore.apply", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly prepared?: unknown; readonly confirmed?: unknown };
+    const payload = data as { readonly restore_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.restore_id !== "string" || payload.restore_id.trim() === "")
+      throw new Error("Prepared restore handle is required.");
     if (typeof payload.confirmed !== "boolean") throw new Error("Restore confirmation is invalid.");
-    const result = await runtimeApplication.applyPreparedRestore(
-      parsePreparedRestore(payload.prepared),
-      payload.confirmed,
-    );
+    const prepared = preparedRestores.get(payload.restore_id);
+    if (!prepared) throw new Error("Prepared restore is invalid or unavailable.");
+    const result = await runtimeApplication.applyPreparedRestore(prepared, payload.confirmed);
+    if (result.ok) preparedRestores.delete(payload.restore_id);
     return result;
   });
   gateway.register("upgrade.run", async (data) => {
