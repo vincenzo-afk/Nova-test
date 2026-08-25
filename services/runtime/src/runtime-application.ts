@@ -863,6 +863,18 @@ export class RuntimeApplication {
     return await this.pluginManager.enable(pluginId);
   }
 
+  public async disablePlugin(pluginId: string, confirmed: boolean): Promise<Result<PluginRecord>> {
+    if (!this.pluginManager) return err(this.pluginManagerUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Disabling a plugin requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    return await this.pluginManager.disable(pluginId);
+  }
+
   public pluginRecord(pluginId: string): Result<PluginRecord> {
     if (!this.pluginManager) return err(this.pluginManagerUnavailableError());
     return this.pluginManager.get(pluginId);

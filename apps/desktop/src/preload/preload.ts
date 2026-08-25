@@ -219,6 +219,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:task:pause", { task_id: taskId, confirmed }),
   enablePlugin: (pluginId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:plugins:enable", { plugin_id: pluginId, confirmed }),
+  disablePlugin: (pluginId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:plugins:disable", { plugin_id: pluginId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

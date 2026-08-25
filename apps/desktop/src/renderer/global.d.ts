@@ -976,6 +976,14 @@ declare global {
         state: string;
         granted_permissions: readonly string[];
       }>;
+      disablePlugin: (
+        pluginId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        manifest: unknown;
+        state: string;
+        granted_permissions: readonly string[];
+      }>;
     };
   }
 }
