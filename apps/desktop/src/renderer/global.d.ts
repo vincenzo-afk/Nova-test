@@ -88,7 +88,14 @@ declare global {
         next_cursor: string | null;
         has_more: boolean;
       }>;
-      cancelTask: (taskId: string) => Promise<{ task_id: string; goal: string; state: string }>;
+      cancelTask: (
+        taskId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        task_id: string;
+        goal: string;
+        state: string;
+      }>;
       searchMemory: (input: DesktopMemorySearchInput) => Promise<{
         results: DesktopMemoryRecord[];
         query: string;

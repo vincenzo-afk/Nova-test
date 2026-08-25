@@ -5,7 +5,8 @@ const novaApi = {
   getTask: (taskId: string) => ipcRenderer.invoke("nova:task:get", { task_id: taskId }),
   listTasks: (limit?: number, cursor?: string) =>
     ipcRenderer.invoke("nova:task:list", { limit, cursor }),
-  cancelTask: (taskId: string) => ipcRenderer.invoke("nova:task:cancel", { task_id: taskId }),
+  cancelTask: (taskId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:task:cancel", { task_id: taskId, confirmed }),
   searchMemory: (input: unknown) => ipcRenderer.invoke("nova:memory:search", input),
   getMemoryRecord: (recordId: string) =>
     ipcRenderer.invoke("nova:memory:record", { record_id: recordId }),

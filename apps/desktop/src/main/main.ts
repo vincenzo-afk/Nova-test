@@ -636,8 +636,10 @@ ipcMain.handle(
     return requestGateway<DesktopTaskListPage>("task.list", payload);
   },
 );
-ipcMain.handle("nova:task:cancel", (_event, payload: { readonly task_id: string }) =>
-  requestGateway<TaskSnapshot>("task.cancel", { task_id: payload.task_id }),
+ipcMain.handle(
+  "nova:task:cancel",
+  (_event, payload: { readonly task_id: string; readonly confirmed: boolean }) =>
+    requestGateway<TaskSnapshot>("task.cancel", payload),
 );
 ipcMain.handle("nova:memory:search", (_event, payload: MemorySearchInput) =>
   requestGateway("memory.search", payload),
@@ -2193,12 +2195,15 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("task.cancel", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly task_id?: string };
+    const payload = data as { readonly task_id?: string; readonly confirmed?: unknown };
     if (!payload.task_id) throw new Error("Task ID is required.");
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Task cancellation confirmation is invalid.");
     const cancelled = cancelDesktopTask(
       runtimeApplication.tasks,
       runtimeApplication.scheduler,
       payload.task_id,
+      payload.confirmed,
     );
     if (!cancelled.ok) throw new Error(cancelled.error.message);
     return cancelled.value;

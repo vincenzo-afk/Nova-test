@@ -290,8 +290,9 @@ export const App = () => {
   };
 
   const cancelTask = async (taskId: string) => {
+    if (!window.confirm("Cancel this task?")) return;
     try {
-      const cancelled = await window.nova.cancelTask(taskId);
+      const cancelled = await window.nova.cancelTask(taskId, true);
       setLastTask(cancelled);
       const page = (await window.nova.listTasks(50)) as TaskListPage;
       setTasks(page.items);

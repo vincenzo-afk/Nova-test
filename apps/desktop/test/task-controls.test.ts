@@ -36,11 +36,15 @@ describe("desktop task controls", () => {
     expect(tasks.transition(running.value.task_id, "Executing").ok).toBe(true);
     const scheduler = { cancel: vi.fn(() => true) };
 
-    const cancelled = cancelDesktopTask(tasks, scheduler, created.value.task_id);
+    const unconfirmed = cancelDesktopTask(tasks, scheduler, created.value.task_id, false);
+    expect(unconfirmed).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(scheduler.cancel).not.toHaveBeenCalled();
+
+    const cancelled = cancelDesktopTask(tasks, scheduler, created.value.task_id, true);
     expect(cancelled).toMatchObject({ ok: true, value: { state: "Cancelled" } });
     expect(scheduler.cancel).toHaveBeenCalledWith(created.value.task_id);
 
-    const refused = cancelDesktopTask(tasks, scheduler, running.value.task_id);
+    const refused = cancelDesktopTask(tasks, scheduler, running.value.task_id, true);
     expect(refused).toMatchObject({ ok: false, error: { code: "NOVA-TL003" } });
   });
 

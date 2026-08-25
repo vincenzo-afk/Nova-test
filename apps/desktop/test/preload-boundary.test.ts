@@ -166,7 +166,7 @@ describe("Electron preload boundary", () => {
         submitTask: (goal: string) => unknown;
         getTask: (taskId: string) => unknown;
         listTasks: (limit?: number, cursor?: string) => unknown;
-        cancelTask: (taskId: string) => unknown;
+        cancelTask: (taskId: string, confirmed: boolean) => unknown;
         searchMemory: (input: unknown) => unknown;
         getMemoryRecord: (recordId: string) => unknown;
         queryGraph: (input: unknown) => unknown;
@@ -315,7 +315,7 @@ describe("Electron preload boundary", () => {
     api.submitTask("read README");
     api.getTask("task-1");
     api.listTasks(25, "cursor-1");
-    api.cancelTask("task-1");
+    api.cancelTask("task-1", true);
     api.searchMemory({ query: "deployment", filters: { project: "nova" } });
     api.getMemoryRecord("memory-1");
     api.queryGraph({ node_id: "file-1", direction: "out", depth: 1 });
@@ -515,7 +515,10 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
     expect(invoke).toHaveBeenNthCalledWith(3, "nova:task:list", { limit: 25, cursor: "cursor-1" });
-    expect(invoke).toHaveBeenNthCalledWith(4, "nova:task:cancel", { task_id: "task-1" });
+    expect(invoke).toHaveBeenNthCalledWith(4, "nova:task:cancel", {
+      task_id: "task-1",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(5, "nova:memory:search", {
       query: "deployment",
       filters: { project: "nova" },

@@ -42,7 +42,15 @@ export function cancelDesktopTask(
   tasks: TaskManager,
   scheduler: DesktopTaskScheduler | undefined,
   taskId: string,
+  confirmed: boolean,
 ): Result<TaskRecord> {
+  if (!confirmed) {
+    return err({
+      code: "NOVA-SEC001",
+      message: "Cancelling a task requires explicit confirmation.",
+      retryable: false,
+    });
+  }
   const current = tasks.get(taskId);
   if (!current.ok) return current;
   if (current.value.state === "Cancelled") return current;
