@@ -25,6 +25,7 @@ import { RepairManager } from "../src/repair-manager.js";
 import { ResourceManager } from "../src/resource-manager.js";
 import { HardwareDetector, type HardwareProbe } from "../src/hardware-detection.js";
 import { SetupWizard } from "../src/setup-wizard.js";
+import { WorkspaceManager } from "../src/workspace-manager.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -967,6 +968,53 @@ describe("RuntimeApplication", () => {
       ok: false,
       error: { code: "NOVA-SEC001", retryable: true },
     });
+  });
+
+  it("delegates workspace identity, bounded locks, and recovery state", () => {
+    let now = 1_000;
+    const workspace = new WorkspaceManager({
+      user_id: "user-1",
+      workspace_id: "workspace-1",
+      now: () => now,
+      lockLeaseMs: 5_000,
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      workspaceManager: workspace,
+    });
+    applications.push(application);
+
+    expect(application.workspaceIdentity()).toMatchObject({
+      ok: true,
+      value: { user_id: "user-1", workspace_id: "workspace-1" },
+    });
+    expect(application.workspaceState()).toMatchObject({ ok: true, value: "Created" });
+    expect(application.activateWorkspace()).toMatchObject({ ok: true });
+    const lock = application.acquireWorkspaceLock("migration");
+    expect(lock).toMatchObject({ ok: true, value: { state: "Locked" } });
+    expect(application.workspaceCanSync()).toMatchObject({ ok: true, value: false });
+    if (lock.ok) {
+      now = 6_001;
+      expect(application.expireWorkspaceLock()).toMatchObject({
+        ok: true,
+        value: { state: "Recovering" },
+      });
+      expect(application.completeWorkspaceRecovery()).toMatchObject({
+        ok: true,
+        value: { state: "Active" },
+      });
+      expect(application.releaseWorkspaceLock(lock.value.token)).toMatchObject({
+        ok: false,
+        error: { code: "NOVA-SEC001" },
+      });
+    }
+    expect(application.workspaceCanSync()).toMatchObject({ ok: true, value: true });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

@@ -139,6 +139,12 @@ import type {
 } from "./resource-arbitration.js";
 import type { SetupStepId, SetupStepPatch, SetupState, SetupWizard } from "./setup-wizard.js";
 import type {
+  WorkspaceIdentity,
+  WorkspaceLock,
+  WorkspaceManager,
+  WorkspaceState,
+} from "./workspace-manager.js";
+import type {
   DevicePairingManager,
   PairingOffer,
   PairingRequest,
@@ -212,6 +218,7 @@ export interface RuntimeApplicationOptions {
   readonly resourceArbitrator?: ResourceArbitrator;
   readonly offlineActionQueue?: OfflineActionQueue;
   readonly setupWizard?: SetupWizard;
+  readonly workspaceManager?: WorkspaceManager;
   readonly devicePairingManager?: DevicePairingManager;
   readonly sessionContinuityManager?: SessionContinuityManager;
   readonly registeredTools?: readonly RegisteredTool[];
@@ -262,6 +269,7 @@ export class RuntimeApplication {
   public readonly resourceArbitrator: ResourceArbitrator | undefined;
   public readonly offlineActionQueue: OfflineActionQueue | undefined;
   public readonly setupWizard: SetupWizard | undefined;
+  public readonly workspaceManager: WorkspaceManager | undefined;
   public readonly devicePairingManager: DevicePairingManager | undefined;
   public readonly sessionContinuityManager: SessionContinuityManager | undefined;
   public readonly toolRegistry: ToolRegistry;
@@ -334,6 +342,7 @@ export class RuntimeApplication {
     this.resourceArbitrator = options.resourceArbitrator;
     this.offlineActionQueue = options.offlineActionQueue;
     this.setupWizard = options.setupWizard;
+    this.workspaceManager = options.workspaceManager;
     this.events = new CommunicationBusEventJournal(bus);
     this.worldModel = new WorldModel(this.logger === undefined ? {} : { logger: this.logger });
     this.worldModel.attach(bus);
@@ -726,6 +735,56 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public workspaceIdentity(): Result<WorkspaceIdentity> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return ok(this.workspaceManager.identity());
+  }
+
+  public workspaceState(): Result<WorkspaceState> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return ok(this.workspaceManager.state());
+  }
+
+  public createWorkspace(workspaceId: string): Result<WorkspaceIdentity> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.createWorkspace(workspaceId);
+  }
+
+  public activateWorkspace(): Result<void> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.activate();
+  }
+
+  public acquireWorkspaceLock(reason: string): Result<WorkspaceLock> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.acquireLock(reason);
+  }
+
+  public releaseWorkspaceLock(token: string): Result<void> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.releaseLock(token);
+  }
+
+  public expireWorkspaceLock(): Result<{ state: "Recovering" }> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.expireLock();
+  }
+
+  public beginWorkspaceRecovery(): Result<{ state: "Recovering" }> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.beginRecovery();
+  }
+
+  public completeWorkspaceRecovery(): Result<{ state: "Active" }> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return this.workspaceManager.completeRecovery();
+  }
+
+  public workspaceCanSync(): Result<boolean> {
+    if (!this.workspaceManager) return err(this.workspaceUnavailableError());
+    return ok(this.workspaceManager.canSync());
   }
 
   public async startSetupWizard(): Promise<Result<SetupState>> {
@@ -1238,6 +1297,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private workspaceUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Workspace manager is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private setupUnavailableError(): {

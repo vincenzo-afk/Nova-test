@@ -120,6 +120,18 @@ const novaApi = {
     ipcRenderer.invoke("nova:setup:complete", { step, patch }),
   deferSetupStep: (step: string) => ipcRenderer.invoke("nova:setup:defer", step),
   setupSummary: () => ipcRenderer.invoke("nova:setup:summary"),
+  workspaceIdentity: () => ipcRenderer.invoke("nova:workspace:identity"),
+  workspaceState: () => ipcRenderer.invoke("nova:workspace:state"),
+  createWorkspace: (workspaceId: string) =>
+    ipcRenderer.invoke("nova:workspace:create", workspaceId),
+  activateWorkspace: () => ipcRenderer.invoke("nova:workspace:activate"),
+  acquireWorkspaceLock: (reason: string) =>
+    ipcRenderer.invoke("nova:workspace:acquire-lock", reason),
+  releaseWorkspaceLock: (token: string) => ipcRenderer.invoke("nova:workspace:release-lock", token),
+  expireWorkspaceLock: () => ipcRenderer.invoke("nova:workspace:expire-lock"),
+  beginWorkspaceRecovery: () => ipcRenderer.invoke("nova:workspace:begin-recovery"),
+  completeWorkspaceRecovery: () => ipcRenderer.invoke("nova:workspace:complete-recovery"),
+  workspaceCanSync: () => ipcRenderer.invoke("nova:workspace:can-sync"),
   createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),

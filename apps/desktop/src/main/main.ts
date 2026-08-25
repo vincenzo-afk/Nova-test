@@ -46,6 +46,8 @@ import {
   type OfflineActionResult,
   type SetupStepId,
   type SetupStepPatch,
+  type WorkspaceIdentity,
+  type WorkspaceLock,
 } from "@nova/runtime";
 import {
   createMessage,
@@ -150,6 +152,12 @@ const parseSetupPatch = (value: unknown): SetupStepPatch | undefined => {
   )
     throw new Error("Setup patch is invalid.");
   return patch as SetupStepPatch;
+};
+
+const parseWorkspaceText = (value: unknown, field: string): string => {
+  if (typeof value !== "string" || value.trim() === "")
+    throw new Error(`${field} must be a non-empty string.`);
+  return value;
 };
 
 const parseOfflineAction = (value: unknown): OfflineAction => {
@@ -785,6 +793,28 @@ ipcMain.handle("nova:setup:defer", (_event, step: SetupStepId) =>
   requestGateway("setup.defer", { step }),
 );
 ipcMain.handle("nova:setup:summary", () => requestGateway("setup.summary", undefined));
+ipcMain.handle("nova:workspace:identity", () => requestGateway("workspace.identity", undefined));
+ipcMain.handle("nova:workspace:state", () => requestGateway("workspace.state", undefined));
+ipcMain.handle("nova:workspace:create", (_event, workspaceId: string) =>
+  requestGateway("workspace.create", { workspace_id: workspaceId }),
+);
+ipcMain.handle("nova:workspace:activate", () => requestGateway("workspace.activate", undefined));
+ipcMain.handle("nova:workspace:acquire-lock", (_event, reason: string) =>
+  requestGateway("workspace.acquire-lock", { reason }),
+);
+ipcMain.handle("nova:workspace:release-lock", (_event, token: string) =>
+  requestGateway("workspace.release-lock", { token }),
+);
+ipcMain.handle("nova:workspace:expire-lock", () =>
+  requestGateway("workspace.expire-lock", undefined),
+);
+ipcMain.handle("nova:workspace:begin-recovery", () =>
+  requestGateway("workspace.begin-recovery", undefined),
+);
+ipcMain.handle("nova:workspace:complete-recovery", () =>
+  requestGateway("workspace.complete-recovery", undefined),
+);
+ipcMain.handle("nova:workspace:can-sync", () => requestGateway("workspace.can-sync", undefined));
 ipcMain.handle("nova:email:read", (_event, query: EmailQuery) =>
   requestGateway("email.read", query),
 );
@@ -1331,6 +1361,75 @@ const startGateway = async (): Promise<void> => {
   gateway.register("setup.summary", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const result = runtimeApplication.setupSummary();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.identity", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.workspaceIdentity();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies WorkspaceIdentity;
+  });
+  gateway.register("workspace.state", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.workspaceState();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.create", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly workspace_id?: unknown };
+    const result = runtimeApplication.createWorkspace(
+      parseWorkspaceText(payload.workspace_id, "Workspace ID"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies WorkspaceIdentity;
+  });
+  gateway.register("workspace.activate", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.activateWorkspace();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.acquire-lock", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly reason?: unknown };
+    const result = runtimeApplication.acquireWorkspaceLock(
+      parseWorkspaceText(payload.reason, "Lock reason"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies WorkspaceLock;
+  });
+  gateway.register("workspace.release-lock", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly token?: unknown };
+    const result = runtimeApplication.releaseWorkspaceLock(
+      parseWorkspaceText(payload.token, "Lock token"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.expire-lock", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.expireWorkspaceLock();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.begin-recovery", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.beginWorkspaceRecovery();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.complete-recovery", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.completeWorkspaceRecovery();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  });
+  gateway.register("workspace.can-sync", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = runtimeApplication.workspaceCanSync();
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

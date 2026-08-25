@@ -4,6 +4,9 @@ import type {
   SetupStepId,
   SetupState,
   SetupStepPatch,
+  WorkspaceIdentity,
+  WorkspaceLock,
+  WorkspaceState,
   NovaConfiguration,
   PairingRequest,
 } from "@nova/runtime";
@@ -564,6 +567,16 @@ declare global {
       completeSetupStep: (step: SetupStepId, patch?: SetupStepPatch) => Promise<SetupState>;
       deferSetupStep: (step: SetupStepId) => Promise<SetupState>;
       setupSummary: () => Promise<SetupState>;
+      workspaceIdentity: () => Promise<WorkspaceIdentity>;
+      workspaceState: () => Promise<WorkspaceState>;
+      createWorkspace: (workspaceId: string) => Promise<WorkspaceIdentity>;
+      activateWorkspace: () => Promise<void>;
+      acquireWorkspaceLock: (reason: string) => Promise<WorkspaceLock>;
+      releaseWorkspaceLock: (token: string) => Promise<void>;
+      expireWorkspaceLock: () => Promise<{ state: "Recovering" }>;
+      beginWorkspaceRecovery: () => Promise<{ state: "Recovering" }>;
+      completeWorkspaceRecovery: () => Promise<{ state: "Active" }>;
+      workspaceCanSync: () => Promise<boolean>;
       upcomingCalendarEvents: () => Promise<{
         ok: boolean;
         value?: readonly {
