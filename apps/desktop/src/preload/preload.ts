@@ -87,11 +87,17 @@ const novaApi = {
       enabled,
       confirmed,
     }),
-  setCapabilityProviderPriority: (capabilityId: string, providerId: string, priority: number) =>
+  setCapabilityProviderPriority: (
+    capabilityId: string,
+    providerId: string,
+    priority: number,
+    confirmed: boolean,
+  ) =>
     ipcRenderer.invoke("nova:capability:provider-priority", {
       capability_id: capabilityId,
       provider_id: providerId,
       priority,
+      confirmed,
     }),
   setCapabilityPolicy: (capabilityId: string, policy: unknown) =>
     ipcRenderer.invoke("nova:capability:policy", { capability_id: capabilityId, policy }),

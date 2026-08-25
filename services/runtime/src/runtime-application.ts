@@ -1324,8 +1324,16 @@ export class RuntimeApplication {
     capabilityId: string,
     providerId: string,
     priority: number,
+    confirmed: boolean,
   ): Result<CapabilityRecord> {
     if (!this.capabilityRegistry) return err(this.capabilityUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Changing a capability provider priority requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.capabilityRegistry.setPriority(capabilityId, providerId, priority);
   }
 

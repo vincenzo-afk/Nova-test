@@ -711,7 +711,15 @@ describe("RuntimeApplication", () => {
         value: { state: "Configured, disabled" },
       },
     );
-    expect(application.setCapabilityProviderPriority("llm", "local-llm", 0)).toMatchObject({
+    expect(application.setCapabilityProviderPriority("llm", "local-llm", 0, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.getCapabilityRecord("llm")).toMatchObject({
+      ok: true,
+      value: { providers: [{ priority: 1 }] },
+    });
+    expect(application.setCapabilityProviderPriority("llm", "local-llm", 0, true)).toMatchObject({
       ok: true,
       value: { providers: [{ priority: 0 }] },
     });

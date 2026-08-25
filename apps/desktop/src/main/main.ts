@@ -781,6 +781,7 @@ ipcMain.handle(
       readonly capability_id: string;
       readonly provider_id: string;
       readonly priority: number;
+      readonly confirmed: boolean;
     },
   ) => requestGateway("capability.provider-priority", payload),
 );
@@ -1363,14 +1364,18 @@ const startGateway = async (): Promise<void> => {
       readonly capability_id?: unknown;
       readonly provider_id?: unknown;
       readonly priority?: unknown;
+      readonly confirmed?: unknown;
     };
     const priority = payload.priority;
     if (typeof priority !== "number" || !Number.isSafeInteger(priority) || priority < 0)
       throw new Error("Provider priority is invalid.");
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Provider priority confirmation is invalid.");
     const result = runtimeApplication.setCapabilityProviderPriority(
       parseCapabilityId(payload.capability_id),
       parseProviderId(payload.provider_id),
       priority,
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies CapabilityRecord;

@@ -471,6 +471,7 @@ declare global {
         capabilityId: string,
         providerId: string,
         priority: number,
+        confirmed: boolean,
       ) => Promise<{
         capability_id: string;
         domain: string;
