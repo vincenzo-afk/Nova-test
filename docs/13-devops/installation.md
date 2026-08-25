@@ -33,7 +33,9 @@ initial installation are `updates.md`.
 
 ## Current repository bootstrap boundary
 
-The repository currently provides `pnpm install:windows` as a non-destructive source-checkout bootstrap for development and verification. It installs the frozen workspace dependencies, builds the Electron desktop package, and creates user-scoped data directories. It does not yet produce the standard Windows installer package described in step 1, register the NOVA Windows service, install third-party software, delete data, download arbitrary files, or start observers. The packaged installer and service-registration implementation remain a separate release milestone and must not be implied by the bootstrap command.
+The repository currently provides `pnpm install:windows` as a non-destructive source-checkout bootstrap for development and verification. It installs the frozen workspace dependencies, builds the Electron desktop package, and creates user-scoped data directories. It does not produce the standard Windows installer package described in step 1, install third-party software, delete data, download arbitrary files, or start observers. The packaged installer and full host/UI packaging remain a separate release milestone and must not be implied by the bootstrap command.
+
+A packaged host can be registered separately with `pnpm register:windows-service` on Windows. The command requires `NOVA_HOST_EXECUTABLE` and `NOVA_SERVICE_ACCOUNT`, creates an auto-start `NovaHost` service with Service Control Manager restart recovery, and prompts for the account password only while executing the registration. The command refuses non-Windows hosts and never accepts the password through an environment variable or stores it in the service plan.
 
 ## No silent background activity before consent
 
