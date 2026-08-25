@@ -116,6 +116,7 @@ import type {
   CapabilityRegistry,
 } from "./provider-registry.js";
 import type { LocalModelDiscovery, LocalModelManager } from "./local-model-manager.js";
+import type { HealthState, ModelRouter } from "./model-router.js";
 import type { HardwareProfile } from "./hardware-detection.js";
 import type { VoicePipeline, VoiceState } from "./voice-pipeline.js";
 import type {
@@ -208,6 +209,7 @@ export interface RuntimeApplicationOptions {
   readonly runbookManager?: RunbookManager;
   readonly capabilityRegistry?: CapabilityRegistry;
   readonly localModelManager?: LocalModelManager;
+  readonly modelRouter?: ModelRouter;
   readonly voicePipeline?: VoicePipeline;
   readonly pluginDiscovery?: PluginDiscovery;
   readonly backupManager?: BackupManager;
@@ -259,6 +261,7 @@ export class RuntimeApplication {
   public readonly runbookManager: RunbookManager | undefined;
   public readonly capabilityRegistry: CapabilityRegistry | undefined;
   public readonly localModelManager: LocalModelManager | undefined;
+  public readonly modelRouter: ModelRouter | undefined;
   public readonly voicePipeline: VoicePipeline | undefined;
   public readonly pluginDiscovery: PluginDiscovery | undefined;
   public readonly backupManager: BackupManager | undefined;
@@ -332,6 +335,7 @@ export class RuntimeApplication {
     this.runbookManager = options.runbookManager;
     this.capabilityRegistry = options.capabilityRegistry;
     this.localModelManager = options.localModelManager;
+    this.modelRouter = options.modelRouter;
     this.voicePipeline = options.voicePipeline;
     this.pluginDiscovery = options.pluginDiscovery;
     this.backupManager = options.backupManager;
@@ -735,6 +739,11 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+
+  public modelProviderHealth(providerId: string): Result<HealthState> {
+    if (!this.modelRouter) return err(this.modelRouterUnavailableError());
+    return ok(this.modelRouter.health(providerId));
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1297,6 +1306,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private modelRouterUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "Model router is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private workspaceUnavailableError(): {

@@ -1,6 +1,7 @@
 import type {
   ConfigurationSectionName,
   DeviceRuntimeMode,
+  HealthState,
   SetupStepId,
   SetupState,
   SetupStepPatch,
@@ -436,6 +437,7 @@ declare global {
           status: "not-downloaded" | "downloaded" | "loaded" | "reclaimable";
         }[]
       >;
+      modelProviderHealth: (providerId: string) => Promise<HealthState>;
       startVoicePipeline: () => Promise<{
         state: "Idle" | "Listening" | "Transcribing" | "Thinking" | "Speaking";
       }>;

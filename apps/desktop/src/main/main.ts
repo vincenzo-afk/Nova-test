@@ -31,6 +31,7 @@ import {
   type CapabilityRecord,
   type HardwareProfile,
   type LocalModelDiscovery,
+  type HealthState,
   type CapabilityGap,
   type PluginDiscoveryProposal,
   type PluginDiscoveryResult,
@@ -717,6 +718,9 @@ ipcMain.handle(
 ipcMain.handle("nova:models:discover", (_event, hardware: HardwareProfile) =>
   requestGateway("models.discover", hardware),
 );
+ipcMain.handle("nova:models:health", (_event, providerId: string) =>
+  requestGateway("models.health", { provider_id: providerId }),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1165,6 +1169,15 @@ const startGateway = async (): Promise<void> => {
     return runtimeApplication.discoverLocalModels(
       parseHardwareProfile(data),
     ) satisfies readonly LocalModelDiscovery[];
+  });
+  gateway.register("models.health", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly provider_id?: unknown };
+    const result = runtimeApplication.modelProviderHealth(
+      parseWorkspaceText(payload.provider_id, "Provider ID"),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies HealthState;
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

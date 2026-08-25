@@ -26,6 +26,7 @@ import { ResourceManager } from "../src/resource-manager.js";
 import { HardwareDetector, type HardwareProbe } from "../src/hardware-detection.js";
 import { SetupWizard } from "../src/setup-wizard.js";
 import { WorkspaceManager } from "../src/workspace-manager.js";
+import { ModelRouter, type LlmProvider } from "../src/model-router.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1015,6 +1016,46 @@ describe("RuntimeApplication", () => {
       });
     }
     expect(application.workspaceCanSync()).toMatchObject({ ok: true, value: true });
+  });
+
+  it("delegates privacy-safe model provider health inspection", () => {
+    const provider: LlmProvider = {
+      descriptor: {
+        provider_id: "local-model",
+        domain: "llm",
+        privacy_class: "local",
+        schema_version: "1.0.0",
+        cost_per_1k_tokens: 0,
+        capabilities: {
+          tool_calls: true,
+          vision_input: false,
+          streaming: false,
+          max_context_tokens: 8_192,
+        },
+      },
+      healthCheck: async () => "reachable",
+      invoke: async () => ({ text: "unused", provider_id: "local-model" }),
+    };
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      modelRouter: new ModelRouter([provider]),
+    });
+    applications.push(application);
+
+    expect(application.modelProviderHealth("local-model")).toMatchObject({
+      ok: true,
+      value: "reachable",
+    });
+    expect(application.modelProviderHealth("missing-model")).toMatchObject({
+      ok: true,
+      value: "down",
+    });
   });
 
   it("composes the real REST task lifecycle and configuration handlers", async () => {

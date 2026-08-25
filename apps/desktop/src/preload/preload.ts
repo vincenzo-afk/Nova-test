@@ -81,6 +81,7 @@ const novaApi = {
   setCapabilityPolicy: (capabilityId: string, policy: unknown) =>
     ipcRenderer.invoke("nova:capability:policy", { capability_id: capabilityId, policy }),
   discoverLocalModels: (hardware: unknown) => ipcRenderer.invoke("nova:models:discover", hardware),
+  modelProviderHealth: (providerId: string) => ipcRenderer.invoke("nova:models:health", providerId),
   startVoicePipeline: () => ipcRenderer.invoke("nova:voice:start"),
   stopVoicePipeline: () => ipcRenderer.invoke("nova:voice:stop"),
   bargeInVoice: () => ipcRenderer.invoke("nova:voice:barge-in"),
