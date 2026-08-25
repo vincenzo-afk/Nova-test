@@ -816,10 +816,13 @@ declare global {
         };
         error?: { code: string; message: string; retryable: boolean };
       }>;
-      createPairingOffer: (input: {
-        runtime_mode: DeviceRuntimeMode;
-        primary_public_key: string;
-      }) => Promise<{
+      createPairingOffer: (
+        input: {
+          runtime_mode: DeviceRuntimeMode;
+          primary_public_key: string;
+        },
+        confirmed: boolean,
+      ) => Promise<{
         ok: boolean;
         value?: {
           code: string;

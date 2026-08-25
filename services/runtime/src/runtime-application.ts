@@ -1725,12 +1725,20 @@ export class RuntimeApplication {
 
   public createPairingOffer(
     input: Parameters<DevicePairingManager["createOffer"]>[0],
+    confirmed: boolean,
   ): Result<PairingOffer> {
     if (!this.devicePairingManager) {
       return err({
         code: "NOVA-SEC001",
         message: "Device pairing is not configured for this runtime.",
         retryable: true,
+      });
+    }
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Creating a device-pairing offer requires explicit confirmation.",
+        retryable: false,
       });
     }
     return this.devicePairingManager.createOffer(input);

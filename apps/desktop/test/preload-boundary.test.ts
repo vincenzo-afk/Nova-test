@@ -272,7 +272,7 @@ describe("Electron preload boundary", () => {
         beginWorkspaceRecovery: () => unknown;
         completeWorkspaceRecovery: () => unknown;
         workspaceCanSync: () => unknown;
-        createPairingOffer: (input: unknown) => unknown;
+        createPairingOffer: (input: unknown, confirmed: boolean) => unknown;
         completePairing: (code: string, request: unknown) => unknown;
         revokeTrustedDevice: (deviceId: string, confirmed: boolean) => unknown;
         getTrustedDevices: () => unknown;
@@ -457,7 +457,7 @@ describe("Electron preload boundary", () => {
     api.beginWorkspaceRecovery();
     api.completeWorkspaceRecovery();
     api.workspaceCanSync();
-    api.createPairingOffer({ runtime_mode: "Companion", primary_public_key: "primary" });
+    api.createPairingOffer({ runtime_mode: "Companion", primary_public_key: "primary" }, true);
     api.completePairing("PAIR-1", {
       device_id: "phone-1",
       device_public_key: "public-key",
@@ -757,6 +757,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(84, "nova:devices:pairing-offer", {
       runtime_mode: "Companion",
       primary_public_key: "primary",
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(85, "nova:devices:pairing-complete", {
       code: "PAIR-1",

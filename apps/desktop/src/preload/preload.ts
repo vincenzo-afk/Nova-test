@@ -165,7 +165,14 @@ const novaApi = {
   beginWorkspaceRecovery: () => ipcRenderer.invoke("nova:workspace:begin-recovery"),
   completeWorkspaceRecovery: () => ipcRenderer.invoke("nova:workspace:complete-recovery"),
   workspaceCanSync: () => ipcRenderer.invoke("nova:workspace:can-sync"),
-  createPairingOffer: (input: unknown) => ipcRenderer.invoke("nova:devices:pairing-offer", input),
+  createPairingOffer: (
+    input: {
+      readonly runtime_mode: "Full peer" | "Companion";
+      readonly primary_public_key: string;
+    },
+    confirmed: boolean,
+  ) => ipcRenderer.invoke("nova:devices:pairing-offer", { ...input, confirmed }),
+
   completePairing: (code: string, request: unknown) =>
     ipcRenderer.invoke("nova:devices:pairing-complete", { code, request }),
   revokeTrustedDevice: (deviceId: string, confirmed: boolean) =>

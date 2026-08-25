@@ -2523,10 +2523,22 @@ describe("RuntimeApplication", () => {
     });
     applications.push(application);
 
-    const offer = application.createPairingOffer({
-      runtime_mode: "Companion",
-      primary_public_key: "primary",
-    });
+    const deniedOffer = application.createPairingOffer(
+      {
+        runtime_mode: "Companion",
+        primary_public_key: "primary",
+      },
+      false,
+    );
+    expect(deniedOffer).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+
+    const offer = application.createPairingOffer(
+      {
+        runtime_mode: "Companion",
+        primary_public_key: "primary",
+      },
+      true,
+    );
     expect(offer).toMatchObject({
       ok: true,
       value: {

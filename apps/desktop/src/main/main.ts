@@ -1047,7 +1047,11 @@ ipcMain.handle(
   "nova:devices:pairing-offer",
   (
     _event,
-    payload: { readonly runtime_mode: DeviceRuntimeMode; readonly primary_public_key: string },
+    payload: {
+      readonly runtime_mode: DeviceRuntimeMode;
+      readonly primary_public_key: string;
+      readonly confirmed: boolean;
+    },
   ) => requestGateway("devices.pairing-offer", payload),
 );
 ipcMain.handle(
@@ -2304,6 +2308,7 @@ const startGateway = async (): Promise<void> => {
     const payload = data as {
       readonly runtime_mode?: DeviceRuntimeMode;
       readonly primary_public_key?: string;
+      readonly confirmed?: boolean;
     };
     if (
       (payload.runtime_mode !== "Full peer" && payload.runtime_mode !== "Companion") ||
@@ -2311,11 +2316,14 @@ const startGateway = async (): Promise<void> => {
     ) {
       throw new Error("Pairing runtime mode and primary public key are required.");
     }
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Pairing-offer confirmation is invalid.");
     const result = runtimeApplication.createPairingOffer(
-      payload as {
-        runtime_mode: DeviceRuntimeMode;
-        primary_public_key: string;
+      {
+        runtime_mode: payload.runtime_mode,
+        primary_public_key: payload.primary_public_key,
       },
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result;
