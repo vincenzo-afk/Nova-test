@@ -144,6 +144,11 @@ import type { PluginManager, PluginRecord } from "./plugin-manager.js";
 import type { JobScheduler, JobState } from "./job-scheduler.js";
 import type { SystemLifecycleOrchestrator } from "./system-lifecycle.js";
 import type { ConnectionState, NetworkDiscoveryManager } from "./networking.js";
+import {
+  summarizeSystemInventory,
+  type SystemInventorySummary,
+  type WindowsSystemInventory,
+} from "./system-inventory.js";
 import type { BackupManager, SnapshotMetadata } from "./backup-manager.js";
 import type { PreparedRestore, RestoreManager } from "./restore-manager.js";
 import type { UpgradeManager, UpgradeRequest, UpgradeResult } from "./upgrade-manager.js";
@@ -237,6 +242,7 @@ export interface RuntimeApplicationOptions {
   readonly jobScheduler?: JobScheduler;
   readonly systemLifecycle?: SystemLifecycleOrchestrator;
   readonly networkDiscovery?: NetworkDiscoveryManager;
+  readonly systemInventory?: WindowsSystemInventory;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -295,6 +301,7 @@ export class RuntimeApplication {
   public readonly jobScheduler: JobScheduler | undefined;
   public readonly systemLifecycle: SystemLifecycleOrchestrator | undefined;
   public readonly networkDiscovery: NetworkDiscoveryManager | undefined;
+  public readonly systemInventory: WindowsSystemInventory | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -376,6 +383,7 @@ export class RuntimeApplication {
     this.jobScheduler = options.jobScheduler;
     this.systemLifecycle = options.systemLifecycle;
     this.networkDiscovery = options.networkDiscovery;
+    this.systemInventory = options.systemInventory;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -827,6 +835,19 @@ export class RuntimeApplication {
   public networkState(): Result<ConnectionState> {
     if (!this.networkDiscovery) return err(this.networkDiscoveryUnavailableError());
     return ok(this.networkDiscovery.state());
+  }
+
+  public async systemInventorySummary(): Promise<Result<SystemInventorySummary>> {
+    if (!this.systemInventory) return err(this.systemInventoryUnavailableError());
+    try {
+      return ok(summarizeSystemInventory(await this.systemInventory.collect()));
+    } catch {
+      return err({
+        code: "NOVA-CFG001",
+        message: "System inventory collection failed validation.",
+        retryable: true,
+      });
+    }
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
@@ -1389,6 +1410,18 @@ export class RuntimeApplication {
       depth: input.depth,
       ...(input.edge_type === undefined ? {} : { edge_type: input.edge_type as GraphEdgeType }),
     });
+  }
+
+  private systemInventoryUnavailableError(): {
+    code: "NOVA-SEC001";
+    message: string;
+    retryable: false;
+  } {
+    return {
+      code: "NOVA-SEC001",
+      message: "System inventory is not configured for this runtime.",
+      retryable: false,
+    };
   }
 
   private networkDiscoveryUnavailableError(): {

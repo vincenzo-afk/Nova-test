@@ -39,6 +39,7 @@ import { PluginManager } from "../src/plugin-manager.js";
 import { InMemoryJobStore, JobScheduler } from "../src/job-scheduler.js";
 import { SystemLifecycleOrchestrator } from "../src/system-lifecycle.js";
 import { NetworkDiscoveryManager } from "../src/networking.js";
+import { WindowsSystemInventory } from "../src/system-inventory.js";
 import {
   OfflineActionQueue,
   type OfflineAction,
@@ -1068,6 +1069,63 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: "down",
     });
+  });
+
+  it("summarizes permission-scoped system inventory without exposing raw application or path records", async () => {
+    const inventory = new WindowsSystemInventory({
+      modelStoragePath: "C:\\Nova\\models",
+      grantedFilesystemScopes: ["C:\\Nova\\Documents"],
+      runPowerShell: async () =>
+        JSON.stringify({
+          hardware: {
+            cpu_architecture: "x86_64",
+            cpu_cores: 16,
+            avx2: true,
+            avx512: false,
+            gpu_vendor: "nvidia",
+            gpu_vram_gb: 12,
+            gpu_accelerator: "cuda",
+            system_ram_gb: 32,
+            available_disk_gb: 512,
+            os: "windows",
+            battery_powered: false,
+          },
+          installed_applications: [
+            { name: "Chrome", version: "1.0", install_path: "C:\\Apps\\Chrome" },
+          ],
+          running_applications: [
+            { name: "chrome", process_id: 1234, started_at: "2026-08-25T00:00:00.000Z" },
+          ],
+          storage: { model_storage_path: "C:\\Nova\\models", available_disk_gb: 512 },
+          granted_filesystem_scopes: [
+            { path: "C:\\Nova\\Documents", file_count: 4, folder_count: 2 },
+          ],
+        }),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      systemInventory: inventory,
+    });
+    applications.push(application);
+
+    const result = await application.systemInventorySummary();
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        hardware: { cpu_cores: 16, gpu_vram_gb: 12 },
+        installed_application_count: 1,
+        running_application_count: 1,
+        granted_filesystem_scope_count: 1,
+        available_disk_gb: 512,
+      },
+    });
+    expect(result.ok && "installed_applications" in result.value).toBe(false);
   });
 
   it("delegates read-only network state inspection", () => {

@@ -35,6 +35,7 @@ import {
   type BudgetSamples,
   type PerformanceBudgetReport,
   type ConnectionState,
+  type SystemInventorySummary,
   type CompatibilityResult,
   type LogicalClockValue,
   type PluginRecord,
@@ -797,6 +798,9 @@ ipcMain.handle("nova:jobs:state", (_event, jobId: string) =>
 ipcMain.handle("nova:system:startup-log", () => requestGateway("system.startup-log", undefined));
 ipcMain.handle("nova:system:shutdown-log", () => requestGateway("system.shutdown-log", undefined));
 ipcMain.handle("nova:network:state", () => requestGateway("network.state", undefined));
+ipcMain.handle("nova:system:inventory-summary", () =>
+  requestGateway("system.inventory-summary", undefined),
+);
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
 ipcMain.handle("nova:voice:barge-in", () => requestGateway("voice.barge-in", undefined));
@@ -1323,6 +1327,12 @@ const startGateway = async (): Promise<void> => {
     const result = runtimeApplication.networkState();
     if (!result.ok) throw new Error(result.error.message);
     return result.value satisfies ConnectionState;
+  });
+  gateway.register("system.inventory-summary", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await runtimeApplication.systemInventorySummary();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value satisfies SystemInventorySummary;
   });
   gateway.register("voice.start", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

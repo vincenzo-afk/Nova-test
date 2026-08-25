@@ -35,6 +35,24 @@ export interface SystemInventory {
   readonly granted_filesystem_scopes: readonly FilesystemScopeInventory[];
 }
 
+export interface SystemInventorySummary {
+  readonly scanned_at: string;
+  readonly hardware: HardwareProbe;
+  readonly installed_application_count: number;
+  readonly running_application_count: number;
+  readonly available_disk_gb: number;
+  readonly granted_filesystem_scope_count: number;
+}
+
+export const summarizeSystemInventory = (inventory: SystemInventory): SystemInventorySummary => ({
+  scanned_at: inventory.scanned_at,
+  hardware: inventory.hardware,
+  installed_application_count: inventory.installed_applications.length,
+  running_application_count: inventory.running_applications.length,
+  available_disk_gb: inventory.storage.available_disk_gb,
+  granted_filesystem_scope_count: inventory.granted_filesystem_scopes.length,
+});
+
 export interface SystemInventoryOptions {
   readonly modelStoragePath: string;
   readonly grantedFilesystemScopes: readonly string[];
