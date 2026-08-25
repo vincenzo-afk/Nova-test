@@ -512,6 +512,7 @@ declare global {
         }[]
       >;
       websocketUrl: () => Promise<string>;
+      restUrl: () => Promise<string>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

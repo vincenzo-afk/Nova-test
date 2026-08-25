@@ -185,6 +185,7 @@ const novaApi = {
   listModelProviderHealthStatuses: () => ipcRenderer.invoke("nova:models:health-list"),
   reclaimableLocalModelSummaries: () => ipcRenderer.invoke("nova:models:reclaimable"),
   websocketUrl: () => ipcRenderer.invoke("nova:websocket:url"),
+  restUrl: () => ipcRenderer.invoke("nova:rest:url"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

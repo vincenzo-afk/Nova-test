@@ -144,6 +144,7 @@ describe("Electron preload boundary", () => {
       "listModelProviderHealthStatuses",
       "reclaimableLocalModelSummaries",
       "websocketUrl",
+      "restUrl",
     ]);
   });
 
@@ -282,6 +283,7 @@ describe("Electron preload boundary", () => {
         listModelProviderHealthStatuses: () => unknown;
         reclaimableLocalModelSummaries: () => unknown;
         websocketUrl: () => unknown;
+        restUrl: () => unknown;
       },
     ];
 
@@ -473,6 +475,7 @@ describe("Electron preload boundary", () => {
     api.listModelProviderHealthStatuses();
     api.reclaimableLocalModelSummaries();
     api.websocketUrl();
+    api.restUrl();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -756,5 +759,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(120, "nova:models:health-list");
     expect(invoke).toHaveBeenNthCalledWith(121, "nova:models:reclaimable");
     expect(invoke).toHaveBeenNthCalledWith(122, "nova:websocket:url");
+    expect(invoke).toHaveBeenNthCalledWith(123, "nova:rest:url");
   });
 });
