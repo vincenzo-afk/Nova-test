@@ -1,4 +1,9 @@
-import type { PairingOffer, PluginRecord } from "@nova/runtime";
+import type {
+  PairingOffer,
+  PluginDiscoveryProposal,
+  PluginDiscoveryResult,
+  PluginRecord,
+} from "@nova/runtime";
 
 export interface PairingOfferSummary {
   readonly code: string;
@@ -31,5 +36,51 @@ export function projectPluginRecord(record: PluginRecord): PluginRecordSummary {
     state: record.state,
     provided_tool_count: record.manifest.provided_tools.length,
     required_permission_count: record.manifest.required_permissions.length,
+  };
+}
+
+export interface PluginDiscoveryProposalSummary {
+  readonly plugin_id: string;
+  readonly latest_version: string;
+  readonly publisher: string;
+  readonly capability_count: number;
+  readonly required_permission_count: number;
+  readonly status: PluginDiscoveryProposal["status"];
+}
+
+export interface PluginDiscoveryResultSummary {
+  readonly capability_id: string;
+  readonly domain: string;
+  readonly proposals: readonly PluginDiscoveryProposalSummary[];
+  readonly fallback: PluginDiscoveryResult["fallback"];
+}
+
+export function projectPluginDiscoveryProposal(
+  proposal: PluginDiscoveryProposal,
+): PluginDiscoveryProposalSummary {
+  return {
+    plugin_id: proposal.plugin_id,
+    latest_version: proposal.latest_version,
+    publisher: proposal.publisher,
+    capability_count: proposal.capabilities.length,
+    required_permission_count: proposal.required_permissions.length,
+    status: proposal.status,
+  };
+}
+
+export function projectPluginDiscoveryProposals(
+  proposals: readonly PluginDiscoveryProposal[],
+): readonly PluginDiscoveryProposalSummary[] {
+  return proposals.map(projectPluginDiscoveryProposal);
+}
+
+export function projectPluginDiscoveryResult(
+  result: PluginDiscoveryResult,
+): PluginDiscoveryResultSummary {
+  return {
+    capability_id: result.capability_id,
+    domain: result.domain,
+    proposals: projectPluginDiscoveryProposals(result.proposals),
+    fallback: result.fallback,
   };
 }

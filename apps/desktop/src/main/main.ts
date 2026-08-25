@@ -41,8 +41,6 @@ import {
   type LogicalClockValue,
   type JobState,
   type CapabilityGap,
-  type PluginDiscoveryProposal,
-  type PluginDiscoveryResult,
   type SnapshotMetadata,
   type PreparedRestore,
   type UpgradeRequest,
@@ -85,7 +83,12 @@ import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
 import { validateWorkflowDraft, type WorkflowDraft } from "./workflow-draft.js";
-import { projectPairingOffer, projectPluginRecord } from "./response-projections.js";
+import {
+  projectPairingOffer,
+  projectPluginDiscoveryProposals,
+  projectPluginDiscoveryResult,
+  projectPluginRecord,
+} from "./response-projections.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
@@ -1828,7 +1831,7 @@ const startGateway = async (): Promise<void> => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const result = await runtimeApplication.discoverPluginsForGap(parseCapabilityGap(data));
     if (!result.ok) throw new Error(result.error.message);
-    return result.value satisfies PluginDiscoveryResult;
+    return projectPluginDiscoveryResult(result.value);
   });
   gateway.register("plugins.confirm", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -1882,7 +1885,7 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("plugins.pending", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    return runtimeApplication.pendingPluginDiscovery() satisfies readonly PluginDiscoveryProposal[];
+    return projectPluginDiscoveryProposals(runtimeApplication.pendingPluginDiscovery());
   });
   gateway.register("backup.create", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -647,10 +647,8 @@ declare global {
           plugin_id: string;
           latest_version: string;
           publisher: string;
-          source_url: string;
-          signature_key: string;
-          capabilities: readonly string[];
-          required_permissions: readonly string[];
+          capability_count: number;
+          required_permission_count: number;
           status: "pending";
         }[];
         fallback: "manual-settings" | null;
@@ -674,10 +672,8 @@ declare global {
           plugin_id: string;
           latest_version: string;
           publisher: string;
-          source_url: string;
-          signature_key: string;
-          capabilities: readonly string[];
-          required_permissions: readonly string[];
+          capability_count: number;
+          required_permission_count: number;
           status: "pending";
         }[]
       >;
