@@ -259,8 +259,8 @@ describe("Electron preload boundary", () => {
         reconnectOfflineActions: (confirmed: boolean) => unknown;
         startSetupWizard: () => unknown;
         rerunSetupWizard: () => unknown;
-        completeSetupStep: (step: string, patch?: unknown) => unknown;
-        deferSetupStep: (step: string) => unknown;
+        completeSetupStep: (step: string, patch: unknown, confirmed: boolean) => unknown;
+        deferSetupStep: (step: string, confirmed: boolean) => unknown;
         setupSummary: () => unknown;
         workspaceIdentity: () => unknown;
         workspaceState: () => unknown;
@@ -444,8 +444,8 @@ describe("Electron preload boundary", () => {
     api.reconnectOfflineActions(true);
     api.startSetupWizard();
     api.rerunSetupWizard();
-    api.completeSetupStep("core-llm", { section: "capabilities", value: {} });
-    api.deferSetupStep("perception");
+    api.completeSetupStep("core-llm", { section: "capabilities", value: {} }, true);
+    api.deferSetupStep("perception", true);
     api.setupSummary();
     api.workspaceIdentity();
     api.workspaceState();
@@ -750,8 +750,12 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(71, "nova:setup:complete", {
       step: "core-llm",
       patch: { section: "capabilities", value: {} },
+      confirmed: true,
     });
-    expect(invoke).toHaveBeenNthCalledWith(72, "nova:setup:defer", "perception");
+    expect(invoke).toHaveBeenNthCalledWith(72, "nova:setup:defer", {
+      step: "perception",
+      confirmed: true,
+    });
     expect(invoke).toHaveBeenNthCalledWith(73, "nova:setup:summary");
     expect(invoke).toHaveBeenNthCalledWith(74, "nova:workspace:identity");
     expect(invoke).toHaveBeenNthCalledWith(75, "nova:workspace:state");

@@ -1422,13 +1422,30 @@ describe("RuntimeApplication", () => {
 
     const started = await application.startSetupWizard();
     expect(started).toMatchObject({ ok: true, value: { current_step: "core-llm" } });
+    const initialConfiguration = configurationStore.snapshot();
     expect(
-      application.completeSetupStep("core-llm", { section: "capabilities", value: {} }),
+      application.completeSetupStep("core-llm", { section: "capabilities", value: {} }, false),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-SEC001" } });
+    expect(application.setupSummary()).toMatchObject({
+      ok: true,
+      value: { current_step: "core-llm" },
+    });
+    expect(configurationStore.snapshot()).toEqual(initialConfiguration);
+    expect(
+      application.completeSetupStep("core-llm", { section: "capabilities", value: {} }, true),
     ).toMatchObject({
       ok: true,
       value: { current_step: "perception" },
     });
-    expect(application.deferSetupStep("perception")).toMatchObject({
+    expect(application.deferSetupStep("perception", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.setupSummary()).toMatchObject({
+      ok: true,
+      value: { current_step: "perception" },
+    });
+    expect(application.deferSetupStep("perception", true)).toMatchObject({
       ok: true,
       value: { current_step: "voice", deferred_steps: ["perception"] },
     });

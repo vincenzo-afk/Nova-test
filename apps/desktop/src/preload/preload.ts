@@ -152,9 +152,10 @@ const novaApi = {
     ipcRenderer.invoke("nova:offline:reconnect", confirmed),
   startSetupWizard: () => ipcRenderer.invoke("nova:setup:start"),
   rerunSetupWizard: () => ipcRenderer.invoke("nova:setup:rerun"),
-  completeSetupStep: (step: string, patch?: unknown) =>
-    ipcRenderer.invoke("nova:setup:complete", { step, patch }),
-  deferSetupStep: (step: string) => ipcRenderer.invoke("nova:setup:defer", step),
+  completeSetupStep: (step: string, patch: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:setup:complete", { step, patch, confirmed }),
+  deferSetupStep: (step: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:setup:defer", { step, confirmed }),
   setupSummary: () => ipcRenderer.invoke("nova:setup:summary"),
   workspaceIdentity: () => ipcRenderer.invoke("nova:workspace:identity"),
   workspaceState: () => ipcRenderer.invoke("nova:workspace:state"),

@@ -1960,18 +1960,30 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("setup.complete", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly step?: unknown; readonly patch?: unknown };
+    const payload = data as {
+      readonly step?: unknown;
+      readonly patch?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Setup completion confirmation is invalid.");
     const result = runtimeApplication.completeSetupStep(
       parseSetupStep(payload.step),
       parseSetupPatch(payload.patch),
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });
   gateway.register("setup.defer", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly step?: unknown };
-    const result = runtimeApplication.deferSetupStep(parseSetupStep(payload.step));
+    const payload = data as { readonly step?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Setup deferral confirmation is invalid.");
+    const result = runtimeApplication.deferSetupStep(
+      parseSetupStep(payload.step),
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

@@ -1202,13 +1202,30 @@ export class RuntimeApplication {
     }
   }
 
-  public completeSetupStep(step: SetupStepId, patch?: SetupStepPatch): Result<SetupState> {
+  public completeSetupStep(
+    step: SetupStepId,
+    patch: SetupStepPatch | undefined,
+    confirmed: boolean,
+  ): Result<SetupState> {
     if (!this.setupWizard) return err(this.setupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Completing a setup step requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.setupWizard.complete(step, patch);
   }
-
-  public deferSetupStep(step: SetupStepId): Result<SetupState> {
+  public deferSetupStep(step: SetupStepId, confirmed: boolean): Result<SetupState> {
     if (!this.setupWizard) return err(this.setupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Deferring a setup step requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.setupWizard.defer(step);
   }
 

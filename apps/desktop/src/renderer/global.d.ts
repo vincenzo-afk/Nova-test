@@ -751,8 +751,12 @@ declare global {
       ) => Promise<readonly { action_id: string; status: "completed" | "failed" }[]>;
       startSetupWizard: () => Promise<SetupState>;
       rerunSetupWizard: () => Promise<SetupState>;
-      completeSetupStep: (step: SetupStepId, patch?: SetupStepPatch) => Promise<SetupState>;
-      deferSetupStep: (step: SetupStepId) => Promise<SetupState>;
+      completeSetupStep: (
+        step: SetupStepId,
+        patch: SetupStepPatch | undefined,
+        confirmed: boolean,
+      ) => Promise<SetupState>;
+      deferSetupStep: (step: SetupStepId, confirmed: boolean) => Promise<SetupState>;
       setupSummary: () => Promise<SetupState>;
       workspaceIdentity: () => Promise<WorkspaceIdentity>;
       workspaceState: () => Promise<WorkspaceState>;
