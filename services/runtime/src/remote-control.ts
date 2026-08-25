@@ -119,6 +119,13 @@ export class RemoteControlManager {
     }
   }
 
+  public listSessions(): readonly RemoteSessionView[] {
+    return [...this.sessions.values()].map((session) => {
+      this.expired(session);
+      return this.view(session);
+    });
+  }
+
   public async execute(
     sessionId: string,
     command: RemoteCommand,

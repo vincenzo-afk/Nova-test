@@ -1848,6 +1848,41 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("exposes remote session status without commands or signatures", () => {
+    const remoteControl = new RemoteControlManager(
+      { verify: () => true, send: async () => undefined },
+      { now: () => 1000, sessionTtlMs: 5_000 },
+    );
+    remoteControl.requestSession({
+      session_id: "remote-session-1",
+      initiator_device_id: "phone-1",
+      signature: "signature",
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      remoteControlManager: remoteControl,
+    });
+    applications.push(application);
+
+    expect(application.remoteControlSessionStatuses()).toEqual({
+      ok: true,
+      value: [
+        {
+          session_id: "remote-session-1",
+          initiator_device_id: "phone-1",
+          expires_at: 6_000,
+          state: "AwaitingApproval",
+        },
+      ],
+    });
+  });
+
   it("places tasks through the composed distributed coordinator and records the owning peer", async () => {
     const application = createApplication();
     applications.push(application);

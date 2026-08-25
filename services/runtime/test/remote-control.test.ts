@@ -20,6 +20,14 @@ describe("RemoteControlManager", () => {
     });
     expect(session).toMatchObject({ ok: true, value: { state: "AwaitingApproval" } });
     expect(manager.approve("session-1")).toMatchObject({ ok: true, value: { state: "Active" } });
+    expect(manager.listSessions()).toEqual([
+      {
+        session_id: "session-1",
+        initiator_device_id: "phone",
+        expires_at: 6000,
+        state: "Active",
+      },
+    ]);
     const command: RemoteCommand = {
       command_id: "cmd-1",
       content: "show tasks",

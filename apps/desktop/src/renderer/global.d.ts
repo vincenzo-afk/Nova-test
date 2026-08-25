@@ -281,6 +281,14 @@ declare global {
       >;
       hardwareCapabilitySummary: () => Promise<HardwareCapabilitySummary>;
       rescanHardwareCapabilitySummary: () => Promise<HardwareCapabilitySummary>;
+      remoteControlSessionStatuses: () => Promise<
+        readonly {
+          session_id: string;
+          initiator_device_id: string;
+          expires_at: number;
+          state: "AwaitingApproval" | "Active" | "Expired" | "Revoked";
+        }[]
+      >;
 
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;

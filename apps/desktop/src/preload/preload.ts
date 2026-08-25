@@ -176,6 +176,7 @@ const novaApi = {
     ipcRenderer.invoke("nova:personalization:pending-summaries"),
   hardwareCapabilitySummary: () => ipcRenderer.invoke("nova:hardware:summary"),
   rescanHardwareCapabilitySummary: () => ipcRenderer.invoke("nova:hardware:rescan-summary"),
+  remoteControlSessionStatuses: () => ipcRenderer.invoke("nova:remote:sessions"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);
