@@ -580,6 +580,7 @@ declare global {
       confirmWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       resumeWorkflowCheckpoint: (checkpointId: string, confirmed: boolean) => Promise<unknown>;
       denyWaitingUserTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
+      pauseTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

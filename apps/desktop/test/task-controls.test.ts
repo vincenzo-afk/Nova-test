@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { TaskManager } from "@nova/runtime";
-import { cancelDesktopTask, listDesktopTasks } from "../src/main/task-controls.js";
+import {
+  cancelDesktopTask,
+  listDesktopTasks,
+  pauseDesktopTask,
+} from "../src/main/task-controls.js";
 
 describe("desktop task controls", () => {
   it("returns bounded opaque-cursor pages from the authoritative task list", () => {
@@ -46,6 +50,37 @@ describe("desktop task controls", () => {
 
     const refused = cancelDesktopTask(tasks, scheduler, running.value.task_id, true);
     expect(refused).toMatchObject({ ok: false, error: { code: "NOVA-TL003" } });
+  });
+
+  it("pauses a queued task only with explicit confirmation and rejects active execution", () => {
+    const tasks = new TaskManager();
+    const queued = tasks.create({ goal: "pause me" });
+    const running = tasks.create({ goal: "running" });
+    expect(queued.ok && running.ok).toBe(true);
+    if (!queued.ok || !running.ok) return;
+    expect(tasks.transition(running.value.task_id, "Planning").ok).toBe(true);
+    expect(tasks.transition(running.value.task_id, "Executing").ok).toBe(true);
+    const scheduler = { cancel: vi.fn(() => true) };
+
+    expect(pauseDesktopTask(tasks, scheduler, queued.value.task_id, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(scheduler.cancel).not.toHaveBeenCalled();
+    expect(pauseDesktopTask(tasks, scheduler, queued.value.task_id, true)).toMatchObject({
+      ok: true,
+      value: { state: "Paused" },
+    });
+    expect(scheduler.cancel).toHaveBeenCalledWith(queued.value.task_id);
+    expect(pauseDesktopTask(tasks, scheduler, running.value.task_id, true)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL003" },
+    });
+
+    expect(tasks.get(running.value.task_id)).toMatchObject({
+      ok: true,
+      value: { state: "Executing" },
+    });
   });
 
   it("rejects malformed task cursors", () => {

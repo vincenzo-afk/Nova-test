@@ -76,7 +76,12 @@ import {
   type AccessibilityReadRequest,
   type UiActionRequest,
 } from "./desktop-agent.js";
-import { cancelDesktopTask, listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
+import {
+  cancelDesktopTask,
+  listDesktopTasks,
+  pauseDesktopTask,
+  type DesktopTaskListPage,
+} from "./task-controls.js";
 import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
@@ -849,6 +854,7 @@ ipcMain.handle("nova:task:confirm-waiting-user", (_event, data) =>
 ipcMain.handle("nova:task:deny-waiting-user", (_event, data) =>
   requestGateway("task.deny-waiting-user", data),
 );
+ipcMain.handle("nova:task:pause", (_event, data) => requestGateway("task.pause", data));
 
 ipcMain.handle("nova:voice:start", () => requestGateway("voice.start", undefined));
 ipcMain.handle("nova:voice:stop", () => requestGateway("voice.stop", undefined));
@@ -2207,6 +2213,21 @@ const startGateway = async (): Promise<void> => {
     );
     if (!cancelled.ok) throw new Error(cancelled.error.message);
     return cancelled.value;
+  });
+  gateway.register("task.pause", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly task_id?: string; readonly confirmed?: unknown };
+    if (!payload.task_id) throw new Error("Task ID is required.");
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Task pause confirmation is invalid.");
+    const paused = pauseDesktopTask(
+      runtimeApplication.tasks,
+      runtimeApplication.scheduler,
+      payload.task_id,
+      payload.confirmed,
+    );
+    if (!paused.ok) throw new Error(paused.error.message);
+    return paused.value;
   });
   gateway.register("permissions.get", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

@@ -38,6 +38,33 @@ export function listDesktopTasks(
   });
 }
 
+export function pauseDesktopTask(
+  tasks: TaskManager,
+  scheduler: DesktopTaskScheduler | undefined,
+  taskId: string,
+  confirmed: boolean,
+): Result<TaskRecord> {
+  if (!confirmed) {
+    return err({
+      code: "NOVA-SEC001",
+      message: "Pausing a task requires explicit confirmation.",
+      retryable: false,
+    });
+  }
+  const current = tasks.get(taskId);
+  if (!current.ok) return current;
+  if (current.value.state !== "Created") {
+    return err({
+      code: "NOVA-TL003",
+      message: "Active task execution cannot be interrupted by the current scheduler.",
+      retryable: false,
+      details: { taskId, state: current.value.state },
+    });
+  }
+  scheduler?.cancel(taskId);
+  return tasks.transition(taskId, "Paused");
+}
+
 export function cancelDesktopTask(
   tasks: TaskManager,
   scheduler: DesktopTaskScheduler | undefined,
