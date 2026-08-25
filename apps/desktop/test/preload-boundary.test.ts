@@ -134,6 +134,7 @@ describe("Electron preload boundary", () => {
       "sessionDeviceSnapshots",
       "pendingAdaptivePreferenceSummaries",
       "hardwareCapabilitySummary",
+      "rescanHardwareCapabilitySummary",
     ]);
   });
 
@@ -262,6 +263,7 @@ describe("Electron preload boundary", () => {
         sessionDeviceSnapshots: () => unknown;
         pendingAdaptivePreferenceSummaries: () => unknown;
         hardwareCapabilitySummary: () => unknown;
+        rescanHardwareCapabilitySummary: () => unknown;
       },
     ];
 
@@ -443,6 +445,7 @@ describe("Electron preload boundary", () => {
     api.sessionDeviceSnapshots();
     api.pendingAdaptivePreferenceSummaries();
     api.hardwareCapabilitySummary();
+    api.rescanHardwareCapabilitySummary();
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -716,5 +719,6 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(110, "nova:session:devices");
     expect(invoke).toHaveBeenNthCalledWith(111, "nova:personalization:pending-summaries");
     expect(invoke).toHaveBeenNthCalledWith(112, "nova:hardware:summary");
+    expect(invoke).toHaveBeenNthCalledWith(113, "nova:hardware:rescan-summary");
   });
 });

@@ -1042,6 +1042,50 @@ describe("RuntimeApplication", () => {
     expect(application.hardwareCapabilitySummary()).not.toHaveProperty("value.signals");
   });
 
+  it("rescans hardware on demand and returns only the refreshed capability summary", async () => {
+    let scanCount = 0;
+    const detector = new HardwareDetector(async () => {
+      scanCount += 1;
+      return {
+        cpu_architecture: "x86_64",
+        cpu_cores: 8,
+        avx2: true,
+        avx512: false,
+        gpu_vendor: scanCount === 1 ? null : "nvidia",
+        gpu_vram_gb: scanCount === 1 ? 0 : 24,
+        gpu_accelerator: scanCount === 1 ? null : "cuda",
+        system_ram_gb: scanCount === 1 ? 8 : 32,
+        available_disk_gb: 100,
+        os: "linux",
+        battery_powered: false,
+      };
+    });
+    await detector.scan();
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      hardwareDetector: detector,
+    });
+    applications.push(application);
+
+    const result = await application.rescanHardwareCapabilitySummary();
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        scanned_at: expect.any(String),
+        overall_tier: "High",
+        recommendations: { llm: "local-first", vision: "local-first", speech: "local-first" },
+      },
+    });
+    expect(result.ok && "signals" in result.value).toBe(false);
+    expect(scanCount).toBe(2);
+  });
+
   it("fails closed when hardware capability summary is unavailable", () => {
     const application = createApplication();
     applications.push(application);

@@ -175,6 +175,7 @@ const novaApi = {
   pendingAdaptivePreferenceSummaries: () =>
     ipcRenderer.invoke("nova:personalization:pending-summaries"),
   hardwareCapabilitySummary: () => ipcRenderer.invoke("nova:hardware:summary"),
+  rescanHardwareCapabilitySummary: () => ipcRenderer.invoke("nova:hardware:rescan-summary"),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

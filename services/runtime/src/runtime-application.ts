@@ -850,6 +850,21 @@ export class RuntimeApplication {
     if (!summary) return err(this.hardwareSummaryUnavailableError());
     return ok(summary);
   }
+  public async rescanHardwareCapabilitySummary(): Promise<Result<HardwareCapabilitySummary>> {
+    if (!this.hardwareDetector) return err(this.hardwareSummaryUnavailableError());
+    try {
+      await this.hardwareDetector.rescan();
+      const summary = this.hardwareDetector.lastCapabilitySummary();
+      if (!summary) return err(this.hardwareSummaryUnavailableError());
+      return ok(summary);
+    } catch {
+      return err({
+        code: "NOVA-CFG001",
+        message: "Hardware capability rescan failed.",
+        retryable: true,
+      });
+    }
+  }
   public async systemInventorySummary(): Promise<Result<SystemInventorySummary>> {
     if (!this.systemInventory) return err(this.systemInventoryUnavailableError());
     try {

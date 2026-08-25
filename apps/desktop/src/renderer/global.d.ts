@@ -280,6 +280,7 @@ declare global {
         }[]
       >;
       hardwareCapabilitySummary: () => Promise<HardwareCapabilitySummary>;
+      rescanHardwareCapabilitySummary: () => Promise<HardwareCapabilitySummary>;
 
       resetAdaptivePreference: (preferenceId?: string) => Promise<{
         ok: boolean;
