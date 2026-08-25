@@ -867,8 +867,10 @@ ipcMain.handle("nova:voice:state", () => requestGateway("voice.state", undefined
 ipcMain.handle("nova:plugins:discover", (_event, gap: CapabilityGap) =>
   requestGateway("plugins.discover", gap),
 );
-ipcMain.handle("nova:plugins:confirm", (_event, pluginId: string) =>
-  requestGateway("plugins.confirm", { plugin_id: pluginId }),
+ipcMain.handle(
+  "nova:plugins:confirm",
+  (_event, payload: { readonly plugin_id: string; readonly confirmed: boolean }) =>
+    requestGateway("plugins.confirm", payload),
 );
 ipcMain.handle("nova:plugins:decline", (_event, pluginId: string) =>
   requestGateway("plugins.decline", { plugin_id: pluginId }),
@@ -1617,9 +1619,11 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("plugins.confirm", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly plugin_id?: unknown };
+    const payload = data as { readonly plugin_id?: unknown; readonly confirmed?: unknown };
     const pluginId = parseProviderId(payload.plugin_id);
-    const result = runtimeApplication.confirmPluginDiscovery(pluginId);
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Plugin discovery approval confirmation is invalid.");
+    const result = runtimeApplication.confirmPluginDiscovery(pluginId, payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });

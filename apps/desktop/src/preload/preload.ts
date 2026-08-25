@@ -96,8 +96,8 @@ const novaApi = {
   bargeInVoice: () => ipcRenderer.invoke("nova:voice:barge-in"),
   voicePipelineState: () => ipcRenderer.invoke("nova:voice:state"),
   discoverPluginsForGap: (gap: unknown) => ipcRenderer.invoke("nova:plugins:discover", gap),
-  confirmPluginDiscovery: (pluginId: string) =>
-    ipcRenderer.invoke("nova:plugins:confirm", pluginId),
+  confirmPluginDiscovery: (pluginId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:plugins:confirm", { plugin_id: pluginId, confirmed }),
   declinePluginDiscovery: (pluginId: string) =>
     ipcRenderer.invoke("nova:plugins:decline", pluginId),
   pendingPluginDiscovery: () => ipcRenderer.invoke("nova:plugins:pending"),

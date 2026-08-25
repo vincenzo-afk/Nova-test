@@ -1217,8 +1217,16 @@ export class RuntimeApplication {
 
   public confirmPluginDiscovery(
     pluginId: string,
+    confirmed: boolean,
   ): Result<{ readonly plugin_id: string; readonly status: "approved" }> {
     if (!this.pluginDiscovery) return err(this.pluginUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Approving a plugin discovery proposal requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.pluginDiscovery.confirm(pluginId);
   }
 

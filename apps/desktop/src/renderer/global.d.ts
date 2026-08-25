@@ -633,7 +633,10 @@ declare global {
         }[];
         fallback: "manual-settings" | null;
       }>;
-      confirmPluginDiscovery: (pluginId: string) => Promise<{
+      confirmPluginDiscovery: (
+        pluginId: string,
+        confirmed: boolean,
+      ) => Promise<{
         plugin_id: string;
         status: "approved";
       }>;
