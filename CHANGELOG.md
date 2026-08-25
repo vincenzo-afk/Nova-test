@@ -4,6 +4,10 @@ All notable changes to Nova are documented in this file.
 
 ## [0.1.0] - 2026-08-21
 
+### Security
+
+- Pairing-offer responses now use a bounded renderer projection that excludes the short-lived channel credential while preserving non-secret pairing metadata.
+
 ### Added
 
 - Real mouse activity observation through the off-by-default `mouse_activity` permission and a Windows Native bridge using `GetLastInputInfo` for activity/idle transitions plus a separate on-demand `GetCursorPos` read for authorized action-time consumers. The observer validates screen bounds, never publishes or stores movement/click history, keeps cursor coordinates out of diagnostics, updates ephemeral WorldModel engagement state, and stops immediately on revocation. Sandbox tests, strict builds, and structural no-history checks pass; live Windows validation remains deferred while no Windows host is connected.

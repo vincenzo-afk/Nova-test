@@ -86,6 +86,7 @@ import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
 import { validateWorkflowDraft, type WorkflowDraft } from "./workflow-draft.js";
+import { projectPairingOffer } from "./response-projections.js";
 
 interface TaskSnapshot {
   readonly task_id: string;
@@ -2441,7 +2442,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result;
+    return { ok: true, value: projectPairingOffer(result.value) };
   });
   gateway.register("devices.pairing-complete", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

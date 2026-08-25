@@ -849,7 +849,6 @@ declare global {
         ok: boolean;
         value?: {
           code: string;
-          channel_token: string;
           primary_public_key: string;
           runtime_mode: DeviceRuntimeMode;
           expires_at: number;
