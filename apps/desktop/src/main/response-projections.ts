@@ -1,4 +1,6 @@
 import type {
+  DeliveryReceipt,
+  EmailSendReceipt,
   PairingOffer,
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
@@ -130,4 +132,24 @@ export interface BackupRestoreSummary {
 export function projectBackupRestore(...state: readonly unknown[]): BackupRestoreSummary {
   void state;
   return { restored: true };
+}
+
+export interface EmailSendReceiptSummary {
+  readonly message_id: string;
+  readonly sent: true;
+}
+
+export function projectEmailSendReceipt(receipt: EmailSendReceipt): EmailSendReceiptSummary {
+  return { message_id: receipt.message_id, sent: true };
+}
+
+export interface ChannelDeliveryReceiptSummary {
+  readonly message_id: string;
+  readonly status: DeliveryReceipt["status"];
+}
+
+export function projectChannelDeliveryReceipt(
+  receipt: DeliveryReceipt,
+): ChannelDeliveryReceiptSummary {
+  return { message_id: receipt.message_id, status: receipt.status };
 }

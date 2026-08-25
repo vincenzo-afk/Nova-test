@@ -80,6 +80,8 @@ import { readUpdateInfo } from "./update-info.js";
 import { validateWorkflowDraft, type WorkflowDraft } from "./workflow-draft.js";
 import {
   projectBackupRestore,
+  projectChannelDeliveryReceipt,
+  projectEmailSendReceipt,
   projectPairingOffer,
   projectPluginDiscoveryProposals,
   projectPluginDiscoveryResult,
@@ -2180,7 +2182,10 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result;
+    return {
+      ok: true,
+      value: projectChannelDeliveryReceipt(result.value),
+    };
   });
   gateway.register("channel.receive", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -2316,7 +2321,10 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result;
+    return {
+      ok: true,
+      value: projectEmailSendReceipt(result.value),
+    };
   });
   gateway.register("companion.foreground-start", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

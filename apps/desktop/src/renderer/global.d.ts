@@ -168,7 +168,7 @@ declare global {
         confirmed: boolean,
       ) => Promise<{
         ok: boolean;
-        value?: { to: string; subject: string; body: string; message_id: string };
+        value?: { message_id: string; sent: true };
         error?: { code: string; message: string; retryable: boolean };
       }>;
       sendChannelMessage: (
@@ -178,7 +178,7 @@ declare global {
         confirmed: boolean,
       ) => Promise<{
         ok: boolean;
-        value?: { message_id: string; status: "sent" | "failed"; chat_id: string; content: string };
+        value?: { message_id: string; status: "sent" | "failed" };
         error?: { code: string; message: string; retryable: boolean };
       }>;
       receiveChannelMessage: (
