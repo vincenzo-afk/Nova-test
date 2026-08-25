@@ -87,6 +87,7 @@ import {
   projectPluginDiscoveryProposals,
   projectPluginDiscoveryResult,
   projectPluginRecord,
+  projectSetupState,
   projectTaskRecord,
   projectTaskRecords,
   projectWorkflowResult,
@@ -2033,7 +2034,7 @@ const startGateway = async (): Promise<void> => {
       throw new Error("Setup start confirmation is invalid.");
     const result = await runtimeApplication.startSetupWizard(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectSetupState(result.value);
   });
   gateway.register("setup.rerun", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -2042,7 +2043,7 @@ const startGateway = async (): Promise<void> => {
       throw new Error("Setup rerun confirmation is invalid.");
     const result = await runtimeApplication.rerunSetupWizard(payload.confirmed);
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectSetupState(result.value);
   });
   gateway.register("setup.complete", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -2059,7 +2060,7 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectSetupState(result.value);
   });
   gateway.register("setup.defer", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
@@ -2071,13 +2072,13 @@ const startGateway = async (): Promise<void> => {
       payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectSetupState(result.value);
   });
   gateway.register("setup.summary", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
     const result = runtimeApplication.setupSummary();
     if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    return projectSetupState(result.value);
   });
   gateway.register("workspace.identity", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

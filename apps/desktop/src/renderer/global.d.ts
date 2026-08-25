@@ -12,7 +12,6 @@ import type {
   HardwareCapabilitySummary,
   JobState,
   SetupStepId,
-  SetupState,
   SetupStepPatch,
   WorkspaceIdentity,
   WorkspaceLock,
@@ -55,6 +54,12 @@ interface DesktopTaskSummary {
   state: string;
   retry_count: number;
   updated_at: string;
+}
+
+interface DesktopSetupStateSummary {
+  current_step: SetupStepId;
+  completed_steps: readonly SetupStepId[];
+  deferred_steps: readonly SetupStepId[];
 }
 
 interface DesktopGraphQueryResult {
@@ -771,15 +776,15 @@ declare global {
       reconnectOfflineActions: (
         confirmed: boolean,
       ) => Promise<readonly { action_id: string; status: "completed" | "failed" }[]>;
-      startSetupWizard: (confirmed: boolean) => Promise<SetupState>;
-      rerunSetupWizard: (confirmed: boolean) => Promise<SetupState>;
+      startSetupWizard: (confirmed: boolean) => Promise<DesktopSetupStateSummary>;
+      rerunSetupWizard: (confirmed: boolean) => Promise<DesktopSetupStateSummary>;
       completeSetupStep: (
         step: SetupStepId,
         patch: SetupStepPatch | undefined,
         confirmed: boolean,
-      ) => Promise<SetupState>;
-      deferSetupStep: (step: SetupStepId, confirmed: boolean) => Promise<SetupState>;
-      setupSummary: () => Promise<SetupState>;
+      ) => Promise<DesktopSetupStateSummary>;
+      deferSetupStep: (step: SetupStepId, confirmed: boolean) => Promise<DesktopSetupStateSummary>;
+      setupSummary: () => Promise<DesktopSetupStateSummary>;
       workspaceIdentity: () => Promise<WorkspaceIdentity>;
       workspaceState: () => Promise<WorkspaceState>;
       createWorkspace: (workspaceId: string, confirmed: boolean) => Promise<WorkspaceIdentity>;

@@ -15,6 +15,7 @@ All notable changes to Nova are documented in this file.
 - Confirmed backup restoration now returns only a success acknowledgement to the renderer; restored snapshot contents remain in the privileged runtime.
 - Confirmed email and channel-send responses now return bounded delivery receipts without message bodies, content, recipient addresses, or chat identifiers.
 - Restore preparation now keeps staged state in privileged main-process memory and exposes only a one-time opaque handle to the renderer for confirmed apply.
+- Setup responses now expose only wizard progress steps; host inventory, filesystem scopes, hardware details, and configuration payloads remain outside the renderer boundary.
 
 ### Added
 

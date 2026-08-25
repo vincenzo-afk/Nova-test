@@ -5,6 +5,7 @@ import type {
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
   PluginRecord,
+  SetupState,
   TaskRecord,
   WorkflowResult,
 } from "@nova/runtime";
@@ -141,6 +142,20 @@ export interface PreparedRestoreSummary {
 
 export function projectPreparedRestore(restoreId: string): PreparedRestoreSummary {
   return { restore_id: restoreId, verified: true };
+}
+
+export interface SetupStateSummary {
+  readonly current_step: SetupState["current_step"];
+  readonly completed_steps: readonly SetupState["completed_steps"][number][];
+  readonly deferred_steps: readonly SetupState["deferred_steps"][number][];
+}
+
+export function projectSetupState(state: SetupState): SetupStateSummary {
+  return {
+    current_step: state.current_step,
+    completed_steps: [...state.completed_steps],
+    deferred_steps: [...state.deferred_steps],
+  };
 }
 
 export interface EmailSendReceiptSummary {
