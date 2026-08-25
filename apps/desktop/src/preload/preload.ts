@@ -125,7 +125,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:backup:create", { state, confirmed }),
   preUpdateBackup: (state: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:backup:pre-update", { state, confirmed }),
-  restoreBackup: (snapshotId: string) => ipcRenderer.invoke("nova:backup:restore", snapshotId),
+  restoreBackup: (snapshotId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:backup:restore", { snapshot_id: snapshotId, confirmed }),
   prepareRestore: (snapshotId: string) => ipcRenderer.invoke("nova:restore:prepare", snapshotId),
   applyPreparedRestore: (prepared: unknown, confirmed: boolean) =>
     ipcRenderer.invoke("nova:restore:apply", { prepared, confirmed }),

@@ -1106,7 +1106,11 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { snapshot_id: "snapshot-1", owner_id: "owner-1", encrypted: true },
     });
-    expect(application.restoreBackup<{ theme: string }>("snapshot-1")).toMatchObject({
+    expect(application.restoreBackup<{ theme: string }>("snapshot-1", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.restoreBackup<{ theme: string }>("snapshot-1", true)).toMatchObject({
       ok: true,
       value: { theme: "dark" },
     });

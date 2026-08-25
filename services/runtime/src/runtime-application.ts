@@ -1355,8 +1355,15 @@ export class RuntimeApplication {
     return this.backupManager.preUpdate(state);
   }
 
-  public restoreBackup<T>(snapshotId: string): Result<T> {
+  public restoreBackup<T>(snapshotId: string, confirmed: boolean): Result<T> {
     if (!this.backupManager) return err(this.backupUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Restoring a backup snapshot requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.backupManager.restore<T>(snapshotId);
   }
 

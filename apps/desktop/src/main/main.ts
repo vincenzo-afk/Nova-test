@@ -939,8 +939,10 @@ ipcMain.handle(
   (_event, payload: { readonly state: unknown; readonly confirmed: boolean }) =>
     requestGateway("backup.pre-update", payload),
 );
-ipcMain.handle("nova:backup:restore", (_event, snapshotId: string) =>
-  requestGateway("backup.restore", { snapshot_id: snapshotId }),
+ipcMain.handle(
+  "nova:backup:restore",
+  (_event, payload: { readonly snapshot_id: string; readonly confirmed: boolean }) =>
+    requestGateway("backup.restore", payload),
 );
 ipcMain.handle("nova:restore:prepare", (_event, snapshotId: string) =>
   requestGateway("restore.prepare", { snapshot_id: snapshotId }),
@@ -1826,8 +1828,13 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("backup.restore", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly snapshot_id?: unknown };
-    const result = runtimeApplication.restoreBackup(parseSnapshotId(payload.snapshot_id));
+    const payload = data as { readonly snapshot_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Backup restoration confirmation is invalid.");
+    const result = runtimeApplication.restoreBackup(
+      parseSnapshotId(payload.snapshot_id),
+      payload.confirmed,
+    );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   });
