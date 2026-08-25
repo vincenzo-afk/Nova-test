@@ -769,8 +769,14 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "nova:incident:resolve",
-  (_event, payload: { readonly incident_id: string; readonly detail: string }) =>
-    requestGateway("incident.resolve", payload),
+  (
+    _event,
+    payload: {
+      readonly incident_id: string;
+      readonly detail: string;
+      readonly confirmed: boolean;
+    },
+  ) => requestGateway("incident.resolve", payload),
 );
 ipcMain.handle(
   "nova:incident:postmortem",
@@ -1352,11 +1358,18 @@ const startGateway = async (): Promise<void> => {
   });
   gateway.register("incident.resolve", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
-    const payload = data as { readonly incident_id?: unknown; readonly detail?: unknown };
+    const payload = data as {
+      readonly incident_id?: unknown;
+      readonly detail?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Incident resolution confirmation is invalid.");
     return unwrapIncident(
       runtimeApplication.resolveIncident(
         parseIncidentId(payload.incident_id),
         parseIncidentDetail(payload.detail),
+        payload.confirmed,
       ),
     );
   });

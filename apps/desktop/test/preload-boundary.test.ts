@@ -214,7 +214,7 @@ describe("Electron preload boundary", () => {
         detectIncident: (detail: string) => unknown;
         triageIncident: (incidentId: string, severity: string, confirmed: boolean) => unknown;
         mitigateIncident: (incidentId: string, detail: string, confirmed: boolean) => unknown;
-        resolveIncident: (incidentId: string, detail: string) => unknown;
+        resolveIncident: (incidentId: string, detail: string, confirmed: boolean) => unknown;
         postmortemIncident: (incidentId: string, detail: string) => unknown;
         incidentTimeline: (incidentId: string) => unknown;
         handleRunbook: (incident: string) => unknown;
@@ -397,7 +397,7 @@ describe("Electron preload boundary", () => {
     api.detectIncident("Provider unavailable.");
     api.triageIncident("inc-1", "High", true);
     api.mitigateIncident("inc-1", "Switched to local provider.", true);
-    api.resolveIncident("inc-1", "Provider recovered.");
+    api.resolveIncident("inc-1", "Provider recovered.", true);
     api.postmortemIncident("inc-1", "Added a health-check fallback.");
     api.incidentTimeline("inc-1");
     api.handleRunbook("provider-down");
@@ -658,6 +658,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(36, "nova:incident:resolve", {
       incident_id: "inc-1",
       detail: "Provider recovered.",
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(37, "nova:incident:postmortem", {
       incident_id: "inc-1",

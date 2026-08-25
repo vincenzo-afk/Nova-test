@@ -713,7 +713,12 @@ describe("RuntimeApplication", () => {
       ok: true,
       value: { stage: "Mitigated" },
     });
-    expect(application.resolveIncident("inc-1", "Provider recovered.")).toMatchObject({
+    expect(application.resolveIncident("inc-1", "Provider recovered.", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.incidentTimeline("inc-1")).toHaveLength(3);
+    expect(application.resolveIncident("inc-1", "Provider recovered.", true)).toMatchObject({
       ok: true,
       value: { stage: "Resolved" },
     });

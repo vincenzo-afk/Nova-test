@@ -1567,7 +1567,18 @@ export class RuntimeApplication {
     return this.incidentManager.mitigate(incidentId, detail);
   }
 
-  public resolveIncident(incidentId: string, detail: string): Result<IncidentEntry> {
+  public resolveIncident(
+    incidentId: string,
+    detail: string,
+    confirmed: boolean,
+  ): Result<IncidentEntry> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Resolving an incident requires explicit confirmation.",
+        retryable: false,
+      });
+    }
     return this.incidentManager.resolve(incidentId, detail);
   }
 
