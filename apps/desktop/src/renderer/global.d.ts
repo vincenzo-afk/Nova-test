@@ -568,6 +568,7 @@ declare global {
         }[]
       >;
       retryTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
+      resumePausedTask: (taskId: string, confirmed: boolean) => Promise<unknown>;
       evaluatePerformanceBudgets: (samples: BudgetSamples) => Promise<PerformanceBudgetReport>;
       compareDeviceVersions: (left: string, right: string) => Promise<CompatibilityResult>;
       runtimeServiceHealth: (serviceName: string) => Promise<ServiceHealth>;

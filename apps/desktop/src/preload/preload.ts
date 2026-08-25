@@ -195,6 +195,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:workflow:checkpoints", { workflow_id: workflowId }),
   retryTask: (taskId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:task:retry", { task_id: taskId, confirmed }),
+  resumePausedTask: (taskId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:task:resume-paused", { task_id: taskId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

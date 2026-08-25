@@ -171,6 +171,34 @@ describe("RuntimeTaskCoordinator", () => {
     });
   });
 
+  it("requires explicit confirmation before resuming a paused task", async () => {
+    const tasks = new TaskManager();
+    const coordinator = new RuntimeTaskCoordinator({
+      tasks,
+      planner: new Planner({ deterministic: new Map([["resume me", step]]) }),
+      executor: new Executor(
+        new PermissionManager({
+          allowedToolIds: new Set([tool.tool_id]),
+          confirmationTimeoutMs: 30_000,
+        }),
+        new Map([[tool.tool_id, tool]]),
+      ),
+      verifier: new Verifier(),
+      events: new InMemoryCommunicationBus(),
+    });
+    const submitted = tasks.create({ goal: "resume me" });
+    if (!submitted.ok) throw new Error("Task creation failed.");
+    expect(tasks.transition(submitted.value.task_id, "Paused")).toMatchObject({ ok: true });
+
+    expect(await coordinator.resumePaused(submitted.value.task_id, false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    const resumed = await coordinator.resumePaused(submitted.value.task_id, true);
+
+    expect(resumed).toMatchObject({ ok: true, value: { state: "Completed", retry_count: 0 } });
+  });
+
   it("never reports Completed when execution has no verification evidence", async () => {
     const tasks = new TaskManager();
     const coordinator = new RuntimeTaskCoordinator({

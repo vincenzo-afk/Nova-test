@@ -151,6 +151,7 @@ describe("Electron preload boundary", () => {
       "taskSchedulerStatus",
       "workflowCheckpointSummaries",
       "retryTask",
+      "resumePausedTask",
     ]);
   });
 
@@ -296,6 +297,7 @@ describe("Electron preload boundary", () => {
         taskSchedulerStatus: () => unknown;
         workflowCheckpointSummaries: (workflowId: string) => unknown;
         retryTask: (taskId: string, confirmed: boolean) => unknown;
+        resumePausedTask: (taskId: string, confirmed: boolean) => unknown;
       },
     ];
 
@@ -494,6 +496,7 @@ describe("Electron preload boundary", () => {
     api.taskSchedulerStatus();
     api.workflowCheckpointSummaries("workflow-1");
     api.retryTask("task-1", true);
+    api.resumePausedTask("task-1", true);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -786,6 +789,10 @@ describe("Electron preload boundary", () => {
       workflow_id: "workflow-1",
     });
     expect(invoke).toHaveBeenNthCalledWith(129, "nova:task:retry", {
+      task_id: "task-1",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(130, "nova:task:resume-paused", {
       task_id: "task-1",
       confirmed: true,
     });

@@ -72,6 +72,33 @@ export class RuntimeTaskCoordinator {
     return this.execute(taskId);
   }
 
+  public async resumePaused(taskId: string, confirmed: boolean): Promise<Result<TaskRecord>> {
+    if (!confirmed) {
+      return {
+        ok: false,
+        error: {
+          code: "NOVA-SEC001",
+          message: "Resuming a paused task requires explicit confirmation.",
+          retryable: false,
+        },
+      };
+    }
+    const current = this.options.tasks.get(taskId);
+    if (!current.ok) return current;
+    if (current.value.state !== "Paused") {
+      return {
+        ok: false,
+        error: {
+          code: "NOVA-TL002",
+          message: "Only paused tasks can be resumed.",
+          retryable: false,
+          details: { taskId, state: current.value.state },
+        },
+      };
+    }
+    return this.execute(taskId);
+  }
+
   public async execute(taskId: string): Promise<Result<TaskRecord>> {
     const current = this.options.tasks.get(taskId);
     if (!current.ok) return current;
