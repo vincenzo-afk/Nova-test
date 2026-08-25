@@ -183,8 +183,8 @@ const novaApi = {
   setPermission: (source: string, granted: boolean, confirmed: boolean) =>
     ipcRenderer.invoke("nova:permissions:set", { source, granted, confirmed }),
   getConfig: () => ipcRenderer.invoke("nova:config:get"),
-  updateConfig: (section: string, value: unknown) =>
-    ipcRenderer.invoke("nova:config:update", { section, value }),
+  updateConfig: (section: string, value: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:config:update", { section, value, confirmed }),
   evaluatePerformanceBudgets: (samples: unknown) =>
     ipcRenderer.invoke("nova:performance:budgets", samples),
   compareDeviceVersions: (left: string, right: string) =>

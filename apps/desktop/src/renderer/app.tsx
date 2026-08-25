@@ -308,7 +308,7 @@ export const App = () => {
     section: ConfigurationSectionName,
     value: NovaConfiguration[ConfigurationSectionName],
   ): Promise<NovaConfiguration> => {
-    const updated = await window.nova.updateConfig(section, value);
+    const updated = await window.nova.updateConfig(section, value, true);
     setConfiguration(updated);
     setConfigurationError(null);
     return updated;

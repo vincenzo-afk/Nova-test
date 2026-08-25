@@ -974,6 +974,7 @@ declare global {
       updateConfig: (
         section: ConfigurationSectionName,
         value: NovaConfiguration[ConfigurationSectionName],
+        confirmed: boolean,
       ) => Promise<NovaConfiguration>;
       enablePlugin: (
         pluginId: string,

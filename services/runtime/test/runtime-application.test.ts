@@ -121,6 +121,23 @@ describe("RuntimeApplication", () => {
     });
   });
 
+  it("requires explicit confirmation before changing configuration", () => {
+    const application = createApplication();
+    applications.push(application);
+
+    expect(
+      application.updateConfiguration("voice", { ...configuration.voice, enabled: true }, false),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(application.configuration.snapshot().voice.enabled).toBe(false);
+    expect(
+      application.updateConfiguration("voice", { ...configuration.voice, enabled: true }, true),
+    ).toMatchObject({ ok: true });
+    expect(application.configuration.snapshot().voice.enabled).toBe(true);
+  });
+
   it("delegates explicit Android companion permissions and capability checks", () => {
     const companion = new AndroidCompanionManager("android-1", ["camera"]);
     const capability: CompanionCapability = {

@@ -283,7 +283,7 @@ describe("Electron preload boundary", () => {
         getPermissions: () => unknown;
         setPermission: (source: string, granted: boolean, confirmed: boolean) => unknown;
         getConfig: () => unknown;
-        updateConfig: (section: string, value: unknown) => unknown;
+        updateConfig: (section: string, value: unknown, confirmed: boolean) => unknown;
         evaluatePerformanceBudgets: (samples: unknown) => unknown;
         compareDeviceVersions: (left: string, right: string) => unknown;
         runtimeServiceHealth: (serviceName: string) => unknown;
@@ -486,7 +486,7 @@ describe("Electron preload boundary", () => {
     api.getPermissions();
     api.setPermission("filesystem", true, true);
     api.getConfig();
-    api.updateConfig("personalization", { preferences: [] });
+    api.updateConfig("personalization", { preferences: [] }, true);
     api.evaluatePerformanceBudgets({
       chat_first_token_local_ms: [100, 120],
       memory_query_ms: [100, 200],
@@ -806,6 +806,7 @@ describe("Electron preload boundary", () => {
     expect(invoke).toHaveBeenNthCalledWith(99, "nova:config:update", {
       section: "personalization",
       value: { preferences: [] },
+      confirmed: true,
     });
     expect(invoke).toHaveBeenNthCalledWith(100, "nova:performance:budgets", {
       chat_first_token_local_ms: [100, 120],

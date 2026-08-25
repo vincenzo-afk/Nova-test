@@ -1105,6 +1105,7 @@ ipcMain.handle(
     payload: {
       readonly section: string;
       readonly value: NovaConfiguration[ConfigurationSectionName];
+      readonly confirmed: boolean;
     },
   ) => {
     if (!configurationSections.has(payload.section)) {
@@ -2451,6 +2452,7 @@ const startGateway = async (): Promise<void> => {
     const payload = data as {
       readonly section?: string;
       readonly value?: NovaConfiguration[ConfigurationSectionName];
+      readonly confirmed?: boolean;
     };
     if (
       !payload.section ||
@@ -2459,9 +2461,12 @@ const startGateway = async (): Promise<void> => {
     ) {
       throw new Error("Configuration section and value are required.");
     }
-    const result = runtimeApplication.configuration.update(
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Configuration change confirmation is invalid.");
+    const result = runtimeApplication.updateConfiguration(
       payload.section as ConfigurationSectionName,
       payload.value,
+      payload.confirmed,
     );
     if (!result.ok) throw new Error(result.error.message);
     return runtimeApplication.configuration.snapshot();

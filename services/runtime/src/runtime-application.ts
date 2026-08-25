@@ -51,7 +51,11 @@ import {
   type GraphQueryInput as PublicGraphQueryInput,
   type PublicApiServerOptions,
 } from "./rest-api.js";
-import { ConfigurationStore, type NovaConfiguration } from "./configuration-store.js";
+import {
+  ConfigurationStore,
+  type ConfigurationSectionName,
+  type NovaConfiguration,
+} from "./configuration-store.js";
 import { KnowledgeGraph, type GraphEdgeType, type GraphQueryResult } from "./knowledge-graph.js";
 import {
   RuntimeTaskCoordinator,
@@ -486,6 +490,21 @@ export class RuntimeApplication {
         options.authorizeTopics ??
         (({ topics }) => topics.every((topic) => topic === "task.progress")),
     });
+  }
+
+  public updateConfiguration<TSection extends ConfigurationSectionName>(
+    section: TSection,
+    value: NovaConfiguration[TSection],
+    confirmed: boolean,
+  ): Result<void> {
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Changing configuration requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    return this.configuration.update(section, value);
   }
 
   public async setPermission(
