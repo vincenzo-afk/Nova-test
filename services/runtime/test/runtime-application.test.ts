@@ -1116,7 +1116,7 @@ describe("RuntimeApplication", () => {
         new Map(),
       ),
       verifier: new Verifier(),
-      sessionContinuity: sessions,
+      sessionContinuityManager: sessions,
     });
     applications.push(application);
 

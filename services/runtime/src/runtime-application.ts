@@ -244,7 +244,6 @@ export interface RuntimeApplicationOptions {
   readonly systemLifecycle?: SystemLifecycleOrchestrator;
   readonly networkDiscovery?: NetworkDiscoveryManager;
   readonly systemInventory?: WindowsSystemInventory;
-  readonly sessionContinuity?: SessionContinuityManager;
   readonly backupManager?: BackupManager;
   readonly restoreManager?: RestoreManager;
   readonly upgradeManager?: UpgradeManager;
@@ -304,7 +303,6 @@ export class RuntimeApplication {
   public readonly systemLifecycle: SystemLifecycleOrchestrator | undefined;
   public readonly networkDiscovery: NetworkDiscoveryManager | undefined;
   public readonly systemInventory: WindowsSystemInventory | undefined;
-  public readonly sessionContinuity: SessionContinuityManager | undefined;
   public readonly backupManager: BackupManager | undefined;
   public readonly restoreManager: RestoreManager | undefined;
   public readonly upgradeManager: UpgradeManager | undefined;
@@ -387,7 +385,6 @@ export class RuntimeApplication {
     this.systemLifecycle = options.systemLifecycle;
     this.networkDiscovery = options.networkDiscovery;
     this.systemInventory = options.systemInventory;
-    this.sessionContinuity = options.sessionContinuity;
     this.backupManager = options.backupManager;
     this.restoreManager = options.restoreManager;
     this.upgradeManager = options.upgradeManager;
@@ -855,8 +852,8 @@ export class RuntimeApplication {
   }
 
   public sessionDeviceSnapshots(): Result<readonly DeviceSnapshot[]> {
-    if (!this.sessionContinuity) return err(this.sessionContinuityUnavailableError());
-    return ok(this.sessionContinuity.listDevices());
+    if (!this.sessionContinuityManager) return err(this.sessionContinuityUnavailableError());
+    return ok(this.sessionContinuityManager.listDevices());
   }
 
   public workspaceIdentity(): Result<WorkspaceIdentity> {
