@@ -988,6 +988,15 @@ declare global {
         granted_permissions: readonly string[];
       }>;
       uninstallPlugin: (pluginId: string, confirmed: boolean) => Promise<void>;
+      downloadLocalModel: (
+        modelId: string,
+        confirmed: boolean,
+      ) => Promise<{
+        model_id: string;
+        provider_id: string;
+        bytes: number;
+        status: "downloaded" | "already-present";
+      }>;
     };
   }
 }

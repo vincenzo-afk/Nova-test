@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { rm } from "node:fs/promises";
 import { ok } from "@nova/shared";
 import type { MemoryStore } from "@nova/memory";
 import { KnowledgeGraph } from "../src/knowledge-graph.js";
@@ -844,6 +845,61 @@ describe("RuntimeApplication", () => {
         status: "not-downloaded",
       },
     ]);
+  });
+
+  it("requires explicit confirmation before downloading a catalog local model", async () => {
+    const storagePath = "/tmp/nova-confirmed-model-download";
+    await rm(storagePath, { recursive: true, force: true });
+    const entry: LocalModelCatalogEntry = {
+      model_id: "whisper-small",
+      provider_id: "whisper-local",
+      domain: "speech-to-text",
+      download_url: "https://models.example.test/whisper-small.bin",
+      sha256: "01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca",
+      size_bytes: 10,
+      minimum_hardware_tier: "Standard",
+      adapter_id: "onnx-whisper",
+    };
+    const localModels = new LocalModelManager({
+      storagePath,
+      catalog: [entry],
+      fetchModel: async () => new Uint8Array(10),
+      loadAdapter: async () => ({}),
+    });
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+      localModelManager: localModels,
+    });
+    applications.push(application);
+
+    expect(await application.downloadLocalModel("whisper-small", false)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-SEC001" },
+    });
+    expect(
+      localModels.discover({
+        scanned_at: "2026-08-25T00:00:00.000Z",
+        signals: {},
+        overall_tier: "Standard",
+        recommendations: {},
+      }),
+    ).toMatchObject([{ status: "not-downloaded" }]);
+    expect(await application.downloadLocalModel("whisper-small", true)).toMatchObject({
+      ok: true,
+      value: {
+        model_id: "whisper-small",
+        provider_id: "whisper-local",
+        bytes: 10,
+        status: "downloaded",
+      },
+    });
+    await rm(storagePath, { recursive: true, force: true });
   });
 
   it("delegates safe VoicePipeline lifecycle controls without exposing raw audio", async () => {

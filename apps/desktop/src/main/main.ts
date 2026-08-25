@@ -362,6 +362,11 @@ const parseProviderId = (value: unknown): string => {
   return value;
 };
 
+const parseModelId = (value: unknown): string => {
+  if (typeof value !== "string" || value.trim() === "") throw new Error("Model ID is required.");
+  return value;
+};
+
 const parseCapabilityPolicy = (value: unknown): CapabilityPolicy => {
   const policy = value as { readonly policy?: unknown; readonly manual_override?: unknown };
   if (
@@ -798,6 +803,11 @@ ipcMain.handle(
 );
 ipcMain.handle("nova:models:discover", (_event, hardware: HardwareProfile) =>
   requestGateway("models.discover", hardware),
+);
+ipcMain.handle(
+  "nova:models:download",
+  (_event, payload: { readonly model_id: string; readonly confirmed: boolean }) =>
+    requestGateway("models.download", payload),
 );
 ipcMain.handle("nova:models:health", (_event, providerId: string) =>
   requestGateway("models.health", { provider_id: providerId }),
@@ -1408,6 +1418,23 @@ const startGateway = async (): Promise<void> => {
     return runtimeApplication.discoverLocalModels(
       parseHardwareProfile(data),
     ) satisfies readonly LocalModelDiscovery[];
+  });
+  gateway.register("models.download", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly model_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("Local model download confirmation is invalid.");
+    const result = await runtimeApplication.downloadLocalModel(
+      parseModelId(payload.model_id),
+      payload.confirmed,
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    return {
+      model_id: result.value.model_id,
+      provider_id: result.value.provider_id,
+      bytes: result.value.bytes,
+      status: result.value.status,
+    };
   });
   gateway.register("models.health", async (data) => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

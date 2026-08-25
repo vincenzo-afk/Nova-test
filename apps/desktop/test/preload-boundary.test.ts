@@ -159,6 +159,7 @@ describe("Electron preload boundary", () => {
       "enablePlugin",
       "disablePlugin",
       "uninstallPlugin",
+      "downloadLocalModel",
     ]);
   });
 
@@ -319,6 +320,7 @@ describe("Electron preload boundary", () => {
         enablePlugin: (pluginId: string, confirmed: boolean) => unknown;
         disablePlugin: (pluginId: string, confirmed: boolean) => unknown;
         uninstallPlugin: (pluginId: string, confirmed: boolean) => unknown;
+        downloadLocalModel: (modelId: string, confirmed: boolean) => unknown;
       },
     ];
 
@@ -525,6 +527,7 @@ describe("Electron preload boundary", () => {
     api.enablePlugin("plugin-1", true);
     api.disablePlugin("plugin-1", true);
     api.uninstallPlugin("plugin-1", true);
+    api.downloadLocalModel("whisper-small", true);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -870,6 +873,10 @@ describe("Electron preload boundary", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(137, "nova:plugins:uninstall", {
       plugin_id: "plugin-1",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(138, "nova:models:download", {
+      model_id: "whisper-small",
       confirmed: true,
     });
   });

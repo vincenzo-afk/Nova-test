@@ -239,6 +239,8 @@ const novaApi = {
     ipcRenderer.invoke("nova:plugins:disable", { plugin_id: pluginId, confirmed }),
   uninstallPlugin: (pluginId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:plugins:uninstall", { plugin_id: pluginId, confirmed }),
+  downloadLocalModel: (modelId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:models:download", { model_id: modelId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

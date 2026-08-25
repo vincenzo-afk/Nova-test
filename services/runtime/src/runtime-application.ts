@@ -130,6 +130,7 @@ import type {
 } from "./provider-registry.js";
 import type {
   LocalModelDiscovery,
+  LocalModelDownloadResult,
   LocalModelManager,
   ReclaimableLocalModelSummary,
 } from "./local-model-manager.js";
@@ -816,6 +817,29 @@ export class RuntimeApplication {
 
   public discoverLocalModels(hardware: HardwareProfile): readonly LocalModelDiscovery[] {
     return this.localModelManager?.discover(hardware) ?? [];
+  }
+  public async downloadLocalModel(
+    modelId: string,
+    confirmed: boolean,
+  ): Promise<Result<LocalModelDownloadResult>> {
+    if (!this.localModelManager) return err(this.localModelManagerUnavailableError());
+    if (!confirmed) {
+      return err({
+        code: "NOVA-SEC001",
+        message: "Downloading a local model requires explicit confirmation.",
+        retryable: false,
+      });
+    }
+    const result = await this.localModelManager.download(modelId);
+    if (!result.ok) return result;
+    return ok({
+      model_id: result.value.model_id,
+      provider_id: result.value.provider_id,
+      path: result.value.path,
+      sha256: result.value.sha256,
+      bytes: result.value.bytes,
+      status: result.value.status,
+    });
   }
   public reclaimableLocalModelSummaries(): Result<readonly ReclaimableLocalModelSummary[]> {
     if (!this.localModelManager) return err(this.localModelManagerUnavailableError());
