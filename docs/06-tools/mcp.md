@@ -121,9 +121,9 @@ closed without mutating the existing entry; replaces listings atomically, and
 returns a server-scoped miss when an entry is absent or expired. Retained and
 rejected resource URIs are both required to pass the same safe,
 credential-free, traversal-resistant URI boundary, with at most 128 rejected
-URIs retained, before a listing mutates the cache. Malformed server IDs or
-resource metadata fail closed without mutating a
-valid entry; misses never trigger resource discovery, refresh, reads, URI
+URIs retained, before a listing mutates the cache. Non-string or otherwise
+malformed server IDs and resource metadata fail closed before cache access or
+mutation; misses never trigger resource discovery, refresh, reads, URI
 fetches, subscription, or transport I/O, and a future connection layer must
 explicitly obtain and validate fresh metadata.
 

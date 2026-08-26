@@ -74,6 +74,33 @@ describe("McpResourceListCache", () => {
     });
   });
 
+  it("fails closed on a non-string server ID without throwing or mutating cache state", () => {
+    const cache = new McpResourceListCache({ now: () => 1_000 });
+    cache.put("server-1", resources);
+    const invalidServerId = {
+      toString(): string {
+        throw new Error("toString should not run for an untrusted server ID");
+      },
+    } as unknown as string;
+
+    expect(() => cache.put(invalidServerId, resources)).not.toThrow();
+    expect(cache.put(invalidServerId, resources)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => cache.get(invalidServerId)).not.toThrow();
+    expect(cache.get(invalidServerId)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => cache.invalidate(invalidServerId)).not.toThrow();
+    expect(cache.invalidate(invalidServerId)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(cache.get("server-1")).toEqual({ ok: true, value: resources });
+  });
+
   it("rejects malformed server IDs and resource results without mutating valid entries", () => {
     const cache = new McpResourceListCache({ now: () => 1_000 });
     cache.put("server-1", resources);

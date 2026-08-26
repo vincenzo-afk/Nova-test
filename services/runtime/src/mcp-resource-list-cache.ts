@@ -92,8 +92,8 @@ export class McpResourceListCache {
   }
 }
 
-function isServerId(value: string): boolean {
-  return SERVER_ID_PATTERN.test(value);
+function isServerId(value: unknown): value is string {
+  return typeof value === "string" && SERVER_ID_PATTERN.test(value);
 }
 
 function isResourceList(value: unknown): value is McpResourcesListResult {
