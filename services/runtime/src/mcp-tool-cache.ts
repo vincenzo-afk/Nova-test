@@ -22,6 +22,7 @@ const MAX_ENTRIES = 128;
 const MAX_TTL_MS = 86_400_000;
 const DEFAULT_TTL_MS = 300_000;
 const MAX_TOOL_NAME_LENGTH = 128;
+const MAX_CURSOR_LENGTH = 256;
 const SERVER_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
 const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
@@ -90,7 +91,12 @@ function isToolList(value: unknown): value is McpToolsListResult {
   }
   if (!value.tools.every(isToolAdvertisement)) return false;
   if (!value.rejected_tool_names.every(isSafeToolName)) return false;
-  if (value.next_cursor !== undefined && typeof value.next_cursor !== "string") return false;
+  if (
+    value.next_cursor !== undefined &&
+    (typeof value.next_cursor !== "string" || value.next_cursor.length > MAX_CURSOR_LENGTH)
+  ) {
+    return false;
+  }
   if (value.ttl_ms !== undefined && !isPositiveBoundedInteger(value.ttl_ms)) return false;
   return (
     value.cache_scope === undefined ||
