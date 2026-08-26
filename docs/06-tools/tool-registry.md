@@ -72,8 +72,10 @@ validation as built-in tools — an MCP server that does not declare a
 verification signal for its exposed tools has those tools registered as
 confirmation-required-only, exactly as a built-in tool with the same gap
 would be. A validated MCP advertisement batch is registered without partial
-exposure: nested input and output schemas are deep-cloned before registration,
-and if one registry insertion fails, earlier insertions from that same batch are
+exposure: input and output schemas must be JSON-safe objects no larger than
+128 KiB when serialized, and nested schemas are deep-cloned before registration.
+Malformed or oversized schemas fail closed before registry mutation. If one
+registry insertion fails, earlier insertions from that same batch are
 removed before the error is returned. A validated MCP advertisement
 refresh may replace the existing entries in that server’s namespace only after
 the complete incoming batch has passed validation; registration failure

@@ -30,6 +30,7 @@ export interface McpToolAdvertisement {
 
 const MAX_TOOLS_PER_DISCOVERY = 128;
 const MAX_TOOL_NAME_LENGTH = 128;
+const MAX_SCHEMA_BYTES = 131_072;
 const DEFAULT_LATENCY_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -131,7 +132,9 @@ export class McpToolDiscovery {
         advertisement.name.trim() === "" ||
         advertisement.name.length > MAX_TOOL_NAME_LENGTH ||
         names.has(advertisement.name) ||
-        !isRecord(advertisement.inputSchema) ||
+        !isBoundedSchema(advertisement.inputSchema) ||
+        (advertisement.outputSchema !== undefined &&
+          !isBoundedSchema(advertisement.outputSchema)) ||
         !isMcpToolMetadata(advertisement.nova)
       ) {
         return err(this.error("MCP tool advertisement is malformed."));
@@ -183,6 +186,16 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function isBoundedSchema(value: unknown): value is Readonly<Record<string, unknown>> {
+  if (!isRecord(value)) return false;
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized !== undefined && serialized.length <= MAX_SCHEMA_BYTES;
+  } catch {
+    return false;
+  }
+}
+
 function isServerId(value: string): boolean {
   return /^[A-Za-z0-9_.-]{1,128}$/.test(value);
 }
@@ -208,6 +221,7 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
     return false;
   if (value.permission_scope !== undefined && typeof value.permission_scope !== "string")
     return false;
+  if (value.output_schema !== undefined && !isBoundedSchema(value.output_schema)) return false;
   if (value.estimated_latency_ms !== undefined && !isNonnegativeInteger(value.estimated_latency_ms))
     return false;
   if (value.timeout_ms !== undefined && !isPositiveInteger(value.timeout_ms)) return false;

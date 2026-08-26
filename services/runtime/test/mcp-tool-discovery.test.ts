@@ -90,6 +90,23 @@ describe("McpToolDiscovery", () => {
     });
   });
 
+  it("rejects oversized schemas before registry exposure", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+    const oversizedSchema = { type: "object", description: "x".repeat(131_072) };
+
+    expect(
+      discovery.register("large-schema", [{ name: "inspect", inputSchema: oversizedSchema }]),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(registry.get("large-schema.inspect")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
   it("rejects malformed advertisements atomically before registry exposure", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);
