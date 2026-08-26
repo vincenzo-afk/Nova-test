@@ -170,6 +170,28 @@ describe("McpToolDiscovery", () => {
     });
   });
 
+  it("rejects an oversized dependency list before registry exposure", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+
+    const result = discovery.register("weather-server", [
+      {
+        name: "inspect",
+        inputSchema: { type: "object" },
+        nova: { dependencies: Array.from({ length: 65 }, (_, index) => `dependency_${index}`) },
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(registry.get("weather-server.inspect")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
   it("rejects invalid execution metadata atomically before registry exposure", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);

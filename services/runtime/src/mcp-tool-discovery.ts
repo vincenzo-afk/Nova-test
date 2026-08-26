@@ -34,6 +34,8 @@ const MAX_SCHEMA_BYTES = 131_072;
 const MAX_PERMISSION_SCOPE_LENGTH = 256;
 const MAX_LOCKABLE_RESOURCES = 64;
 const MAX_LOCKABLE_RESOURCE_LENGTH = 256;
+const MAX_DEPENDENCIES = 64;
+const MAX_DEPENDENCY_LENGTH = 256;
 const DEFAULT_LATENCY_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -248,7 +250,11 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
     )
   )
     return false;
-  if (value.dependencies !== undefined && !isStringArray(value.dependencies)) return false;
+  if (
+    value.dependencies !== undefined &&
+    !isBoundedStringArray(value.dependencies, MAX_DEPENDENCIES, MAX_DEPENDENCY_LENGTH)
+  )
+    return false;
   if (value.target_entity_types !== undefined && !isStringArray(value.target_entity_types))
     return false;
   return true;

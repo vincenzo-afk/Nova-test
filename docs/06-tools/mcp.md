@@ -409,7 +409,8 @@ advertisement batch into the Tool Registry only as a batch. Input and output
 schemas must be JSON-safe objects whose serialized size is at most 128 KiB, and
 explicit permission scopes must be non-empty strings of at most 256 characters;
 lockable-resource metadata must contain at most 64 strings of at most 256
-characters; malformed or oversized metadata fails closed before registry
+characters, and dependency metadata must contain at most 64 strings of at most
+256 characters; malformed or oversized metadata fails closed before registry
 mutation. Nested
 schemas are deep-cloned before exposure so caller-owned observed data cannot
 mutate registered metadata. If a later registry registration fails,
