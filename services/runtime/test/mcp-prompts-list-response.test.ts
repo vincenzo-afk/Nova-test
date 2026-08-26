@@ -59,6 +59,26 @@ describe("McpPromptsListResponseValidator", () => {
     });
   });
 
+  it("rejects an oversized JSON response before prompt normalization", () => {
+    const validator = new McpPromptsListResponseValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          prompts: [{ name: "valid_prompt" }],
+          ignored: "x".repeat(1_048_577),
+        },
+      },
+      1,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("filters malformed and duplicate prompts without exposing prompt content", () => {
     const validator = new McpPromptsListResponseValidator();
     const result = validator.parse(

@@ -198,10 +198,11 @@ Unknown option fields are not forwarded, and malformed or oversized cursors fail
 closed before an ID is consumed. Building a request does not discover prompts,
 contact a server, or perform transport I/O.
 
-The runtime prompts/list validator preserves only bounded prompt names, display
+The runtime prompts/list validator first requires a JSON-serializable response
+envelope no larger than 1 MiB, then preserves only bounded prompt names, display
 metadata, and argument descriptors. It filters malformed or duplicate prompts,
-rejects malformed pagination, and omits prompt messages or other content from
-the normalized result. Prompt descriptions and metadata remain untrusted
+rejects malformed pagination, and omits prompt messages or other content from the
+normalized result. Prompt descriptions and metadata remain untrusted
 observed data; this slice does not retrieve, render, execute, or treat a prompt
 as trusted planner instructions.
 

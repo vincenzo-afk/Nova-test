@@ -22,6 +22,7 @@ export interface McpPromptsListResult {
   readonly rejected_prompt_names: readonly string[];
 }
 
+const MAX_RESPONSE_BYTES = 1_048_576;
 const MAX_PROMPTS = 128;
 const MAX_ARGUMENTS = 32;
 const MAX_NAME_LENGTH = 128;
@@ -32,6 +33,10 @@ const IDENTIFIER_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 export class McpPromptsListResponseValidator {
   public parse(response: unknown, expectedId: string | number): Result<McpPromptsListResult> {
+    const serialized = safeJson(response);
+    if (serialized === undefined || serialized.length > MAX_RESPONSE_BYTES) {
+      return err(this.error("MCP prompts/list response is invalid or too large."));
+    }
     if (!isRecord(response) || response.jsonrpc !== "2.0" || response.id !== expectedId) {
       return err(this.error("MCP prompts/list response correlation is invalid."));
     }
@@ -189,4 +194,13 @@ function invalidPrompt(): ErrorInfo {
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeJson(value: unknown): string | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : serialized;
+  } catch {
+    return undefined;
+  }
 }
