@@ -265,6 +265,14 @@ does not verify that the token belongs to an active request, enforce increasing
 progress across notifications, track completion, maintain a stream, or perform
 network I/O.
 
+The runtime progress-state tracker applies already classified progress to a
+bounded server-and-token-local snapshot. It preserves the latest message and
+total when omitted by a later update, rejects regressions and progress beyond a
+reported total, and returns a scoped miss for unknown tokens. Malformed server
+identities or notifications fail closed without mutating prior state. This
+boundary does not track request ownership, infer completion, maintain a stream,
+reconnect, contact a transport, or perform network I/O.
+
 The runtime cancellation-notification classifier accepts only a JSON-RPC 2.0
 `notifications/cancelled` notification with a bounded string or safe integer
 request ID and an optional bounded reason. It returns only the normalized request

@@ -72,6 +72,7 @@ export * from "./mcp-tool-list-update-invalidator.js";
 export * from "./mcp-resource-updated-notification.js";
 export * from "./mcp-resource-update-invalidator.js";
 export * from "./mcp-progress-notification.js";
+export * from "./mcp-progress-state.js";
 export * from "./mcp-subscriptions-listen-request.js";
 export * from "./mcp-subscription-acknowledged.js";
 export * from "./mcp-subscription-filter-negotiator.js";
