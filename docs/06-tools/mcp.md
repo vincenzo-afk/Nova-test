@@ -107,6 +107,14 @@ prompt-injection risk where a compromised or malicious MCP server could
 attempt to return content designed to influence subsequent planning rather
 than merely answer the query it was asked.
 
+The runtime tools/call request boundary now constructs only fixed
+JSON-RPC 2.0 `tools/call` requests with monotonic bounded numeric IDs. It
+accepts tool names using the MCP-safe identifier characters and clones only
+JSON-serializable argument objects within the configured size bound; circular,
+non-object, oversized, or malformed inputs are rejected before a request ID
+is consumed. Request construction does not invoke a server and does not
+replace the Runtime Executor's permission or confirmation gate.
+
 The runtime tools/call result boundary now requires a successful correlated
 JSON-RPC response and normalizes it into the structured tool-result contract.
 Text, image, audio, resource-link, and embedded-resource blocks are converted
