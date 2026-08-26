@@ -82,6 +82,26 @@ describe("McpProgressState", () => {
     });
   });
 
+  it("fails closed on non-string server IDs without throwing", () => {
+    const state = new McpProgressState();
+    const invalidServerId = Symbol("server") as unknown as string;
+    const notification = {
+      jsonrpc: "2.0",
+      method: "notifications/progress",
+      params: { progressToken: "task-1", progress: 0 },
+    };
+
+    expect(() => state.apply(invalidServerId, notification)).not.toThrow();
+    expect(state.apply(invalidServerId, notification)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(state.get("server-1", "task-1")).toEqual({
+      ok: true,
+      value: { server_id: "server-1", progressToken: "task-1", status: "miss" },
+    });
+  });
+
   it("fails closed on malformed server IDs and notifications without mutating state", () => {
     const state = new McpProgressState();
     expect(state.apply("bad server", {})).toMatchObject({

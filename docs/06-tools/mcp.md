@@ -291,8 +291,9 @@ network I/O.
 The runtime progress-state tracker applies already classified progress to a
 bounded server-and-token-local snapshot. It preserves the latest message and
 total when omitted by a later update, rejects regressions and progress beyond a
-reported total, and returns a scoped miss for unknown tokens. Malformed server
-identities or notifications fail closed without mutating prior state. This
+reported total, and returns a scoped miss for unknown tokens. Malformed or
+non-string server identities and malformed notifications fail closed without
+mutating prior state. This
 boundary does not track request ownership, infer completion, maintain a stream,
 reconnect, contact a transport, or perform network I/O.
 
