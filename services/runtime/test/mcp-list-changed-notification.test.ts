@@ -24,6 +24,15 @@ describe("McpListChangedNotificationClassifier", () => {
       ok: true,
       value: { capability: "prompts", method: "notifications/prompts/list_changed" },
     });
+    expect(
+      classifier.parse({
+        jsonrpc: "2.0",
+        method: "notifications/tools/list_changed",
+      }),
+    ).toEqual({
+      ok: true,
+      value: { capability: "tools", method: "notifications/tools/list_changed" },
+    });
   });
 
   it("does not expose notification parameters or treat a notification as a refresh", () => {
@@ -55,7 +64,7 @@ describe("McpListChangedNotificationClassifier", () => {
       error: { code: "NOVA-TL002" },
     });
     expect(
-      classifier.parse({ jsonrpc: "2.0", method: "notifications/tools/list_changed" }),
+      classifier.parse({ jsonrpc: "2.0", method: "notifications/completion/list_changed" }),
     ).toMatchObject({
       ok: false,
       error: { code: "NOVA-TL002" },

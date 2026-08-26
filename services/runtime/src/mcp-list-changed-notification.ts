@@ -1,16 +1,20 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 
-export type McpListChangedCapability = "resources" | "prompts";
+export type McpListChangedCapability = "resources" | "prompts" | "tools";
 
 export interface McpListChangedNotification {
   readonly capability: McpListChangedCapability;
-  readonly method: "notifications/resources/list_changed" | "notifications/prompts/list_changed";
+  readonly method:
+    | "notifications/resources/list_changed"
+    | "notifications/prompts/list_changed"
+    | "notifications/tools/list_changed";
 }
 
 const MAX_NOTIFICATION_BYTES = 131_072;
 const SUPPORTED_METHODS = {
   "notifications/resources/list_changed": "resources",
   "notifications/prompts/list_changed": "prompts",
+  "notifications/tools/list_changed": "tools",
 } as const;
 
 export class McpListChangedNotificationClassifier {
