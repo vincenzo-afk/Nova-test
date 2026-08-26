@@ -498,8 +498,11 @@ budget, races the operation against that deadline, and aborts the supplied
 failure, and clears its timer after either outcome. The wrapper does not retry
 or invoke a transport itself; the underlying transport must honor the signal,
 and the Planner remains responsible for any retry or alternative approach.
-Text, image, audio, resource-link, and embedded-resource blocks are converted
-to bounded observed-content records; unknown or malformed blocks are ignored.
+Text, image, and audio blocks are converted to bounded observed-content
+records. Resource-link and embedded-resource blocks are retained only when
+their URIs pass the bounded, credential-free, traversal-resistant URI boundary.
+Unknown or malformed blocks are ignored.
+
 Structured content is cloned only when it is valid, serializable, and within
 the configured size bound. A server-reported `isError` becomes an external
 execution failure, while a malformed response or JSON-RPC protocol error is

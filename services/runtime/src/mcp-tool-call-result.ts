@@ -133,7 +133,7 @@ function normalizeContentBlock(value: unknown): McpObservedContent | undefined {
     };
   }
   if (value.type === "resource_link") {
-    if (typeof value.uri !== "string" || value.uri.length === 0) return undefined;
+    if (!isSafeObservedUri(value.uri)) return undefined;
     return {
       kind: "resource_link",
       uri: value.uri.slice(0, MAX_STRING_LENGTH),
@@ -145,11 +145,31 @@ function normalizeContentBlock(value: unknown): McpObservedContent | undefined {
     };
   }
   if (value.type === "resource" && isRecord(value.resource)) {
-    const uri = typeof value.resource.uri === "string" ? value.resource.uri : undefined;
-    if (uri === undefined) return undefined;
+    const uri = value.resource.uri;
+    if (!isSafeObservedUri(uri)) return undefined;
     return { kind: "resource", uri: uri.slice(0, MAX_STRING_LENGTH), observed: true };
   }
   return undefined;
+}
+
+function isSafeObservedUri(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > MAX_STRING_LENGTH ||
+    /\s/.test(value)
+  ) {
+    return false;
+  }
+  try {
+    const url = new URL(value);
+    if (!url.protocol || url.username !== "" || url.password !== "") return false;
+    return !(
+      url.protocol === "file:" && /(?:^|\/)\.\.(?:\/|$)/.test(value.slice(value.indexOf(":") + 1))
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {

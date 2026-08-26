@@ -90,6 +90,8 @@ describe("McpToolCallResultValidator", () => {
             { type: "text", text: "safe observed content" },
             { type: "text", text: "" },
             { type: "unknown", value: "ignored" },
+            { type: "resource_link", uri: "file:///tmp/../secret" },
+            { type: "resource", resource: { uri: "https://user:pass@example.test/private" } },
           ],
           structuredContent: { answer: "observed" },
         },

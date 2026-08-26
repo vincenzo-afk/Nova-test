@@ -40,6 +40,7 @@ All notable changes to Nova are documented in this file.
 - MCP resource-template cache entries now reject empty or oversized rejected template names before cache mutation.
 - MCP prompt-list cache entries now reject empty or oversized rejected prompt names before cache mutation.
 - MCP `tools/list` response normalization now rejects non-JSON-safe or oversized input and output schemas before returning observed tool metadata, with a 128 KiB serialized schema bound.
+- MCP tool-result normalization now filters resource-link and embedded-resource blocks with unsafe, credential-bearing, traversal-prone, or oversized URIs before exposing observed content.
 - Tool Registry storage, lookup, and query results now use deep-cloned metadata snapshots, preventing callers from mutating nested schemas or other registered state through shared references.
 - MCP source deregistration now restores earlier Tool Registry removals when a later removal fails, preventing partial source cleanup while preserving unrelated entries.
 - MCP `tools/list` responses can now be validated at the JSON-RPC boundary with request-ID correlation, bounded pagination metadata, output-schema preservation, and per-tool malformed-advertisement filtering; this slice performs no network I/O or transport connection.
