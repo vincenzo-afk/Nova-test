@@ -193,7 +193,7 @@ pnpm --filter @nova/desktop build
 
 ### Submit a desktop task
 
-The renderer exposes the task submission boundary through the preload API. A desktop task request is routed from the renderer to Electron main, through the API Gateway, and onto the named-pipe CommunicationBus. The current task handler creates a task snapshot in the `Created` state; full planner/executor execution remains represented by the runtime service boundaries and their tests.
+The renderer exposes the task submission boundary through the preload API. A desktop task request is routed from the renderer to Electron main, through the API Gateway, and onto the named-pipe CommunicationBus. Electron main durably creates the task through `RuntimeTaskCoordinator`, then queues it at `interactive` priority in the local `TaskScheduler`; planning, permission checks, execution, verification, and lifecycle transitions remain inside the runtime authority.
 
 ### Work with the runtime services
 

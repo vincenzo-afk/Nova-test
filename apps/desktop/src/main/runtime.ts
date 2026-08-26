@@ -37,6 +37,11 @@ const desktopPermissions = [
   { source: "notifications_content", granted: false },
 ] as const;
 
+const desktopTaskSchedulerOptions = {
+  maxConcurrent: 1,
+  starvationThresholdMs: 60_000,
+} as const;
+
 const desktopConfiguration: NovaConfiguration = {
   schema_version: "1.0.0" as const,
   capabilities: {},
@@ -118,6 +123,7 @@ export async function createDesktopRuntime(
     verifier: new Verifier(logger),
     capabilityRegistry: createDesktopCapabilityRegistry(logger),
     persistence: persistence.checkpointStore,
+    taskSchedulerOptions: desktopTaskSchedulerOptions,
     memoryStore: persistence.memoryStore,
     dispose: persistence.close,
     logger,

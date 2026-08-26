@@ -74,6 +74,7 @@ import {
   type UiActionRequest,
 } from "./desktop-agent.js";
 import { listDesktopTasks, type DesktopTaskListPage } from "./task-controls.js";
+import { submitDesktopTask } from "./task-submission.js";
 import { parseBrowserMetadataEvent } from "./browser-gateway.js";
 import { readDiagnostics } from "./diagnostics.js";
 import { readUpdateInfo } from "./update-info.js";
@@ -1215,8 +1216,13 @@ const startGateway = async (): Promise<void> => {
   gateway.register("task.submit", async (data) => {
     const payload = data as { readonly goal?: string };
     if (!payload.goal) throw new Error("Task goal is required.");
-    const result = await runtimeApplication?.coordinator.submitDurable({ goal: payload.goal });
-    if (!result?.ok) throw new Error(result?.error.message ?? "Task submission failed.");
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const result = await submitDesktopTask(
+      runtimeApplication.coordinator,
+      runtimeApplication.scheduler,
+      payload.goal,
+    );
+    if (!result.ok) throw new Error(result.error.message);
     return projectTaskRecord(result.value);
   });
   gateway.register("task.get", async (data) => {

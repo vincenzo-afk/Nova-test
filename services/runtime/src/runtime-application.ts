@@ -63,7 +63,11 @@ import {
 } from "./runtime-task-coordinator.js";
 import { TaskManager } from "./task-manager.js";
 import { PermissionGrantStore, type StoredPermissionGrant } from "./permission-grant-store.js";
-import type { TaskScheduler, TaskSchedulerStatus } from "./task-scheduler.js";
+import {
+  TaskScheduler,
+  type TaskSchedulerOptions,
+  type TaskSchedulerStatus,
+} from "./task-scheduler.js";
 import type {
   WorkflowCheckpointSummary,
   WorkflowEngine,
@@ -237,6 +241,7 @@ export interface RuntimeApplicationOptions {
   readonly permissionStore?: PermissionGrantStore;
   readonly persistence?: TaskCheckpointPersistence & TaskRecoveryPersistence;
   readonly scheduler?: TaskScheduler;
+  readonly taskSchedulerOptions?: TaskSchedulerOptions;
   readonly workflowEngine?: WorkflowEngine;
   readonly dispose?: () => Promise<void>;
   readonly webhookManager?: WebhookManager;
@@ -486,7 +491,14 @@ export class RuntimeApplication {
       events: bus,
       ...(options.persistence === undefined ? {} : { persistence: options.persistence }),
     });
-    this.scheduler = options.scheduler;
+    this.scheduler =
+      options.scheduler ??
+      (options.taskSchedulerOptions === undefined
+        ? undefined
+        : new TaskScheduler(
+            { execute: (taskId) => this.coordinator.execute(taskId) },
+            options.taskSchedulerOptions,
+          ));
     this.workflowEngine = options.workflowEngine;
     this.rest = new PublicApiServer(this.restOptions(options));
     this.websocket = new PublicWebSocketServer({

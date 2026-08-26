@@ -22,6 +22,14 @@ The scheduler is intentionally independent of the distributed peer placement
 boundary. A host may place a task through `DistributedTaskScheduler` first and
 then dispatch it through this local scheduler on the selected peer.
 
+The desktop composition root supplies an explicit conservative local policy of
+`maxConcurrent: 1` and `starvationThresholdMs: 60000`. Desktop task submission
+uses the authoritative `RuntimeTaskCoordinator` for durable creation, then
+queues the resulting task at `interactive` priority and dispatches it through
+this scheduler. The scheduler remains responsible only for ordering and
+concurrency; it does not bypass Planner, Permission Manager, Executor, or
+Verifier boundaries.
+
 ## Verification
 
 Focused tests cover interactive-before-background ordering, FIFO tie-breaking,
