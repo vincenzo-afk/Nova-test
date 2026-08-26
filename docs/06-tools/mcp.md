@@ -337,6 +337,14 @@ correlation and the fixed completion type while discarding other result metadata
 It fails closed on mismatched or malformed correlation and oversized payloads.
 This slice does not close or reconnect a stream and performs no transport I/O.
 
+The runtime subscription-state registry stores bounded negotiated subscription
+records by validated server and subscription ID, deep-clones notification
+filters on registration and lookup, and removes only an active server-scoped
+record after a validated matching completion response. Unknown completions,
+malformed records, invalid IDs, and invalid server identities fail closed
+without mutating active state. This local ledger does not open or close streams,
+send cancellation, reconnect, contact a transport, or perform network I/O.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one

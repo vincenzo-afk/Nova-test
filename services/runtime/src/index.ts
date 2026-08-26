@@ -74,6 +74,7 @@ export * from "./mcp-progress-notification.js";
 export * from "./mcp-subscriptions-listen-request.js";
 export * from "./mcp-subscription-acknowledged.js";
 export * from "./mcp-subscription-filter-negotiator.js";
+export * from "./mcp-subscription-state.js";
 export * from "./mcp-subscription-cancel-notification.js";
 export * from "./mcp-cancellation-notification.js";
 export * from "./mcp-elicitation-request.js";
