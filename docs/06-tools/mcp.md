@@ -106,6 +106,13 @@ cache-scope metadata are bounded using the same rules as resource listings.
 This slice validates already-retrieved content only; it does not read a
 resource, fetch a URI, decode binary data, or perform network I/O.
 
+The runtime resource-read cache stores normalized results per validated server
+and resource URI. It applies a bounded positive TTL, deep-clones values on
+write and read, replaces all cached content for a URI atomically, and supports
+source-and-URI-scoped invalidation. Expired or missing entries return a bounded
+miss and never trigger a fetch, refresh, subscription, or transport operation;
+a future transport layer must explicitly retrieve and validate fresh content.
+
 The typed resources/read request builder constructs only fixed JSON-RPC 2.0
 requests with monotonic bounded IDs, a safe resource URI, and optional cloned,
 bounded `inputResponses` and `requestState` values. Unknown option fields,
