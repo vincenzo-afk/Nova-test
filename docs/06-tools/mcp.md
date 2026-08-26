@@ -152,6 +152,15 @@ retaining valid siblings. URI templates remain observed server metadata; this
 slice does not expand variables, autocomplete arguments, read a resolved
 resource, subscribe to updates, or perform network I/O.
 
+The runtime resources/templates/list cache stores one bounded normalized
+resource-template listing per validated server. It applies the advertised
+positive TTL or a bounded default, deep-clones values on write and read,
+replaces listings atomically, and returns a server-scoped miss when an entry is
+absent or expired. Malformed server IDs or template metadata fail closed without
+mutating a valid entry; misses never trigger template discovery, expansion,
+autocomplete, resource reads, subscription, or transport I/O, and a future
+connection layer must explicitly obtain and validate fresh metadata.
+
 The typed prompts/list request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs and an optional bounded opaque pagination cursor.
 Unknown option fields are not forwarded, and malformed or oversized cursors fail
