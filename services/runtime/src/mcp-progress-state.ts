@@ -87,6 +87,17 @@ export class McpProgressState {
       : ok(clone(snapshot));
   }
 
+  public clearServer(serverId: string): Result<void> {
+    if (!isServerId(serverId)) {
+      return err(this.error("MCP progress state cleanup server id is invalid."));
+    }
+    const prefix = `${serverId}\u0000`;
+    for (const entryKey of this.entries.keys()) {
+      if (entryKey.startsWith(prefix)) this.entries.delete(entryKey);
+    }
+    return ok(undefined);
+  }
+
   public clear(serverId: string, progressToken: unknown): Result<void> {
     if (!isServerId(serverId) || !isProgressToken(progressToken)) {
       return err(this.error("MCP progress state clear is invalid."));

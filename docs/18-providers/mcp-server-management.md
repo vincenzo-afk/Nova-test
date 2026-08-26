@@ -94,9 +94,9 @@ does not perform the transport connection or health check itself.
 
 When a configured server is removed, the runtime exposes a bounded local-state
 cleanup boundary that can clear that server’s discovery, tool, prompt,
-resource, resource-template, health-observation, and subscription-state
-records. Cleanup validates
-the server ID before mutation, scopes every deletion to that server, and leaves
+resource, resource-template, progress-state, health-observation, and
+subscription-state records. Cleanup validates the
+server ID before mutation, scopes every deletion to that server, and leaves
 other servers unchanged. This boundary does not delete persisted lifecycle
 configuration or credentials, and it does not stop processes, close streams,
 send cancellation, disconnect transports, or perform network I/O.
