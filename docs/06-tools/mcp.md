@@ -91,6 +91,12 @@ an ID is consumed. Building a request does not read a resource, expand a URI
 template, contact a server, or bypass the Runtime Executor's permission and
 confirmation gates.
 
+The typed resources/templates/list request builder constructs fixed JSON-RPC
+2.0 requests with monotonic bounded IDs and an optional bounded opaque pagination
+cursor. Unknown option fields are not forwarded, and malformed or oversized
+cursors fail closed before an ID is consumed. Building a request does not
+discover templates, contact a server, or perform transport I/O.
+
 The runtime resources/templates/list validator preserves only bounded URI
 templates, names, display metadata, MIME types, and pagination/cache metadata.
 It rejects malformed URI templates, endpoint credentials, file-path traversal,
