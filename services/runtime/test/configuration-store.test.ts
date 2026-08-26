@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { MemoryLogSink, StructuredLogger } from "@nova/shared";
-import { ConfigurationStore, type NovaConfiguration } from "../src/configuration-store.js";
+import {
+  ConfigurationStore,
+  type McpServerConfiguration,
+  type NovaConfiguration,
+} from "../src/configuration-store.js";
 
 const capability = () => ({
   capability_id: "llm",
@@ -175,6 +179,40 @@ describe("ConfigurationStore", () => {
 
     expect(result).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
     expect(store.snapshot()).toEqual(before);
+  });
+
+  it("persists MCP lifecycle transitions through the configuration boundary", () => {
+    const initialServer: McpServerConfiguration = {
+      server_id: "local-files",
+      label: "Local files",
+      state: "Discovered",
+      transport: "stdio",
+      command: "node",
+      args: ["server.mjs"],
+    };
+    const store = new ConfigurationStore({ initial: { ...base(), mcp_servers: [initialServer] } });
+
+    expect(store.requestMcpServerApproval("local-files")).toMatchObject({
+      ok: true,
+      value: { state: "Pending approval" },
+    });
+    expect(store.approveMcpServer("local-files", true)).toMatchObject({
+      ok: true,
+      value: { state: "Connected" },
+    });
+    expect(store.disableMcpServer("local-files")).toMatchObject({
+      ok: true,
+      value: { state: "Disabled" },
+    });
+    expect(store.enableMcpServer("local-files")).toMatchObject({
+      ok: true,
+      value: { state: "Connected" },
+    });
+    expect(store.removeMcpServer("local-files", true)).toEqual({
+      ok: true,
+      value: { server_id: "local-files", state: "Removed" },
+    });
+    expect(store.snapshot().mcp_servers).toEqual([]);
   });
 
   it("accepts documented MCP server connection records with deterministic transports", () => {

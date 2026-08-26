@@ -15,6 +15,11 @@ export class McpServerManager {
     for (const server of initial) this.servers.set(server.server_id, clone(server));
   }
 
+  public replace(servers: readonly McpServerRecord[]): void {
+    this.servers.clear();
+    for (const server of servers) this.servers.set(server.server_id, clone(server));
+  }
+
   public add(server: McpServerRecord): Result<McpServerRecord> {
     if (this.servers.has(server.server_id))
       return err(this.error("MCP server is already configured."));

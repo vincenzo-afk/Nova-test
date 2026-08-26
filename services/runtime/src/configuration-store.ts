@@ -1,4 +1,9 @@
 import { err, ok, type ErrorInfo, type Result, type StructuredLogger } from "@nova/shared";
+import {
+  McpServerManager,
+  type McpServerRecord,
+  type RemovedMcpServer,
+} from "./mcp-server-manager.js";
 
 export type ConfiguredRoutingPolicy =
   "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
@@ -114,11 +119,13 @@ export class ConfigurationStore {
   private readonly listeners = new Set<ConfigurationListener>();
   private readonly availableProviderIds: ReadonlySet<string>;
   private readonly logger: StructuredLogger | undefined;
+  private readonly mcpServerManager: McpServerManager;
 
   public constructor(options: ConfigurationStoreOptions) {
     this.availableProviderIds = options.availableProviderIds ?? new Set<string>();
     this.configuration = clone(options.initial);
     this.logger = options.logger;
+    this.mcpServerManager = new McpServerManager(this.configuration.mcp_servers);
   }
 
   public snapshot(): NovaConfiguration {
@@ -143,10 +150,36 @@ export class ConfigurationStore {
       return validation;
     }
     this.configuration = { ...this.configuration, [section]: clone(value) } as NovaConfiguration;
+    if (section === "mcp_servers") this.mcpServerManager.replace(this.configuration.mcp_servers);
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
     this.logger?.info("configuration.updated", { section });
     return ok(undefined);
+  }
+
+  public addMcpServer(server: McpServerRecord): Result<McpServerRecord> {
+    const result = this.mcpServerManager.add(server);
+    return result.ok ? this.commitMcpResult(result) : result;
+  }
+
+  public requestMcpServerApproval(serverId: string): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.requestApproval(serverId));
+  }
+
+  public approveMcpServer(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.approve(serverId, confirmed));
+  }
+
+  public disableMcpServer(serverId: string): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.disable(serverId));
+  }
+
+  public enableMcpServer(serverId: string): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.enable(serverId));
+  }
+
+  public removeMcpServer(serverId: string, confirmed: boolean): Result<RemovedMcpServer> {
+    return this.commitMcpResult(this.mcpServerManager.remove(serverId, confirmed));
   }
 
   public resetPersonalization(preferenceId?: string): Result<void> {
@@ -217,6 +250,7 @@ export class ConfigurationStore {
       if (!validation.ok) return validation;
     }
     this.configuration = next;
+    this.mcpServerManager.replace(this.configuration.mcp_servers);
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
     this.logger?.info("configuration.imported", {
@@ -570,6 +604,15 @@ export class ConfigurationStore {
         );
     }
     return ok(undefined);
+  }
+
+  private commitMcpResult<T>(result: Result<T>): Result<T> {
+    if (!result.ok) return result;
+    this.configuration = { ...this.configuration, mcp_servers: this.mcpServerManager.list() };
+    const snapshot = this.snapshot();
+    for (const listener of this.listeners) listener(snapshot);
+    this.logger?.info("configuration.updated", { section: "mcp_servers" });
+    return result;
   }
 
   private configError(message: string, field: string): ErrorInfo {
