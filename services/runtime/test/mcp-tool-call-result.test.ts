@@ -39,6 +39,28 @@ describe("McpToolCallResultValidator", () => {
     });
   });
 
+  it("rejects an oversized JSON response before result normalization", () => {
+    const validator = new McpToolCallResultValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          content: [{ type: "text", text: "Observed" }],
+          ignored: "x".repeat(33_554_433),
+        },
+      },
+      1,
+      "weather-server.get_weather",
+      "invoke",
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("keeps server-reported tool failures distinct from malformed protocol responses", () => {
     const validator = new McpToolCallResultValidator();
 

@@ -22,6 +22,7 @@ export type McpToolExecutionResult = Omit<ExecutionResult, "step_id"> & {
   readonly action_id: string;
 };
 
+const MAX_RESPONSE_BYTES = 33_554_432;
 const MAX_CONTENT_BLOCKS = 128;
 const MAX_TEXT_LENGTH = 16_384;
 const MAX_STRING_LENGTH = 512;
@@ -35,6 +36,10 @@ export class McpToolCallResultValidator {
     toolId: string,
     actionId: string,
   ): Result<McpToolExecutionResult> {
+    const serialized = safeJson(response);
+    if (serialized === undefined || serialized.length > MAX_RESPONSE_BYTES) {
+      return err(this.error("MCP tools/call response is invalid or too large."));
+    }
     if (
       toolId.trim() === "" ||
       actionId.trim() === "" ||
