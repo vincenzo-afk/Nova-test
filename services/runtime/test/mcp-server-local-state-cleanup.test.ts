@@ -14,6 +14,8 @@ import { McpServerDiscoveryCache } from "../src/mcp-server-discovery-cache.js";
 import { McpServerLocalStateCleanup } from "../src/mcp-server-local-state-cleanup.js";
 import { McpSubscriptionState } from "../src/mcp-subscription-state.js";
 import { McpToolCache } from "../src/mcp-tool-cache.js";
+import { McpToolDiscovery } from "../src/mcp-tool-discovery.js";
+import { ToolRegistry } from "../src/tool-registry.js";
 
 const tools: McpToolsListResult = {
   tools: [{ name: "read", description: "Read", inputSchema: { type: "object" } }],
@@ -124,6 +126,28 @@ describe("McpServerLocalStateCleanup", () => {
       ok: true,
       value: { subscription_id: "sub-1" },
     });
+  });
+
+  it("deregisters only the removed server's Tool Registry source", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+    expect(
+      discovery.register("server-1", [{ name: "read", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+    expect(
+      discovery.register("server-2", [{ name: "read", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+    const cleanup = new McpServerLocalStateCleanup({ toolDiscovery: discovery });
+
+    expect(cleanup.clear("server-1")).toMatchObject({
+      ok: true,
+      value: { server_id: "server-1", status: "cleared" },
+    });
+    expect(registry.get("server-1.read")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+    expect(registry.get("server-2.read")).toMatchObject({ ok: true });
   });
 
   it("fails closed for an invalid server ID without clearing valid state", () => {

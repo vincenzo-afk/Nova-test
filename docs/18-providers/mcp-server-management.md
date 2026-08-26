@@ -101,7 +101,8 @@ does not perform the transport connection or health check itself.
 When a configured server is removed, the runtime exposes a bounded local-state
 cleanup boundary that can clear that server’s discovery, tool, prompt,
 resource, resource-template, progress-state, health-observation, and
-subscription-state records. Cleanup validates the
+subscription-state records and deregister its namespaced Tool Registry
+source. Cleanup validates the
 server ID before mutation, scopes every deletion to that server, and leaves
 other servers unchanged. The same boundary is used by validated configuration
 replacement and import when configured server IDs disappear. It does not

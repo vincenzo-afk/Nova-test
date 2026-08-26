@@ -2,8 +2,10 @@ import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 import type { McpProgressState } from "./mcp-progress-state.js";
 import type { McpServerHealthTracker } from "./mcp-server-health.js";
 import type { McpSubscriptionState } from "./mcp-subscription-state.js";
+import type { McpToolDiscovery } from "./mcp-tool-discovery.js";
 
 export interface McpServerLocalStateCleanupDependencies {
+  readonly toolDiscovery?: Pick<McpToolDiscovery, "deregister">;
   readonly toolsCache?: ServerCache;
   readonly promptCache?: ServerCache;
   readonly resourceCache?: ServerCache;
@@ -31,6 +33,10 @@ export class McpServerLocalStateCleanup {
   public clear(serverId: string): Result<McpServerLocalStateCleared> {
     if (!SERVER_ID_PATTERN.test(serverId)) {
       return err(this.error("MCP server local-state cleanup server id is invalid."));
+    }
+    if (this.dependencies.toolDiscovery !== undefined) {
+      const result = this.dependencies.toolDiscovery.deregister(serverId);
+      if (!result.ok) return result;
     }
     for (const cache of [
       this.dependencies.toolsCache,
