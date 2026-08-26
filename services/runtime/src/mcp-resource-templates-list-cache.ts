@@ -94,7 +94,8 @@ function isTemplateList(value: unknown): value is McpResourcesTemplatesListResul
     !isRecord(value) ||
     !Array.isArray(value.resource_templates) ||
     value.resource_templates.length > MAX_TEMPLATES ||
-    !Array.isArray(value.rejected_template_names)
+    !Array.isArray(value.rejected_template_names) ||
+    value.rejected_template_names.length > MAX_TEMPLATES
   ) {
     return false;
   }

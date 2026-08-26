@@ -42,6 +42,7 @@ All notable changes to Nova are documented in this file.
 - MCP resource-list cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected resource URIs before cache mutation.
 - MCP resource-list cache entries now reject more than 128 rejected resource URIs before cache mutation.
 - MCP resource-template cache entries now reject empty or oversized rejected template names before cache mutation.
+- MCP resource-template cache entries now reject more than 128 rejected template names before cache mutation.
 - MCP prompt-list cache entries now reject empty or oversized rejected prompt names before cache mutation.
 - MCP `tools/list` response normalization now rejects non-JSON-safe or oversized input and output schemas before returning observed tool metadata, with a 128 KiB serialized schema bound.
 - MCP tool-result normalization now filters resource-link and embedded-resource blocks with unsafe, credential-bearing, traversal-prone, or oversized URIs before exposing observed content.
