@@ -115,7 +115,8 @@ network I/O.
 
 The runtime resource-list cache stores one bounded normalized resource listing
 per validated server. It applies the advertised positive TTL or a bounded
-default, deep-clones values on write and read, replaces listings atomically, and
+default, deep-clones values on write and read; non-serializable values fail
+closed without mutating the existing entry; replaces listings atomically, and
 returns a server-scoped miss when an entry is absent or expired. Retained and
 rejected resource URIs are both required to pass the same safe,
 credential-free, traversal-resistant URI boundary, with at most 128 rejected
