@@ -77,6 +77,14 @@ transport if the configured one fails — a failed connection is a
 connection failure (`docs/25-failure-modes/`), not a signal to retry
 over the other mechanism.
 
+The runtime protocol-version negotiator validates bounded dated-version lists
+from the client and server, rejects duplicates and impossible calendar dates,
+and selects the highest mutually supported version. If there is no common
+version, it returns a typed incompatibility error rather than inventing a
+version or silently falling back to another transport. This slice performs
+only local selection; it does not send a handshake or request, and it does
+not establish a server connection.
+
 ## Trust boundary
 
 An MCP server is an external, potentially untrusted component. NOVA
