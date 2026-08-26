@@ -173,6 +173,13 @@ forwards no extra fields and performs no transport send, stream shutdown, or
 subscription-state mutation; an authoritative connection layer must own those
 side effects after the appropriate approval and lifecycle checks.
 
+The runtime subscriptions/listen completion validator accepts only a successful
+JSON-RPC 2.0 response with `resultType: complete`. It requires a bounded request
+ID and matching `io.modelcontextprotocol/subscriptionId`, returning only their
+correlation and the fixed completion type while discarding other result metadata.
+It fails closed on mismatched or malformed correlation and oversized payloads.
+This slice does not close or reconnect a stream and performs no transport I/O.
+
 ## Transport
 
 
