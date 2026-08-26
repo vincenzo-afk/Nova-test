@@ -51,6 +51,7 @@ export * from "./mcp-resource-read-request.js";
 export * from "./mcp-resources-templates-list-response.js";
 export * from "./mcp-prompts-list-response.js";
 export * from "./mcp-prompt-get-request.js";
+export * from "./mcp-prompt-get-response.js";
 export * from "./repair-manager.js";
 export * from "./resource-arbitration.js";
 export * from "./job-scheduler.js";

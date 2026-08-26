@@ -108,6 +108,15 @@ not retrieve or render prompt messages, treat server content as trusted
 instructions, contact a server, or bypass the Runtime Executor's permission and
 confirmation gates.
 
+The runtime prompts/get response validator requires a correlated successful
+response with a bounded non-empty message list. It retains only `user` or
+`assistant` roles and bounded text, validated base64 image/audio data, safe
+resource links, or safe embedded resources as `observed: true` content. Invalid
+messages are filtered while valid siblings remain; if none remain, the response
+fails closed. Prompt descriptions are bounded metadata, and prompt content is
+never promoted to trusted planner instructions. This slice does not retrieve,
+render, execute, or forward messages to a model, and performs no network I/O.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
