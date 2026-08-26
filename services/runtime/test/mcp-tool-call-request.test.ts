@@ -40,6 +40,49 @@ describe("McpToolCallRequestBuilder", () => {
     });
   });
 
+  it("builds MRTR retry inputs with cloned elicitation responses and opaque request state", () => {
+    const builder = new McpToolCallRequestBuilder();
+    const inputResponses = { consent: { action: "accept", content: { name: "Ada" } } };
+
+    const result = builder.create(
+      "continue_setup",
+      { step: 2 },
+      { inputResponses, requestState: "opaque-state" },
+    );
+    inputResponses.consent.content.name = "Changed";
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "continue_setup",
+          arguments: { step: 2 },
+          inputResponses: { consent: { action: "accept", content: { name: "Ada" } } },
+          requestState: "opaque-state",
+        },
+      },
+    });
+  });
+
+  it("rejects malformed MRTR retry inputs without advancing the request ID", () => {
+    const builder = new McpToolCallRequestBuilder();
+
+    expect(
+      builder.create("valid", {}, { inputResponses: { consent: { action: "unknown" } } }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(builder.create("valid", {}, { requestState: "" })).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(builder.create("valid", {}, { ignored: "not forwarded" })).toMatchObject({
+      ok: true,
+      value: { id: 1 },
+    });
+  });
+
   it("rejects circular or oversized arguments without advancing the request ID", () => {
     const builder = new McpToolCallRequestBuilder();
     const circular: Record<string, unknown> = {};

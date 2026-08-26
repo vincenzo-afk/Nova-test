@@ -343,8 +343,11 @@ JSON-RPC 2.0 `tools/call` requests with monotonic bounded numeric IDs. It
 accepts tool names using the MCP-safe identifier characters and clones only
 JSON-serializable argument objects within the configured size bound; circular,
 non-object, oversized, or malformed inputs are rejected before a request ID
-is consumed. Request construction does not invoke a server and does not
-replace the Runtime Executor's permission or confirmation gate.
+is consumed. The builder also supports bounded MRTR retry fields: cloned
+elicitation responses under `inputResponses` and an opaque bounded `requestState`;
+unknown fields and malformed retry data fail closed. Request construction does not
+invoke a server, retry an operation, interpret request state, or replace the
+Runtime Executor's permission or confirmation gate.
 
 The runtime tools/call result boundary now requires a successful correlated
 JSON-RPC response and normalizes it into the structured tool-result contract.
