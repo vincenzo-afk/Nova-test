@@ -50,6 +50,33 @@ describe("McpToolCache", () => {
     expect(cache.get("server-1")).toEqual({ ok: true, value: tools });
   });
 
+  it("fails closed on a non-string server ID without throwing or mutating cache state", () => {
+    const cache = new McpToolCache({ now: () => 1_000 });
+    cache.put("server-1", tools);
+    const invalidServerId = {
+      toString(): string {
+        throw new Error("toString should not run for an untrusted server ID");
+      },
+    } as unknown as string;
+
+    expect(() => cache.put(invalidServerId, tools)).not.toThrow();
+    expect(cache.put(invalidServerId, tools)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => cache.get(invalidServerId)).not.toThrow();
+    expect(cache.get(invalidServerId)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => cache.invalidate(invalidServerId)).not.toThrow();
+    expect(cache.invalidate(invalidServerId)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(cache.get("server-1")).toEqual({ ok: true, value: tools });
+  });
+
   it("expires cached entries at their TTL and reports a cache miss", () => {
     let now = 1_000;
     const cache = new McpToolCache({ now: () => now });

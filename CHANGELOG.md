@@ -51,6 +51,7 @@ All notable changes to Nova are documented in this file.
 - MCP tool-list cache entries now reject malformed, oversized, or unsafe rejected tool names before cache mutation.
 - MCP tool-list cache entries now reject opaque pagination cursors longer than 256 characters before cache mutation.
 - MCP tool-list cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
+- MCP tool-cache operations now reject non-string server identities before cache access or invalidation.
 - MCP prompt-list cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
 - MCP resource-list cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
 - MCP resource-template cache reads and writes now fail closed on non-serializable values without mutating an existing entry.

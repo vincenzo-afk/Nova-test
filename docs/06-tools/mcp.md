@@ -92,8 +92,9 @@ values fail closed without mutating the existing entry; replacements are atomic,
 and source-scoped invalidation removes only the selected server's listing. Rejected tool names are
 validated as a bounded list of at most 128 MCP-safe identifiers, and opaque
 pagination cursors are limited to 256 characters, before a listing can mutate
-the cache. Cache misses
-do not trigger a probe or an implicit retry; a future transport layer must
+the cache. Non-string or otherwise invalid server identities fail closed
+before cache access or mutation. Cache misses do not trigger a probe or an
+implicit retry; a future transport layer must
 explicitly refresh the listing and then pass it through the validator again.
 
 The typed resources/list request builder constructs fixed JSON-RPC 2.0

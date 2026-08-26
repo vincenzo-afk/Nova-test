@@ -86,8 +86,8 @@ export class McpToolCache {
   }
 }
 
-function isServerId(value: string): boolean {
-  return SERVER_ID_PATTERN.test(value);
+function isServerId(value: unknown): value is string {
+  return typeof value === "string" && SERVER_ID_PATTERN.test(value);
 }
 
 function isToolList(value: unknown): value is McpToolsListResult {
