@@ -52,6 +52,26 @@ describe("McpResourcesReadResponseValidator", () => {
     });
   });
 
+  it("rejects an oversized JSON response before resource normalization", () => {
+    const validator = new McpResourcesReadResponseValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          contents: [{ uri: "file:///project/README.md", text: "Observed" }],
+          ignored: "x".repeat(1_048_577),
+        },
+      },
+      1,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("filters malformed contents while retaining valid observed data", () => {
     const validator = new McpResourcesReadResponseValidator();
     const result = validator.parse(

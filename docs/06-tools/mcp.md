@@ -133,7 +133,8 @@ without mutating the cache. Invalidation does not rediscover resources, refresh
 a listing, read or fetch a URI, open a subscription, contact a transport, or
 perform network I/O.
 
-The runtime resources/read validator accepts only correlated successful
+The runtime resources/read validator first requires a JSON-serializable
+response envelope no larger than 1 MiB, then accepts only correlated successful
 responses with a bounded non-empty content list. Each content item must have a
 safe resource URI and exactly one bounded representation: text or validated
 base64 data. Malformed or duplicate content items are filtered while valid

@@ -42,6 +42,7 @@ All notable changes to Nova are documented in this file.
 - MCP `tools/list` response normalization now rejects non-JSON-safe or oversized response envelopes before processing tool advertisements, with a 1 MiB serialized response bound.
 - MCP `prompts/list` response normalization now rejects non-JSON-safe or oversized response envelopes before processing prompt advertisements, with a 1 MiB serialized response bound.
 - MCP `resources/list` response normalization now rejects non-JSON-safe or oversized response envelopes before processing resource advertisements, with a 1 MiB serialized response bound.
+- MCP `resources/read` response normalization now rejects non-JSON-safe or oversized response envelopes before processing resource content, with a 1 MiB serialized response bound.
 - MCP resource-read cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected content URIs before cache mutation.
 - MCP resource-read cache entries now reject more than 128 rejected content URIs before cache mutation.
 - MCP tool-list cache entries now reject malformed, oversized, or unsafe rejected tool names before cache mutation.
