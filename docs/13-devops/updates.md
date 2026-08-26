@@ -31,6 +31,14 @@ schema migration specifically is `docs/04-memory/ontology.md`.
    logic as unclean-shutdown recovery, since both scenarios need the same
    guarantee that no task silently vanishes.
 
+`UpgradeManager` now supports an optional paired `pauseInFlight` /
+`resumeAfterUpgrade` adapter lifecycle. When configured, the manager snapshots
+first, pauses in-flight work before the migration chain, updates plugins and
+verifies the result, then resumes work only after verification succeeds. If an
+upgrade fails after pausing, the pre-update snapshot is restored before the
+resume hook is attempted. Providing only one of the two hooks is rejected as a
+recovery configuration error.
+
 ## Version compatibility
 
 Configuration and stored data must remain readable across a supported
