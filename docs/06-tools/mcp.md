@@ -152,6 +152,14 @@ replace the Runtime Executor's permission or confirmation gate.
 
 The runtime tools/call result boundary now requires a successful correlated
 JSON-RPC response and normalizes it into the structured tool-result contract.
+
+The runtime MCP call-timeout wrapper requires a positive bounded timeout
+budget, races the operation against that deadline, and aborts the supplied
+`AbortSignal` when the deadline is reached. A timeout returns retryable
+`NOVA-TL001` with the timeout budget, remains distinct from an ordinary tool
+failure, and clears its timer after either outcome. The wrapper does not retry
+or invoke a transport itself; the underlying transport must honor the signal,
+and the Planner remains responsible for any retry or alternative approach.
 Text, image, audio, resource-link, and embedded-resource blocks are converted
 to bounded observed-content records; unknown or malformed blocks are ignored.
 Structured content is cloned only when it is valid, serializable, and within
