@@ -141,11 +141,18 @@ notifications for `notifications/resources/list_changed` or
 and fixed method identity, discarding notification parameters and rejecting
 responses, malformed messages, unsupported methods, and oversized payloads.
 Classification is only an observed invalidation signal; it does not refresh a
-listing, open a transport, subscribe to updates, or perform network I/O. A
-future authoritative connection/cache layer must decide whether and how to
+listing, open a transport, subscribe to updates, or perform network I/O. A future authoritative connection/cache layer must decide whether and how to
 refresh after approval and capability checks.
 
+The runtime resource-updated notification classifier accepts only a JSON-RPC 2.0
+`notifications/resources/updated` notification containing a safe resource URI.
+It returns only the fixed method identity and URI, discarding subscription and
+server metadata and rejecting malformed, credential-bearing, traversal, or
+oversized values. Classification is only an observed update signal; it does not
+subscribe, refresh a resource, fetch its URI, or perform network I/O.
+
 ## Transport
+
 
 The runtime transport planner now turns a validated server record into one
 explicit transport plan without opening the connection. A `stdio` record
