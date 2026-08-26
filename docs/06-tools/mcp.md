@@ -85,6 +85,15 @@ version or silently falling back to another transport. This slice performs
 only local selection; it does not send a handshake or request, and it does
 not establish a server connection.
 
+The runtime health-observation boundary stores only a server identifier, one
+provider-style health state (`reachable`, `degraded`, or `down`), and a
+validated check timestamp. Servers with no observation are exposed as
+`unknown`; removing a server clears its health observation. This state is
+separate from lifecycle configuration and never includes endpoints, commands,
+credential references, or raw probe responses. Recording an observation does
+not perform the health check; transport-specific probing remains a later,
+explicit integration.
+
 ## Trust boundary
 
 An MCP server is an external, potentially untrusted component. NOVA

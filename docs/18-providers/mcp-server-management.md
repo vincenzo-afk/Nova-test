@@ -81,9 +81,13 @@ response. Tool-call results are normalized into the common structured result
 shape, with server content marked as observed and server-reported execution
 errors kept distinct from malformed protocol responses.
 This is the same screen the Setup Wizard's "Add an MCP server" step writes
-into — there is no separate first-run-only path. The current runtime slice
-only validates and registers an already-retrieved advertisement; it does not
-perform the transport connection or health check.
+into — there is no separate first-run-only path. The runtime now retains a
+bounded provider-style health observation per server (`reachable`, `degraded`,
+or `down`) with a validated timestamp; an unobserved server is reported as
+`unknown`. Health observations are separate from persisted lifecycle state,
+are removed with their source, and expose no endpoint, command, credential,
+or raw probe payload. The current runtime slice records observations but does
+not perform the transport connection or health check itself.
 
 ## Autonomous addition
 
