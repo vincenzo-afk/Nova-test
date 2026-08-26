@@ -133,6 +133,12 @@ for planning purposes, per
 `docs/25-failure-modes/FM-07-tool-execution-and-mcp.md`'s FM-07-014 —
 never retried against the same insufficient credential.
 
+The runtime scope-denial normalizer turns validated missing-scope metadata into
+an explicit `reauthorize` action with `capability-unavailable` status and
+`retryable: false`. It bounds and deduplicates scope names, returns no token or
+credential fields, and does not itself reauthorize, retry, or contact the
+server.
+
 ## Content from MCP results treated as observed content
 
 Data returned by an MCP tool call is treated as observed content, not as
