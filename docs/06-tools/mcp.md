@@ -100,6 +100,14 @@ the normalized result. Prompt descriptions and metadata remain untrusted
 observed data; this slice does not retrieve, render, execute, or treat a prompt
 as trusted planner instructions.
 
+The typed prompts/get request builder constructs fixed JSON-RPC 2.0 requests
+with monotonic bounded IDs, safe prompt names, cloned bounded string arguments,
+and optional bounded input-response state. Unknown fields and malformed or
+oversized values fail closed before an ID is consumed. Building a request does
+not retrieve or render prompt messages, treat server content as trusted
+instructions, contact a server, or bypass the Runtime Executor's permission and
+confirmation gates.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
