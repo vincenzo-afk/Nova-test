@@ -182,6 +182,12 @@ server metadata and rejecting malformed, credential-bearing, traversal, or
 oversized values. Classification is only an observed update signal; it does not
 subscribe, refresh a resource, fetch its URI, or perform network I/O.
 
+The runtime resource-update invalidator combines that validated notification
+with the local resource cache and removes only the notified server-and-URI
+entry. Invalid notifications and invalid server identities fail closed without
+mutating the cache. Invalidation does not fetch replacement content, refresh a
+listing, open a subscription, or contact a transport.
+
 The runtime progress-notification classifier accepts only a JSON-RPC 2.0
 `notifications/progress` notification with a bounded string or safe integer
 progress token, a finite non-negative progress value, and optional bounded total

@@ -61,6 +61,7 @@ export * from "./mcp-prompt-get-request.js";
 export * from "./mcp-prompt-get-response.js";
 export * from "./mcp-list-changed-notification.js";
 export * from "./mcp-resource-updated-notification.js";
+export * from "./mcp-resource-update-invalidator.js";
 export * from "./mcp-progress-notification.js";
 export * from "./mcp-subscriptions-listen-request.js";
 export * from "./mcp-subscription-acknowledged.js";
