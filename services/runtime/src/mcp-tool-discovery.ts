@@ -170,13 +170,17 @@ function toRegisteredTool(serverId: string, advertisement: McpToolAdvertisement)
         estimated_cost_class: metadata?.estimated_cost_class ?? "low",
         timeout_ms: metadata?.timeout_ms ?? DEFAULT_TIMEOUT_MS,
         idempotent: metadata?.idempotent ?? false,
-        input_schema: { ...advertisement.inputSchema },
-        output_schema: {
-          ...(advertisement.outputSchema ?? metadata?.output_schema ?? { type: "object" }),
-        },
+        input_schema: clone(advertisement.inputSchema),
+        output_schema: clone(
+          advertisement.outputSchema ?? metadata?.output_schema ?? { type: "object" },
+        ),
       },
     ],
   };
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function isServerId(value: string): boolean {

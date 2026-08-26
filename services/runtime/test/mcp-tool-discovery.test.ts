@@ -58,6 +58,38 @@ describe("McpToolDiscovery", () => {
     expect(registry.get("weather-server.get_forecast")).toMatchObject({ ok: true });
   });
 
+  it("deep-clones nested schemas before exposing registered tools", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+    const inputSchema = {
+      type: "object",
+      properties: { city: { type: "string" } },
+    };
+    const outputSchema = {
+      type: "object",
+      properties: { temperature: { type: "number" } },
+    };
+
+    expect(
+      discovery.register("weather-server", [{ name: "get_forecast", inputSchema, outputSchema }]),
+    ).toMatchObject({ ok: true });
+    inputSchema.properties.city.type = "number";
+    outputSchema.properties.temperature.type = "string";
+
+    const registered = registry.get("weather-server.get_forecast");
+    expect(registered).toMatchObject({
+      ok: true,
+      value: {
+        supported_actions: [
+          {
+            input_schema: { properties: { city: { type: "string" } } },
+            output_schema: { properties: { temperature: { type: "number" } } },
+          },
+        ],
+      },
+    });
+  });
+
   it("rejects malformed advertisements atomically before registry exposure", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);
