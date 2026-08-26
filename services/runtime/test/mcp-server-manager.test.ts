@@ -77,6 +77,18 @@ describe("McpServerManager", () => {
     });
   });
 
+  it("rejects duplicate server IDs during replacement without mutation", () => {
+    const initial = server();
+    const manager = new McpServerManager([initial]);
+    const duplicate = { ...initial, label: "Duplicate label" };
+
+    expect(manager.replace([initial, duplicate])).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(manager.list()).toEqual([initial]);
+  });
+
   it("clears only removed servers when replacing configured records", () => {
     const retained = { ...server(), server_id: "retained" };
     const clear = vi.fn(() => ({

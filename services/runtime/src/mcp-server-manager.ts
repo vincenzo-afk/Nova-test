@@ -21,7 +21,12 @@ export class McpServerManager {
 
   public replace(servers: readonly McpServerRecord[]): Result<void> {
     const next = new Map<string, McpServerRecord>();
-    for (const server of servers) next.set(server.server_id, clone(server));
+    for (const server of servers) {
+      if (next.has(server.server_id)) {
+        return err(this.error("MCP server IDs must be unique."));
+      }
+      next.set(server.server_id, clone(server));
+    }
 
     const removedServerIds = [...this.servers.keys()].filter((serverId) => !next.has(serverId));
     if (this.localStateCleanup !== undefined) {
