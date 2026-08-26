@@ -23,6 +23,29 @@ describe("McpServerManager", () => {
     );
   });
 
+  it("fails closed on non-serializable records without mutating configured state", () => {
+    const manager = new McpServerManager([server()]);
+    const circularArgs: unknown[] = ["server.mjs"];
+    circularArgs.push(circularArgs);
+    const nonSerializable = {
+      ...server(),
+      server_id: "circular-server",
+      args: circularArgs as readonly string[],
+    };
+
+    expect(() => manager.add(nonSerializable)).not.toThrow();
+    expect(manager.add(nonSerializable)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => manager.replace([nonSerializable])).not.toThrow();
+    expect(manager.replace([nonSerializable])).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(manager.list()).toEqual([server()]);
+  });
+
   it("moves a server through discovery, approval, disable, and re-enable states", () => {
     const manager = new McpServerManager();
 

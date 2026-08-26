@@ -30,7 +30,11 @@ export class McpServerManager {
       if (next.has(server.server_id)) {
         return err(this.error("MCP server IDs must be unique."));
       }
-      next.set(server.server_id, clone(server));
+      const cloned = tryClone(server);
+      if (cloned === undefined) {
+        return err(this.error("MCP server record cannot be cloned safely."));
+      }
+      next.set(server.server_id, cloned);
     }
 
     const removedServerIds = [...this.servers.keys()].filter((serverId) => !next.has(serverId));
@@ -51,8 +55,16 @@ export class McpServerManager {
       return err(this.error("MCP server is already configured."));
     if (server.state !== "Discovered")
       return err(this.error("New MCP servers must begin in Discovered state."));
-    this.servers.set(server.server_id, clone(server));
-    return ok(clone(server));
+    const cloned = tryClone(server);
+    if (cloned === undefined) {
+      return err(this.error("MCP server record cannot be cloned safely."));
+    }
+    const returned = tryClone(cloned);
+    if (returned === undefined) {
+      return err(this.error("MCP server record cannot be cloned safely."));
+    }
+    this.servers.set(server.server_id, cloned);
+    return ok(returned);
   }
 
   public list(): readonly McpServerRecord[] {
@@ -129,5 +141,16 @@ export class McpServerManager {
 }
 
 function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  const cloned = tryClone(value);
+  if (cloned === undefined) throw new Error("MCP server record cannot be cloned safely.");
+  return cloned;
+}
+
+function tryClone<T>(value: T): T | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : (JSON.parse(serialized) as T);
+  } catch {
+    return undefined;
+  }
 }
