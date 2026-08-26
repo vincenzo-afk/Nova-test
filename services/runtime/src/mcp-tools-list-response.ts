@@ -9,6 +9,7 @@ export interface McpToolsListResult {
   readonly rejected_tool_names: readonly string[];
 }
 
+const MAX_RESPONSE_BYTES = 1_048_576;
 const MAX_TOOLS = 128;
 const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_DESCRIPTION_LENGTH = 2_048;
@@ -27,6 +28,10 @@ const VALID_SCHEMA_TYPES = new Set([
 
 export class McpToolsListResponseValidator {
   public parse(response: unknown, expectedId: string | number): Result<McpToolsListResult> {
+    const serialized = safeJson(response);
+    if (serialized === undefined || serialized.length > MAX_RESPONSE_BYTES) {
+      return err(this.error("MCP tools/list response is invalid or too large."));
+    }
     if (!isRecord(response) || response.jsonrpc !== "2.0" || response.id !== expectedId) {
       return err(this.error("MCP tools/list response correlation is invalid."));
     }
@@ -165,6 +170,15 @@ function isJsonSchema(value: unknown): value is Readonly<Record<string, unknown>
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeJson(value: unknown): string | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : serialized;
+  } catch {
+    return undefined;
+  }
 }
 
 function cloneRecord(value: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {

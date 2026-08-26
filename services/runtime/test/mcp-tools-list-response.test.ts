@@ -61,6 +61,26 @@ describe("McpToolsListResponseValidator", () => {
     });
   });
 
+  it("rejects an oversized JSON response before tool normalization", () => {
+    const validator = new McpToolsListResponseValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          tools: [{ name: "valid_tool", inputSchema: { type: "object" } }],
+          ignored: "x".repeat(1_048_577),
+        },
+      },
+      1,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("rejects a mismatched JSON-RPC response id and protocol error response", () => {
     const validator = new McpToolsListResponseValidator();
 

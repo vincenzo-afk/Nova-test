@@ -72,8 +72,9 @@ Unknown option fields are not forwarded, and malformed or oversized cursors fail
 closed before an ID is consumed. Building a request does not discover tools,
 contact a server, or perform transport I/O.
 
-A separate response validator accepts only a successful JSON-RPC 2.0
-`tools/list` response whose response ID matches the request ID. It bounds the
+A separate response validator first requires a JSON-serializable `tools/list`
+response envelope no larger than 1 MiB, then accepts only a successful
+JSON-RPC 2.0 response whose response ID matches the request ID. It bounds the
 list, cursor, and TTL values; requires input and optional output schemas to be
 JSON-safe objects serialized to at most 128 KiB; carries valid schemas forward;
 and ignores presentation-only fields such as titles and icons. A malformed
