@@ -40,6 +40,37 @@ describe("ToolRegistry", () => {
     expect(result).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
   });
 
+  it("deep-clones nested metadata on registration and reads", () => {
+    const registry = new ToolRegistry();
+    const inputSchema = { type: "object", properties: { city: { type: "string" } } };
+    const tool = {
+      ...fileTool,
+      tool_id: "builtin.weather",
+      supported_actions: [{ ...fileTool.supported_actions[0], input_schema: inputSchema }],
+    };
+
+    expect(registry.register(tool)).toMatchObject({ ok: true });
+    inputSchema.properties.city.type = "number";
+
+    const firstRead = registry.get(tool.tool_id);
+    expect(firstRead).toMatchObject({
+      ok: true,
+      value: {
+        supported_actions: [{ input_schema: { properties: { city: { type: "string" } } } }],
+      },
+    });
+    if (firstRead.ok)
+      firstRead.value.supported_actions[0].input_schema.properties = { city: { type: "boolean" } };
+
+    const secondRead = registry.query({ execution_tier: "native_runtime" });
+    expect(secondRead).toMatchObject({
+      ok: true,
+      value: [
+        { supported_actions: [{ input_schema: { properties: { city: { type: "string" } } } }] },
+      ],
+    });
+  });
+
   it("rejects a duplicate tool identifier instead of overwriting the first registration", () => {
     const registry = new ToolRegistry();
 

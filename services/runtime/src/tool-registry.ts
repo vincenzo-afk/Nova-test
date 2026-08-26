@@ -103,13 +103,14 @@ export class ToolRegistry {
         details: { toolId: tool.tool_id },
       });
     }
-    this.tools.set(tool.tool_id, tool);
-    return ok(tool);
+    const owned = clone(tool);
+    this.tools.set(tool.tool_id, owned);
+    return ok(clone(owned));
   }
 
   get(toolId: string): Result<RegisteredTool> {
     const tool = this.tools.get(toolId);
-    return tool ? ok(tool) : err(this.unavailable(toolId));
+    return tool ? ok(clone(tool)) : err(this.unavailable(toolId));
   }
 
   listSummaries(): readonly RegisteredToolSummary[] {
@@ -142,7 +143,7 @@ export class ToolRegistry {
         filters.execution_tier === undefined || tool.execution_tier === filters.execution_tier;
       return targetMatches && tierMatches;
     });
-    return ok(values);
+    return ok(values.map(clone));
   }
 
   deregister(toolId: string): Result<void> {
@@ -160,4 +161,8 @@ export class ToolRegistry {
       details: { toolId },
     };
   }
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }

@@ -19,7 +19,9 @@ required by `tool-interface.md`: execution tier, risk tier(s) per
 action, verification signal, lockable resources, and permission scope.
 Registration is validated against this schema at registration time — a
 tool missing required metadata is rejected, not registered with gaps
-filled by assumption.
+filled by assumption. The registry deep-clones stored entries and returns
+independent snapshots from lookup and query operations; callers cannot mutate
+nested schemas or other metadata through a returned object.
 
 `tool_id` is a catalog identifier, not a generated instance ID
 (`docs/14-development/naming-conventions.md`'s ID generation strategy)
