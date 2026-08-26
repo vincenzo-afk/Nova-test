@@ -36,6 +36,7 @@ export * from "./restore-manager.js";
 export * from "./upgrade-manager.js";
 export * from "./mcp-server-manager.js";
 export * from "./mcp-tool-discovery.js";
+export * from "./mcp-tools-list-response.js";
 export * from "./repair-manager.js";
 export * from "./resource-arbitration.js";
 export * from "./job-scheduler.js";

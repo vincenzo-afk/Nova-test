@@ -24,6 +24,7 @@ export interface McpToolAdvertisement {
   readonly name: string;
   readonly description?: string;
   readonly inputSchema: Readonly<Record<string, unknown>>;
+  readonly outputSchema?: Readonly<Record<string, unknown>>;
   readonly nova?: McpToolMetadata;
 }
 
@@ -124,7 +125,9 @@ function toRegisteredTool(serverId: string, advertisement: McpToolAdvertisement)
         timeout_ms: metadata?.timeout_ms ?? DEFAULT_TIMEOUT_MS,
         idempotent: metadata?.idempotent ?? false,
         input_schema: { ...advertisement.inputSchema },
-        output_schema: { ...(metadata?.output_schema ?? { type: "object" }) },
+        output_schema: {
+          ...(advertisement.outputSchema ?? metadata?.output_schema ?? { type: "object" }),
+        },
       },
     ],
   };

@@ -16,6 +16,10 @@ describe("McpToolDiscovery", () => {
           properties: { city: { type: "string" } },
           required: ["city"],
         },
+        outputSchema: {
+          type: "object",
+          properties: { temperature: { type: "number" } },
+        },
       },
     ]);
 
@@ -44,7 +48,10 @@ describe("McpToolDiscovery", () => {
             properties: { city: { type: "string" } },
             required: ["city"],
           },
-          output_schema: { type: "object" },
+          output_schema: {
+            type: "object",
+            properties: { temperature: { type: "number" } },
+          },
         },
       ],
     });

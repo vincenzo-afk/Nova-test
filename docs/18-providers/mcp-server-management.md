@@ -73,8 +73,11 @@ Settings → MCP Servers lists every server in any of the above states,
 showing: connection health (from the same `healthCheck()` mechanism as
 any provider, per `docs/18-providers/provider-interface.md`), the tool
 list with risk tiers, and last-invoked timestamps. Normalized discovery
-results use the `<server_id>.<tool_name>` registry namespace and remain
-confirmation-required when the advertisement omits verification metadata.
+results use the `<server_id>.<tool_name>` registry namespace, carry a
+validated optional output schema, and remain confirmation-required when the
+advertisement omits verification metadata. A malformed individual
+advertisement is excluded without discarding valid tools from the same
+response.
 This is the same screen the Setup Wizard's "Add an MCP server" step writes
 into — there is no separate first-run-only path. The current runtime slice
 only validates and registers an already-retrieved advertisement; it does not
