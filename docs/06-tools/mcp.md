@@ -230,7 +230,8 @@ not retrieve or render prompt messages, treat server content as trusted
 instructions, contact a server, or bypass the Runtime Executor's permission and
 confirmation gates.
 
-The runtime prompts/get response validator requires a correlated successful
+The runtime prompts/get response validator first requires a JSON-serializable
+response envelope no larger than 128 KiB, then requires a correlated successful
 response with a bounded non-empty message list. It retains only `user` or
 `assistant` roles and bounded text, validated base64 image/audio data, safe
 resource links, or safe embedded resources as `observed: true` content. Invalid

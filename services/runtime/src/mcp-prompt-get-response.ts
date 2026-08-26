@@ -11,6 +11,7 @@ export interface McpPromptGetResult {
   readonly messages: readonly McpPromptObservedMessage[];
 }
 
+const MAX_RESPONSE_BYTES = 131_072;
 const MAX_MESSAGES = 128;
 const MAX_DESCRIPTION_LENGTH = 2_048;
 const MAX_URI_LENGTH = 2_048;
@@ -22,6 +23,10 @@ const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/
 
 export class McpPromptGetResponseValidator {
   public parse(response: unknown, expectedId: string | number): Result<McpPromptGetResult> {
+    const serialized = safeJson(response);
+    if (serialized === undefined || serialized.length > MAX_RESPONSE_BYTES) {
+      return err(this.error("MCP prompts/get response is invalid or too large."));
+    }
     if (!isRecord(response) || response.jsonrpc !== "2.0" || response.id !== expectedId) {
       return err(this.error("MCP prompts/get response correlation is invalid."));
     }
@@ -167,4 +172,13 @@ function isBoundedString(value: unknown, maxLength: number): value is string {
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeJson(value: unknown): string | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : serialized;
+  } catch {
+    return undefined;
+  }
 }

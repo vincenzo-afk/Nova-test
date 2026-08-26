@@ -111,6 +111,26 @@ describe("McpPromptGetResponseValidator", () => {
     });
   });
 
+  it("rejects an oversized JSON response before prompt normalization", () => {
+    const validator = new McpPromptGetResponseValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          messages: [{ role: "user", content: { type: "text", text: "Observed" } }],
+          ignored: "x".repeat(131_073),
+        },
+      },
+      1,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("rejects correlation, protocol, empty-validity, and oversized response failures", () => {
     const validator = new McpPromptGetResponseValidator();
 
