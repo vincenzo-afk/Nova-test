@@ -56,6 +56,16 @@ self-reported observed data and never alter security or planner behavior. This
 validator processes already-retrieved data only; it does not perform discovery,
 version negotiation, caching, transport I/O, or legacy-handshake fallback.
 
+The runtime server-discovery cache stores one bounded normalized discovery result
+per validated server. It applies the advertised positive TTL or a bounded
+default, deep-clones capabilities and metadata on write and read, replaces
+entries atomically, and returns a server-scoped miss when an entry is absent or
+expired. Duplicate versions, oversized capability data, malformed server
+metadata, invalid server IDs, and invalid cache hints fail closed without
+mutating valid state. Cache misses never trigger discovery, version negotiation,
+transport connection, health probing, or network I/O; a future connection layer
+must explicitly obtain and validate fresh discovery data.
+
 The typed tools/list request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs and an optional bounded opaque pagination cursor.
 Unknown option fields are not forwarded, and malformed or oversized cursors fail
