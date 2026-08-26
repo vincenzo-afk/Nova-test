@@ -39,6 +39,12 @@ registered tools can be deregistered by source without affecting other MCP
 servers. This boundary does not open a transport, spawn a process, or claim
 that the remote advertisement was successfully obtained.
 
+The typed tools/list request builder constructs fixed JSON-RPC 2.0 requests
+with monotonic bounded IDs and an optional bounded opaque pagination cursor.
+Unknown option fields are not forwarded, and malformed or oversized cursors fail
+closed before an ID is consumed. Building a request does not discover tools,
+contact a server, or perform transport I/O.
+
 A separate response validator accepts only a successful JSON-RPC 2.0
 `tools/list` response whose response ID matches the request ID. It bounds the
 list, cursor, and TTL values; carries `inputSchema` and optional
