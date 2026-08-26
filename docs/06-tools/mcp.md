@@ -166,6 +166,15 @@ server metadata and rejecting malformed, credential-bearing, traversal, or
 oversized values. Classification is only an observed update signal; it does not
 subscribe, refresh a resource, fetch its URI, or perform network I/O.
 
+The runtime progress-notification classifier accepts only a JSON-RPC 2.0
+`notifications/progress` notification with a bounded string or safe integer
+progress token, a finite non-negative progress value, and optional bounded total
+and human-readable message fields. It returns only those normalized fields and
+filters unknown server metadata. This is an observed-message boundary only: it
+does not verify that the token belongs to an active request, enforce increasing
+progress across notifications, track completion, maintain a stream, or perform
+network I/O.
+
 The typed subscriptions/listen request builder constructs fixed JSON-RPC 2.0
 requests with monotonic bounded IDs and an explicit notification filter. It
 accepts only supported list-change flags and bounded, unique safe resource URIs,
