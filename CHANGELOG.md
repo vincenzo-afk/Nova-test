@@ -53,6 +53,7 @@ All notable changes to Nova are documented in this file.
 - MCP tool-list cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
 - MCP prompt-list cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
 - MCP resource-list cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
+- MCP resource-template cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
 - MCP tool-list cache entries now reject listings containing more than 128 tools before cache mutation.
 - MCP tool-list cache entries now reject more than 128 rejected tool names before cache mutation.
 - MCP resource-list cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected resource URIs before cache mutation.

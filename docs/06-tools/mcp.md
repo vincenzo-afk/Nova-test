@@ -179,9 +179,10 @@ resource, subscribe to updates, or perform network I/O.
 
 The runtime resources/templates/list cache stores one bounded normalized
 resource-template listing per validated server. It applies the advertised
-positive TTL or a bounded default, deep-clones values on write and read,
-replaces listings atomically, and returns a server-scoped miss when an entry is
-absent or expired. Rejected template names must be a bounded list of at most
+positive TTL or a bounded default, deep-clones values on write and read;
+non-serializable values fail closed without mutating the existing entry; replaces
+listings atomically, and returns a server-scoped miss when an entry is absent or
+expired. Rejected template names must be a bounded list of at most
 128 non-empty metadata values, and malformed server IDs or template metadata
 fail closed without mutating a valid entry. Misses never trigger template
 discovery, expansion, autocomplete,

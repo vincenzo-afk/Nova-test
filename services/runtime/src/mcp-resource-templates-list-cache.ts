@@ -52,8 +52,12 @@ export class McpResourceTemplatesListCache {
     if (!isPositiveBoundedInteger(ttlMs)) {
       return err(this.error("MCP resource-template cache TTL is invalid."));
     }
+    const cloned = tryClone(result);
+    if (cloned === undefined) {
+      return err(this.error("MCP resource-template cache entry cannot be cloned safely."));
+    }
     this.entries.set(serverId, {
-      result: clone(result),
+      result: cloned,
       expires_at: this.now() + ttlMs,
     });
     while (this.entries.size > MAX_ENTRIES) {
@@ -71,7 +75,11 @@ export class McpResourceTemplatesListCache {
       if (entry !== undefined) this.entries.delete(serverId);
       return ok({ server_id: serverId, status: "miss" });
     }
-    return ok(clone(entry.result));
+    const cloned = tryClone(entry.result);
+    if (cloned === undefined) {
+      return err(this.error("MCP resource-template cache entry cannot be cloned safely."));
+    }
+    return ok(cloned);
   }
 
   public invalidate(serverId: string): Result<void> {
@@ -180,6 +188,11 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+function tryClone<T>(value: T): T | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : (JSON.parse(serialized) as T);
+  } catch {
+    return undefined;
+  }
 }
