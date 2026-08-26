@@ -71,5 +71,14 @@ describe("McpPromptCache", () => {
       ok: false,
       error: { code: "NOVA-CFG001" },
     });
+    expect(
+      cache.put("server-1", {
+        ...prompts,
+        rejected_prompt_names: Array.from({ length: 129 }, (_, index) => `rejected_${index}`),
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
   });
 });

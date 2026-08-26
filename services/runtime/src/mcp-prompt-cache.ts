@@ -89,7 +89,8 @@ function isPromptList(value: unknown): value is McpPromptsListResult {
     !isRecord(value) ||
     !Array.isArray(value.prompts) ||
     value.prompts.length > MAX_PROMPTS ||
-    !Array.isArray(value.rejected_prompt_names)
+    !Array.isArray(value.rejected_prompt_names) ||
+    value.rejected_prompt_names.length > MAX_PROMPTS
   ) {
     return false;
   }
