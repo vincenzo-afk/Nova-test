@@ -175,6 +175,13 @@ Classification is only an observed invalidation signal; it does not refresh a
 listing, open a transport, subscribe to updates, or perform network I/O. A future authoritative connection/cache layer must decide whether and how to
 refresh after approval and capability checks.
 
+The runtime tool-list update invalidator combines a validated
+`notifications/tools/list_changed` signal with the local tool cache and removes
+the affected server’s listing. Resource and prompt list-change signals are not
+accepted by this tool-cache boundary. Invalid notifications and invalid server
+identities fail closed without mutating cached tools; invalidation does not
+rediscover tools, refresh a listing, open a transport, or perform network I/O.
+
 The runtime resource-updated notification classifier accepts only a JSON-RPC 2.0
 `notifications/resources/updated` notification containing a safe resource URI.
 It returns only the fixed method identity and URI, discarding subscription and
