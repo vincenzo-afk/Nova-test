@@ -402,9 +402,10 @@ performs no server contact or transport I/O.
 
 The runtime health-observation boundary stores only a server identifier, one
 provider-style health state (`reachable`, `degraded`, or `down`), and a
-validated check timestamp. Servers with no observation are exposed as
-`unknown`; removing a server clears its health observation. This state is
-separate from lifecycle configuration and never includes endpoints, commands,
+canonical millisecond UTC ISO-8601 check timestamp. Servers with no observation
+are exposed as `unknown`; removing a server clears its health observation. This
+state is separate from lifecycle configuration and never includes endpoints,
+commands,
 credential references, or raw probe responses. Storage is bounded to 128
 server observations: existing servers may be updated at capacity, while a
 new server observation is rejected without mutation once the limit is reached.

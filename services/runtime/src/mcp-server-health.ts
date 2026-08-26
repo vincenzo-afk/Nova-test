@@ -73,7 +73,9 @@ function isObservedHealth(value: unknown): value is Exclude<McpServerHealth, "un
 }
 
 function isTimestamp(value: string): boolean {
-  return value.length <= 64 && !Number.isNaN(Date.parse(value));
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
 }
 
 function clone<T>(value: T): T {

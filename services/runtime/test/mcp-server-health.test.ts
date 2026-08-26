@@ -64,6 +64,18 @@ describe("McpServerHealthTracker", () => {
     });
   });
 
+  it("rejects non-canonical health timestamps", () => {
+    const tracker = new McpServerHealthTracker();
+
+    expect(tracker.record("server-1", "reachable", "2026-08-26 05:20:00")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(tracker.record("server-1", "reachable", "2026-08-26T05:20:00.000Z")).toMatchObject({
+      ok: true,
+    });
+  });
+
   it("rejects invalid observations and removes health on source removal", () => {
     const tracker = new McpServerHealthTracker();
 
