@@ -508,8 +508,10 @@ invoke a server, retry an operation, interpret request state, or replace the
 Runtime Executor's permission or confirmation gate.
 
 The runtime tools/call result boundary first requires a JSON-serializable
-JSON-RPC response envelope no larger than 32 MiB, then requires a successful
-correlated response and normalizes it into the structured tool-result contract.
+JSON-RPC response envelope no larger than 32 MiB and non-empty bounded tool and
+action identifiers of at most 256 and 128 characters respectively. It then
+requires a successful correlated response and normalizes it into the structured
+tool-result contract.
 
 The runtime MCP call-timeout wrapper requires a positive bounded timeout
 budget, races the operation against that deadline, and aborts the supplied

@@ -23,6 +23,8 @@ export type McpToolExecutionResult = Omit<ExecutionResult, "step_id"> & {
 };
 
 const MAX_RESPONSE_BYTES = 33_554_432;
+const MAX_TOOL_ID_LENGTH = 256;
+const MAX_ACTION_ID_LENGTH = 128;
 const MAX_CONTENT_BLOCKS = 128;
 const MAX_TEXT_LENGTH = 16_384;
 const MAX_STRING_LENGTH = 512;
@@ -41,8 +43,8 @@ export class McpToolCallResultValidator {
       return err(this.error("MCP tools/call response is invalid or too large."));
     }
     if (
-      toolId.trim() === "" ||
-      actionId.trim() === "" ||
+      !isNonEmptyBoundedString(toolId, MAX_TOOL_ID_LENGTH) ||
+      !isNonEmptyBoundedString(actionId, MAX_ACTION_ID_LENGTH) ||
       !isRecord(response) ||
       response.jsonrpc !== "2.0" ||
       response.id !== expectedId
@@ -179,6 +181,10 @@ function isSafeObservedUri(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyBoundedString(value: string, maxLength: number): boolean {
+  return value.trim() !== "" && value.length <= maxLength;
 }
 
 function safeJson(value: unknown): string | undefined {

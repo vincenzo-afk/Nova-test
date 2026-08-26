@@ -61,6 +61,23 @@ describe("McpToolCallResultValidator", () => {
     });
   });
 
+  it("rejects oversized tool and action identifiers before result normalization", () => {
+    const validator = new McpToolCallResultValidator();
+    const response = {
+      jsonrpc: "2.0",
+      id: 1,
+      result: { content: [{ type: "text", text: "Observed" }] },
+    };
+
+    expect(validator.parse(response, 1, `tool.${"x".repeat(256)}`, "invoke")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(
+      validator.parse(response, 1, "weather-server.get_weather", `action_${"x".repeat(128)}`),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+  });
+
   it("keeps server-reported tool failures distinct from malformed protocol responses", () => {
     const validator = new McpToolCallResultValidator();
 
