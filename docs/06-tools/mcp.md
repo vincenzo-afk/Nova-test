@@ -77,6 +77,14 @@ cache-scope metadata are bounded using the same rules as resource listings.
 This slice validates already-retrieved content only; it does not read a
 resource, fetch a URI, decode binary data, or perform network I/O.
 
+The typed resources/read request builder constructs only fixed JSON-RPC 2.0
+requests with monotonic bounded IDs, a safe resource URI, and optional cloned,
+bounded `inputResponses` and `requestState` values. Unknown option fields,
+unsafe URIs, oversized state, and malformed input responses fail closed before
+an ID is consumed. Building a request does not read a resource, expand a URI
+template, contact a server, or bypass the Runtime Executor's permission and
+confirmation gates.
+
 The runtime resources/templates/list validator preserves only bounded URI
 templates, names, display metadata, MIME types, and pagination/cache metadata.
 It rejects malformed URI templates, endpoint credentials, file-path traversal,
