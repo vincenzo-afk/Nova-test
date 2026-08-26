@@ -157,6 +157,14 @@ trigger prompt discovery, refresh, retrieval, rendering, execution, or transport
 I/O, and a future connection layer must explicitly obtain and validate fresh
 metadata.
 
+The runtime prompt-list update invalidator combines a validated
+`notifications/prompts/list_changed` signal with the local prompt cache and
+removes only the affected server’s prompt listing. Tool and resource list-change
+signals, malformed notifications, and invalid server identities fail closed
+without mutating the cache. Invalidation does not rediscover prompts, refresh a
+listing, retrieve or render prompt messages, execute a prompt, open a transport,
+or perform network I/O.
+
 The typed prompts/get request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs, safe prompt names, cloned bounded string arguments,
 and optional bounded input-response state. Unknown fields and malformed or
