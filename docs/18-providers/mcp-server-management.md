@@ -31,6 +31,19 @@ not restate or override.
   intact) but tools temporarily excluded from planning.
 - **Removed** — connection and credential reference deleted.
 
+## Configuration boundary
+
+MCP server records are stored as bounded local configuration with a unique
+`server_id`, a bounded label, one lifecycle state from the list above, and
+exactly one deterministic transport. A local server uses `transport: "stdio"`
+with a command and optional bounded argument list; a remote server uses
+`transport: "streamable-http"` with an HTTPS endpoint. HTTP is accepted only
+for loopback development endpoints. Endpoint credentials are rejected, and
+authentication may contain only a `vault://` reference. A server record cannot
+mix the local command and remote endpoint forms. Configuration validation does
+not connect to or discover a server; those remain separate approval-gated
+protocol operations.
+
 ## Management surface
 
 Settings → MCP Servers lists every server in any of the above states,

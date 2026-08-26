@@ -177,6 +177,75 @@ describe("ConfigurationStore", () => {
     expect(store.snapshot()).toEqual(before);
   });
 
+  it("accepts documented MCP server connection records with deterministic transports", () => {
+    const store = new ConfigurationStore({ initial: base() });
+    const servers = [
+      {
+        server_id: "local-files",
+        label: "Local files",
+        state: "Discovered",
+        transport: "stdio",
+        command: "node",
+        args: ["server.mjs"],
+        auth_reference: "vault://mcp/local-files",
+      },
+      {
+        server_id: "remote-search",
+        label: "Remote search",
+        state: "Pending approval",
+        transport: "streamable-http",
+        endpoint: "https://mcp.example.test/server",
+      },
+    ];
+
+    expect(store.update("mcp_servers", servers)).toMatchObject({ ok: true });
+    expect(store.snapshot().mcp_servers).toEqual(servers);
+  });
+
+  it("rejects ambiguous MCP transports, unsafe endpoints, and inline authentication values atomically", () => {
+    const store = new ConfigurationStore({ initial: base() });
+    const before = store.snapshot();
+
+    expect(
+      store.update("mcp_servers", [
+        {
+          server_id: "ambiguous",
+          label: "Ambiguous",
+          state: "Discovered",
+          transport: "stdio",
+          command: "node",
+          endpoint: "https://mcp.example.test/server",
+        },
+      ]),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+    expect(store.snapshot()).toEqual(before);
+
+    expect(
+      store.update("mcp_servers", [
+        {
+          server_id: "unsafe-url",
+          label: "Unsafe URL",
+          state: "Discovered",
+          transport: "streamable-http",
+          endpoint: "https://user:password@mcp.example.test/server",
+        },
+      ]),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+
+    expect(
+      store.update("mcp_servers", [
+        {
+          server_id: "inline-secret",
+          label: "Inline secret",
+          state: "Discovered",
+          transport: "streamable-http",
+          endpoint: "https://mcp.example.test/server",
+          auth_reference: "secret-token",
+        },
+      ]),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+  });
+
   it("accepts credential vault references but rejects inline credential values", () => {
     const store = new ConfigurationStore({ initial: base() });
 

@@ -37,6 +37,22 @@ export interface PersonalizationConfiguration {
   readonly preferences: readonly PersonalizationPreferenceRecord[];
 }
 
+export type McpServerLifecycleState =
+  "Discovered" | "Pending approval" | "Connected" | "Disabled" | "Removed";
+
+export type McpServerTransport = "stdio" | "streamable-http";
+
+export interface McpServerConfiguration {
+  readonly server_id: string;
+  readonly label: string;
+  readonly state: McpServerLifecycleState;
+  readonly transport: McpServerTransport;
+  readonly command?: string;
+  readonly args?: readonly string[];
+  readonly endpoint?: string;
+  readonly auth_reference?: string;
+}
+
 export type BargeInSensitivity = "aggressive" | "conservative";
 
 export interface VoiceConfiguration {
@@ -52,7 +68,7 @@ export interface NovaConfiguration {
   readonly devices: readonly unknown[];
   readonly channels: readonly unknown[];
   readonly plugins: readonly unknown[];
-  readonly mcp_servers: readonly unknown[];
+  readonly mcp_servers: readonly McpServerConfiguration[];
   readonly routing_policies: Readonly<Record<string, unknown>>;
   readonly permissions: Readonly<Record<string, unknown>> & {
     readonly browser_excluded_domains?: readonly string[];
@@ -220,6 +236,7 @@ export class ConfigurationStore {
       );
     if (section === "capabilities") return this.validateCapabilities(value);
     if (section === "personalization") return this.validatePersonalization(value);
+    if (section === "mcp_servers") return this.validateMcpServers(value);
     if (section === "permissions") return this.validatePermissions(value);
     if (section === "voice") return this.validateVoice(value);
     if (section === "routing_policies") {
@@ -258,16 +275,78 @@ export class ConfigurationStore {
       }
       return ok(undefined);
     }
-    if (
-      section === "channels" ||
-      section === "plugins" ||
-      section === "mcp_servers" ||
-      section === "devices"
-    ) {
+    if (section === "channels" || section === "plugins" || section === "devices") {
       if (!Array.isArray(value))
         return err(this.configError(`${section} must be an array.`, section));
     } else if (!isRecord(value)) {
       return err(this.configError(`${section} must be an object.`, section));
+    }
+    return ok(undefined);
+  }
+
+  private validateMcpServers(value: unknown): Result<void> {
+    if (!Array.isArray(value))
+      return err(this.configError("MCP servers must be an array.", "mcp_servers"));
+    const serverIds = new Set<string>();
+    for (const [index, rawServer] of value.entries()) {
+      const field = (name: string) => `mcp_servers.${index}.${name}`;
+      if (!isRecord(rawServer))
+        return err(
+          this.configError("MCP server record must be an object.", `mcp_servers.${index}`),
+        );
+      if (
+        typeof rawServer.server_id !== "string" ||
+        !/^[A-Za-z0-9_.-]{1,128}$/.test(rawServer.server_id) ||
+        serverIds.has(rawServer.server_id)
+      )
+        return err(
+          this.configError("MCP server id must be non-empty and unique.", field("server_id")),
+        );
+      serverIds.add(rawServer.server_id);
+      if (
+        typeof rawServer.label !== "string" ||
+        rawServer.label.trim().length === 0 ||
+        rawServer.label.length > 128
+      )
+        return err(
+          this.configError("MCP server label must be a bounded non-empty string.", field("label")),
+        );
+      if (!isMcpServerLifecycleState(rawServer.state))
+        return err(this.configError("MCP server lifecycle state is invalid.", field("state")));
+      if (!isMcpServerTransport(rawServer.transport))
+        return err(this.configError("MCP server transport is invalid.", field("transport")));
+      if (rawServer.auth_reference !== undefined && !isVaultReference(rawServer.auth_reference))
+        return err(
+          this.configError(
+            "MCP authentication must be a vault reference.",
+            field("auth_reference"),
+          ),
+        );
+
+      if (rawServer.transport === "stdio") {
+        if (typeof rawServer.command !== "string" || rawServer.command.trim().length === 0)
+          return err(this.configError("stdio MCP servers require a command.", field("command")));
+        if (rawServer.endpoint !== undefined)
+          return err(
+            this.configError("stdio MCP servers cannot define an endpoint.", field("endpoint")),
+          );
+        if (rawServer.args !== undefined && !isMcpArgumentList(rawServer.args))
+          return err(
+            this.configError("stdio MCP arguments must be bounded strings.", field("args")),
+          );
+      } else {
+        if (typeof rawServer.endpoint !== "string" || !isMcpEndpoint(rawServer.endpoint))
+          return err(
+            this.configError("Streamable HTTP MCP endpoint must be a safe URL.", field("endpoint")),
+          );
+        if (rawServer.command !== undefined || rawServer.args !== undefined)
+          return err(
+            this.configError(
+              "Streamable HTTP MCP servers cannot define a command.",
+              field("command"),
+            ),
+          );
+      }
     }
     return ok(undefined);
   }
@@ -518,6 +597,44 @@ function isValidBrowserDomainRule(value: string): boolean {
   return hostname
     .split(".")
     .every((label) => label.length <= 63 && !label.startsWith("-") && !label.endsWith("-"));
+}
+
+function isMcpServerLifecycleState(value: unknown): value is McpServerLifecycleState {
+  return ["Discovered", "Pending approval", "Connected", "Disabled", "Removed"].includes(
+    String(value),
+  );
+}
+
+function isMcpServerTransport(value: unknown): value is McpServerTransport {
+  return value === "stdio" || value === "streamable-http";
+}
+
+function isMcpArgumentList(value: unknown): value is readonly string[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= 64 &&
+    value.every((argument) => typeof argument === "string" && argument.length <= 256)
+  );
+}
+
+function isMcpEndpoint(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname.toLowerCase());
+    return (
+      (url.protocol === "https:" || (url.protocol === "http:" && loopback)) &&
+      url.username === "" &&
+      url.password === "" &&
+      url.hash === "" &&
+      url.hostname.length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isVaultReference(value: unknown): value is string {
+  return typeof value === "string" && /^vault:\/\/[A-Za-z0-9._/-]{1,256}$/.test(value);
 }
 
 function isRoutingPolicy(value: unknown): value is ConfiguredRoutingPolicy {
