@@ -171,10 +171,11 @@ The runtime resources/templates/list cache stores one bounded normalized
 resource-template listing per validated server. It applies the advertised
 positive TTL or a bounded default, deep-clones values on write and read,
 replaces listings atomically, and returns a server-scoped miss when an entry is
-absent or expired. Malformed server IDs or template metadata fail closed without
-mutating a valid entry; misses never trigger template discovery, expansion,
-autocomplete, resource reads, subscription, or transport I/O, and a future
-connection layer must explicitly obtain and validate fresh metadata.
+absent or expired. Rejected template names must be non-empty bounded metadata,
+and malformed server IDs or template metadata fail closed without mutating a
+valid entry. Misses never trigger template discovery, expansion, autocomplete,
+resource reads, subscription, or transport I/O, and a future connection layer
+must explicitly obtain and validate fresh metadata.
 
 The runtime resource-template list invalidator combines a validated
 `notifications/resources/list_changed` signal with the local resource-template

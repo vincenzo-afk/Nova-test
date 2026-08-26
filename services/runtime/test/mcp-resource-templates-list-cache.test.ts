@@ -75,5 +75,14 @@ describe("McpResourceTemplatesListCache", () => {
       error: { code: "NOVA-CFG001" },
     });
     expect(cache.get("server-1")).toEqual({ ok: true, value: templates });
+    expect(
+      cache.put("server-1", {
+        ...templates,
+        rejected_template_names: [""],
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
   });
 });
