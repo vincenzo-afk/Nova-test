@@ -31,6 +31,24 @@ describe("McpPromptCache", () => {
     expect(cache.get("server-2")).toEqual({ ok: true, value: prompts });
   });
 
+  it("fails closed on a non-cloneable value without mutating the existing entry", () => {
+    const cache = new McpPromptCache({ now: () => 1_000 });
+    const circularArguments: Record<string, unknown> = { name: "uri" };
+    circularArguments.self = circularArguments;
+    const nonCloneable = {
+      ...prompts,
+      prompts: [{ name: "summarize_document", arguments: [circularArguments] }],
+    } as unknown as McpPromptsListResult;
+
+    expect(cache.put("server-1", prompts)).toMatchObject({ ok: true });
+    expect(() => cache.put("server-1", nonCloneable)).not.toThrow();
+    expect(cache.put("server-1", nonCloneable)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(cache.get("server-1")).toEqual({ ok: true, value: prompts });
+  });
+
   it("expires entries at the bounded TTL and reports a scoped miss", () => {
     let now = 1_000;
     const cache = new McpPromptCache({ now: () => now });

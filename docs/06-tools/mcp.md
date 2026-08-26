@@ -211,7 +211,8 @@ as trusted planner instructions.
 
 The runtime prompt-list cache stores one bounded normalized prompt listing per
 validated server. It applies the advertised positive TTL or a bounded default,
-deep-clones values on write and read, replaces entries atomically, and returns a
+deep-clones values on write and read; non-serializable values fail closed without
+mutating the existing entry; replaces entries atomically, and returns a
 server-scoped miss when an entry is absent or expired. Rejected prompt names
 must be non-empty bounded metadata, and malformed server IDs or prompt metadata
 fail closed without mutating an existing entry. Misses never trigger prompt
