@@ -167,6 +167,12 @@ It fails closed on missing correlation, malformed filters, unsafe or duplicate
 resource URIs, and invalid values. This slice does not open, maintain, cancel,
 or reconnect a stream and does not perform network I/O.
 
+The typed `notifications/cancelled` builder constructs the JSON-RPC 2.0
+cancellation notification for a bounded string or safe integer request ID. It
+forwards no extra fields and performs no transport send, stream shutdown, or
+subscription-state mutation; an authoritative connection layer must own those
+side effects after the appropriate approval and lifecycle checks.
+
 ## Transport
 
 
