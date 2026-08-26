@@ -39,6 +39,14 @@ registered tools can be deregistered by source without affecting other MCP
 servers. This boundary does not open a transport, spawn a process, or claim
 that the remote advertisement was successfully obtained.
 
+The typed `server/discover` request builder constructs a fixed JSON-RPC 2.0
+request with a monotonic bounded ID and the required modern per-request metadata:
+a bounded protocol version, client name and version, and cloned capability
+settings. Unknown fields are not forwarded, malformed metadata fails closed before
+an ID is consumed, and the request size is bounded. This local boundary does not
+perform discovery, negotiate a version, contact a server, invoke a transport, or
+fall back to the legacy `initialize` handshake.
+
 The typed tools/list request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs and an optional bounded opaque pagination cursor.
 Unknown option fields are not forwarded, and malformed or oversized cursors fail
@@ -188,7 +196,6 @@ It fails closed on mismatched or malformed correlation and oversized payloads.
 This slice does not close or reconnect a stream and performs no transport I/O.
 
 ## Transport
-
 
 The runtime transport planner now turns a validated server record into one
 explicit transport plan without opening the connection. A `stdio` record
