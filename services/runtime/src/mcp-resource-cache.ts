@@ -49,10 +49,17 @@ export class McpResourceCache {
     }
 
     const expiresAt = this.now() + ttlMs;
-    const clonedResult = clone(result);
+    const clonedResult = tryClone(result);
+    if (clonedResult === undefined) {
+      return err(this.error("MCP resource cache entry cannot be cloned safely."));
+    }
     for (const content of result.contents) {
+      const clonedEntry = tryClone(clonedResult);
+      if (clonedEntry === undefined) {
+        return err(this.error("MCP resource cache entry cannot be cloned safely."));
+      }
       this.entries.set(cacheKey(serverId, content.uri), {
-        result: clone(clonedResult),
+        result: clonedEntry,
         expires_at: expiresAt,
       });
     }
@@ -74,7 +81,11 @@ export class McpResourceCache {
       if (entry !== undefined) this.entries.delete(key);
       return ok({ server_id: serverId, uri, status: "miss" });
     }
-    return ok(clone(entry.result));
+    const cloned = tryClone(entry.result);
+    if (cloned === undefined) {
+      return err(this.error("MCP resource cache entry cannot be cloned safely."));
+    }
+    return ok(cloned);
   }
 
   public invalidate(serverId: string, uri: string): Result<void> {
@@ -183,6 +194,11 @@ function cacheKey(serverId: string, uri: string): string {
   return `${serverId}\u0000${uri}`;
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+function tryClone<T>(value: T): T | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : (JSON.parse(serialized) as T);
+  } catch {
+    return undefined;
+  }
 }

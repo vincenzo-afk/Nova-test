@@ -26,6 +26,30 @@ describe("McpResourceCache", () => {
     expect(cache.get("server-1", resource.contents[0].uri)).toEqual({ ok: true, value: resource });
   });
 
+  it("fails closed on a non-cloneable value without mutating existing entries", () => {
+    const cache = new McpResourceCache({ now: () => 1_000 });
+    const circularContent: Record<string, unknown> = {
+      uri: "https://example.test/data",
+      text: "hello",
+    };
+    circularContent.self = circularContent;
+    const nonCloneable = {
+      ...resource,
+      contents: [circularContent],
+    } as unknown as McpResourcesReadResult;
+
+    expect(cache.put("server-1", resource)).toMatchObject({ ok: true });
+    expect(() => cache.put("server-1", nonCloneable)).not.toThrow();
+    expect(cache.put("server-1", nonCloneable)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(cache.get("server-1", resource.contents[0].uri)).toEqual({
+      ok: true,
+      value: resource,
+    });
+  });
+
   it("expires entries at TTL and invalidates only the requested server and URI", () => {
     let now = 1_000;
     const cache = new McpResourceCache({ now: () => now });

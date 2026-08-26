@@ -146,7 +146,8 @@ resource, fetch a URI, decode binary data, or perform network I/O.
 
 The runtime resource-read cache stores normalized results per validated server
 and resource URI. It applies a bounded positive TTL, deep-clones values on
-write and read, replaces all cached content for a URI atomically, and supports
+write and read; non-serializable values fail closed without mutating existing
+entries; replaces all cached content for a URI atomically, and supports
 source-and-URI-scoped invalidation. Rejected content URIs are validated with the
 same safe, credential-free, traversal-resistant URI boundary as retained
 content, with at most 128 rejected URIs, before any cache mutation. Expired or
