@@ -34,6 +34,7 @@ All notable changes to Nova are documented in this file.
 - MCP discovery now deep-clones nested input and output schemas before Tool Registry exposure, preventing caller-owned observed metadata from mutating registered tools.
 - MCP discovery now rejects non-JSON-safe or oversized tool schemas before registry mutation, with a 128 KiB serialized schema bound.
 - MCP discovery now rejects empty or oversized explicit permission scopes before Tool Registry mutation, with a 256-character bound.
+- MCP discovery now rejects lockable-resource metadata lists larger than 64 entries or containing entries over 256 characters before Tool Registry mutation.
 - MCP resource-read cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected content URIs before cache mutation.
 - MCP resource-read cache entries now reject more than 128 rejected content URIs before cache mutation.
 - MCP tool-list cache entries now reject malformed, oversized, or unsafe rejected tool names before cache mutation.

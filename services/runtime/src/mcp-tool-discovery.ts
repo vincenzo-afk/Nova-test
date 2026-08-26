@@ -32,6 +32,8 @@ const MAX_TOOLS_PER_DISCOVERY = 128;
 const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_SCHEMA_BYTES = 131_072;
 const MAX_PERMISSION_SCOPE_LENGTH = 256;
+const MAX_LOCKABLE_RESOURCES = 64;
+const MAX_LOCKABLE_RESOURCE_LENGTH = 256;
 const DEFAULT_LATENCY_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -237,7 +239,14 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
   if (value.idempotent !== undefined && typeof value.idempotent !== "boolean") return false;
   if (value.deterministic !== undefined && typeof value.deterministic !== "boolean") return false;
   if (value.output_schema !== undefined && !isRecord(value.output_schema)) return false;
-  if (value.lockable_resources !== undefined && !isStringArray(value.lockable_resources))
+  if (
+    value.lockable_resources !== undefined &&
+    !isBoundedStringArray(
+      value.lockable_resources,
+      MAX_LOCKABLE_RESOURCES,
+      MAX_LOCKABLE_RESOURCE_LENGTH,
+    )
+  )
     return false;
   if (value.dependencies !== undefined && !isStringArray(value.dependencies)) return false;
   if (value.target_entity_types !== undefined && !isStringArray(value.target_entity_types))
@@ -247,6 +256,18 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
 
 function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isBoundedStringArray(
+  value: unknown,
+  maxItems: number,
+  maxItemLength: number,
+): value is readonly string[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= maxItems &&
+    value.every((item) => typeof item === "string" && item.length <= maxItemLength)
+  );
 }
 
 function isNonnegativeInteger(value: unknown): value is number {
