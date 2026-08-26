@@ -148,6 +148,15 @@ the normalized result. Prompt descriptions and metadata remain untrusted
 observed data; this slice does not retrieve, render, execute, or treat a prompt
 as trusted planner instructions.
 
+The runtime prompt-list cache stores one bounded normalized prompt listing per
+validated server. It applies the advertised positive TTL or a bounded default,
+deep-clones values on write and read, replaces entries atomically, and returns a
+server-scoped miss when an entry is absent or expired. Malformed server IDs or
+prompt metadata fail closed without mutating an existing entry; misses never
+trigger prompt discovery, refresh, retrieval, rendering, execution, or transport
+I/O, and a future connection layer must explicitly obtain and validate fresh
+metadata.
+
 The typed prompts/get request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs, safe prompt names, cloned bounded string arguments,
 and optional bounded input-response state. Unknown fields and malformed or

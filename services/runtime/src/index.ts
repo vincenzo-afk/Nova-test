@@ -56,6 +56,7 @@ export * from "./mcp-resource-read-request.js";
 export * from "./mcp-resources-templates-list-response.js";
 export * from "./mcp-resources-templates-list-request.js";
 export * from "./mcp-prompts-list-response.js";
+export * from "./mcp-prompt-cache.js";
 export * from "./mcp-prompts-list-request.js";
 export * from "./mcp-prompt-get-request.js";
 export * from "./mcp-prompt-get-response.js";
