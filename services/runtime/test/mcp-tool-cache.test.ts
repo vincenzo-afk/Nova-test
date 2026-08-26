@@ -32,6 +32,24 @@ describe("McpToolCache", () => {
     expect(cache.get("server-1")).toEqual({ ok: true, value: tools });
   });
 
+  it("fails closed on a non-cloneable value without mutating the existing entry", () => {
+    const cache = new McpToolCache({ now: () => 1_000 });
+    const circularSchema: Record<string, unknown> = { type: "object" };
+    circularSchema.self = circularSchema;
+    const nonCloneable = {
+      ...tools,
+      tools: [{ name: "lookup", inputSchema: circularSchema }],
+    } as unknown as McpToolsListResult;
+
+    expect(cache.put("server-1", tools)).toMatchObject({ ok: true });
+    expect(() => cache.put("server-1", nonCloneable)).not.toThrow();
+    expect(cache.put("server-1", nonCloneable)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(cache.get("server-1")).toEqual({ ok: true, value: tools });
+  });
+
   it("expires cached entries at their TTL and reports a cache miss", () => {
     let now = 1_000;
     const cache = new McpToolCache({ now: () => now });

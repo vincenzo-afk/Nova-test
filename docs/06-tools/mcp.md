@@ -87,9 +87,9 @@ perform network I/O.
 The runtime tool-list cache stores one bounded normalized listing of at most
 128 tools per server. An advertised positive TTL controls expiry, with a bounded
 default when the server omits one; an entry is a miss at or after its expiry
-time. Cache reads
-and writes deep-clone normalized data, replacements are atomic, and source-scoped
-invalidation removes only the selected server's listing. Rejected tool names are
+time. Cache reads and writes deep-clone normalized data; non-serializable
+values fail closed without mutating the existing entry; replacements are atomic,
+and source-scoped invalidation removes only the selected server's listing. Rejected tool names are
 validated as a bounded list of at most 128 MCP-safe identifiers, and opaque
 pagination cursors are limited to 256 characters, before a listing can mutate
 the cache. Cache misses
