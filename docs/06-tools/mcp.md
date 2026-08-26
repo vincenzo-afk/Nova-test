@@ -135,6 +135,16 @@ fails closed. Prompt descriptions are bounded metadata, and prompt content is
 never promoted to trusted planner instructions. This slice does not retrieve,
 render, execute, or forward messages to a model, and performs no network I/O.
 
+The runtime list-changed notification classifier accepts only JSON-RPC 2.0
+notifications for `notifications/resources/list_changed` or
+`notifications/prompts/list_changed`. It returns only the affected capability
+and fixed method identity, discarding notification parameters and rejecting
+responses, malformed messages, unsupported methods, and oversized payloads.
+Classification is only an observed invalidation signal; it does not refresh a
+listing, open a transport, subscribe to updates, or perform network I/O. A
+future authoritative connection/cache layer must decide whether and how to
+refresh after approval and capability checks.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
