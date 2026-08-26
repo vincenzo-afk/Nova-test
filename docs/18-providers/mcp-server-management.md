@@ -40,9 +40,11 @@ with a command and optional bounded argument list; a remote server uses
 `transport: "streamable-http"` with an HTTPS endpoint. HTTP is accepted only
 for loopback development endpoints. Endpoint credentials are rejected, and
 authentication may contain only a `vault://` reference. A server record cannot
-mix the local command and remote endpoint forms. Configuration validation does
-not connect to or discover a server; those remain separate approval-gated
-protocol operations.
+mix the local command and remote endpoint forms. Configuration validation
+applies to initial startup records as well as later updates and imports. Invalid
+initial MCP records fail closed before the local configuration is exposed.
+Validation does not connect to or discover a server; those remain separate
+approval-gated protocol operations.
 
 ## Local lifecycle manager
 

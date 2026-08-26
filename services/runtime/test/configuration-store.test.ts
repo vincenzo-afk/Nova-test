@@ -56,6 +56,25 @@ const base = (): NovaConfiguration => ({
 });
 
 describe("ConfigurationStore", () => {
+  it("rejects invalid initial MCP server records before exposing configuration", () => {
+    const invalid = {
+      ...base(),
+      mcp_servers: [
+        {
+          server_id: "remote-search",
+          label: "Remote search",
+          state: "Discovered",
+          transport: "streamable-http",
+          endpoint: "http://remote.example.test/server",
+        },
+      ],
+    } as NovaConfiguration;
+
+    expect(() => new ConfigurationStore({ initial: invalid })).toThrow(
+      "Streamable HTTP MCP endpoint must be a safe URL.",
+    );
+  });
+
   it("starts with a versioned local-first configuration and writes valid sections atomically", () => {
     const store = new ConfigurationStore({
       initial: base(),

@@ -77,6 +77,7 @@ All notable changes to Nova are documented in this file.
 - Validated MCP configuration replacement and import can now invoke that same cleanup boundary for server IDs that disappear, preserving the authoritative configuration when cleanup fails and avoiding transport, process, stream, or network behavior.
 - MCP lifecycle-manager replacement now rejects duplicate server IDs before cleanup or lifecycle-map mutation, preserving the existing records and deterministic configuration boundary.
 - MCP lifecycle-manager construction now rejects duplicate initial server records instead of silently overwriting one configuration entry with another.
+- ConfigurationStore construction now validates initial MCP server records before exposing startup configuration, while keeping validation separate from server connection and discovery.
 - MCP `notifications/cancelled` messages can now be constructed with fixed JSON-RPC fields and bounded string or safe integer request IDs; construction performs no transport send, stream shutdown, or subscription-state mutation.
 - MCP `subscriptions/listen` completion responses can now be validated and normalized with bounded request/subscription correlation and fixed `complete` result handling; metadata is isolated, and this slice performs no stream closure, reconnection, or transport I/O.
 - MCP resource-updated notifications can now be classified with strict JSON-RPC notification checks and safe URI validation; only the method and URI are retained, and classification performs no subscription, refresh, resource fetch, or network I/O.

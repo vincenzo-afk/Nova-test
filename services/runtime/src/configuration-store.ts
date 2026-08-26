@@ -125,6 +125,8 @@ export class ConfigurationStore {
 
   public constructor(options: ConfigurationStoreOptions) {
     this.availableProviderIds = options.availableProviderIds ?? new Set<string>();
+    const mcpValidation = this.validateMcpServers(options.initial.mcp_servers);
+    if (!mcpValidation.ok) throw new Error(mcpValidation.error.message);
     this.configuration = clone(options.initial);
     this.logger = options.logger;
     this.mcpServerManager = new McpServerManager(
