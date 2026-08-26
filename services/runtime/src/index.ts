@@ -41,6 +41,7 @@ export * from "./mcp-tool-call-result.js";
 export * from "./mcp-tool-call-request.js";
 export * from "./mcp-tools-list-request.js";
 export * from "./mcp-server-discover-request.js";
+export * from "./mcp-server-discover-response.js";
 export * from "./mcp-transport-planner.js";
 export * from "./mcp-protocol-version.js";
 export * from "./mcp-server-health.js";

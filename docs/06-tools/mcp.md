@@ -47,6 +47,15 @@ an ID is consumed, and the request size is bounded. This local boundary does not
 perform discovery, negotiate a version, contact a server, invoke a transport, or
 fall back to the legacy `initialize` handshake.
 
+The runtime `server/discover` response validator accepts only a correlated
+successful JSON-RPC 2.0 result with `resultType: complete` and a bounded,
+unique supported-version list. It clones bounded capability settings, optionally
+retains server-reported name/version, instructions, and public/private cache
+hints, and discards unknown metadata. Server identity and instructions remain
+self-reported observed data and never alter security or planner behavior. This
+validator processes already-retrieved data only; it does not perform discovery,
+version negotiation, caching, transport I/O, or legacy-handshake fallback.
+
 The typed tools/list request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs and an optional bounded opaque pagination cursor.
 Unknown option fields are not forwarded, and malformed or oversized cursors fail
