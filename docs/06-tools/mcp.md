@@ -68,6 +68,15 @@ runtime registry. This slice validates already-retrieved metadata only; it
 does not read resources, fetch HTTPS content, subscribe to updates, or perform
 network I/O.
 
+The runtime resources/read validator accepts only correlated successful
+responses with a bounded non-empty content list. Each content item must have a
+safe resource URI and exactly one bounded representation: text or validated
+base64 data. Malformed or duplicate content items are filtered while valid
+observed data is retained; if none remain, the response fails closed. TTL and
+cache-scope metadata are bounded using the same rules as resource listings.
+This slice validates already-retrieved content only; it does not read a
+resource, fetch a URI, decode binary data, or perform network I/O.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
