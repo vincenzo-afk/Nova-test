@@ -86,5 +86,17 @@ describe("McpResourceCache", () => {
       ok: false,
       error: { code: "NOVA-CFG001" },
     });
+    expect(
+      cache.put("server-1", {
+        ...resource,
+        rejected_content_uris: Array.from(
+          { length: 129 },
+          (_, index) => `https://example.test/rejected/${index}`,
+        ),
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
   });
 });

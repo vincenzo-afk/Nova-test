@@ -101,6 +101,7 @@ function isResourceResult(value: unknown): value is McpResourcesReadResult {
     value.contents.length === 0 ||
     value.contents.length > MAX_CONTENTS ||
     !Array.isArray(value.rejected_content_uris) ||
+    value.rejected_content_uris.length > MAX_CONTENTS ||
     !value.rejected_content_uris.every((uri) => isSafeResourceUri(uri))
   ) {
     return false;

@@ -145,7 +145,8 @@ and resource URI. It applies a bounded positive TTL, deep-clones values on
 write and read, replaces all cached content for a URI atomically, and supports
 source-and-URI-scoped invalidation. Rejected content URIs are validated with the
 same safe, credential-free, traversal-resistant URI boundary as retained
-content before any cache mutation. Expired or missing entries return a bounded
+content, with at most 128 rejected URIs, before any cache mutation. Expired or
+missing entries return a bounded
 miss and never trigger a fetch, refresh, subscription, or transport operation;
 a future transport layer must explicitly retrieve and validate fresh content.
 
