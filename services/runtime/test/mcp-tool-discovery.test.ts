@@ -209,6 +209,34 @@ describe("McpToolDiscovery", () => {
     });
   });
 
+  it("restores the source when registry deregistration fails partway through", () => {
+    const backingRegistry = new ToolRegistry();
+    const initialDiscovery = new McpToolDiscovery(backingRegistry);
+    expect(
+      initialDiscovery.register("first", [
+        { name: "old_lookup", inputSchema: { type: "object" } },
+        { name: "new_lookup", inputSchema: { type: "object" } },
+      ]),
+    ).toMatchObject({ ok: true });
+    const failure = {
+      ok: false as const,
+      error: { code: "NOVA-TL002", message: "deregistration failed", retryable: false },
+    };
+    const failingRegistry = {
+      get: backingRegistry.get.bind(backingRegistry),
+      query: backingRegistry.query.bind(backingRegistry),
+      register: backingRegistry.register.bind(backingRegistry),
+      deregister: vi.fn((toolId: string) =>
+        toolId === "first.new_lookup" ? failure : backingRegistry.deregister(toolId),
+      ),
+    } as unknown as ToolRegistry;
+    const discovery = new McpToolDiscovery(failingRegistry);
+
+    expect(discovery.deregister("first")).toEqual(failure);
+    expect(backingRegistry.get("first.old_lookup")).toMatchObject({ ok: true });
+    expect(backingRegistry.get("first.new_lookup")).toMatchObject({ ok: true });
+  });
+
   it("deregisters all tools owned by a server without affecting another server", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);

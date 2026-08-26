@@ -80,8 +80,10 @@ overwritten.
 ## Deregistration
 
 A tool is deregistered when its source is removed (an MCP server
-disconnected, a plugin uninstalled). In-flight tasks that had already
-selected a now-deregistered tool are reported to the Planner as a failed
+disconnected, a plugin uninstalled). MCP source removal is rollback-safe: if
+one registry deletion fails after earlier entries were removed, those earlier
+entries are restored before the error is returned. In-flight tasks that had
+already selected a now-deregistered tool are reported to the Planner as a failed
 step requiring re-planning (`docs/03-runtime/planner.md`), rather than
 attempting to complete an invocation against a tool that no longer
 exists.

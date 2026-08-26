@@ -103,9 +103,14 @@ export class McpToolDiscovery {
     const query = this.registry.query({ execution_tier: "mcp" });
     if (!query.ok) return query;
     const tools = query.value.filter((tool) => tool.tool_id.startsWith(prefix));
+    const deregistered: RegisteredTool[] = [];
     for (const tool of tools) {
       const result = this.registry.deregister(tool.tool_id);
-      if (!result.ok) return result;
+      if (!result.ok) {
+        for (const previous of deregistered) this.registry.register(previous);
+        return result;
+      }
+      deregistered.push(tool);
     }
     return ok(undefined);
   }
