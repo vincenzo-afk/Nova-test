@@ -202,6 +202,14 @@ expose credentials, open a URL, obtain consent, validate submitted content, or
 perform network I/O. A future interaction owner must provide explicit user review,
 decline/cancel controls, and secure URL navigation.
 
+The runtime elicitation-response validator accepts only an `accept`, `decline`,
+or `cancel` action with optional bounded object content and clones that content
+before returning it. It preserves explicit user-action semantics but does not
+validate content against a request schema, submit a response, grant consent,
+navigate to a URL, expose secrets, or perform network I/O. A future interaction
+owner must apply the requested form or URL policy and associate responses with
+the originating operation.
+
 The typed subscriptions/listen request builder constructs fixed JSON-RPC 2.0
 requests with monotonic bounded IDs and an explicit notification filter. It
 accepts only supported list-change flags and bounded, unique safe resource URIs,

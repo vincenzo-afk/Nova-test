@@ -66,6 +66,7 @@ export * from "./mcp-subscription-acknowledged.js";
 export * from "./mcp-subscription-cancel-notification.js";
 export * from "./mcp-cancellation-notification.js";
 export * from "./mcp-elicitation-request.js";
+export * from "./mcp-elicitation-response.js";
 export * from "./mcp-subscriptions-listen-complete-response.js";
 export * from "./repair-manager.js";
 export * from "./resource-arbitration.js";
