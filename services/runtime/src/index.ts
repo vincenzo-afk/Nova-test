@@ -58,6 +58,7 @@ export * from "./mcp-resource-list-update-invalidator.js";
 export * from "./mcp-resource-read-request.js";
 export * from "./mcp-resources-templates-list-response.js";
 export * from "./mcp-resource-templates-list-cache.js";
+export * from "./mcp-resource-templates-list-update-invalidator.js";
 export * from "./mcp-resources-templates-list-request.js";
 export * from "./mcp-prompts-list-response.js";
 export * from "./mcp-prompt-cache.js";

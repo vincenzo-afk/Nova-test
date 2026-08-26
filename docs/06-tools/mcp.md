@@ -171,6 +171,14 @@ mutating a valid entry; misses never trigger template discovery, expansion,
 autocomplete, resource reads, subscription, or transport I/O, and a future
 connection layer must explicitly obtain and validate fresh metadata.
 
+The runtime resource-template list invalidator combines a validated
+`notifications/resources/list_changed` signal with the local resource-template
+cache and removes only the affected server’s template listing. Tool and prompt
+list-change signals, malformed notifications, and invalid server identities fail
+closed without mutating the cache. Invalidation does not rediscover templates,
+expand variables, autocomplete arguments, read or fetch a resource, open a
+subscription, contact a transport, or perform network I/O.
+
 The typed prompts/list request builder constructs fixed JSON-RPC 2.0 requests
 with monotonic bounded IDs and an optional bounded opaque pagination cursor.
 Unknown option fields are not forwarded, and malformed or oversized cursors fail
