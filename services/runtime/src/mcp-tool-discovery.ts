@@ -31,6 +31,7 @@ export interface McpToolAdvertisement {
 const MAX_TOOLS_PER_DISCOVERY = 128;
 const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_SCHEMA_BYTES = 131_072;
+const MAX_PERMISSION_SCOPE_LENGTH = 256;
 const DEFAULT_LATENCY_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -219,7 +220,10 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
     )
   )
     return false;
-  if (value.permission_scope !== undefined && typeof value.permission_scope !== "string")
+  if (
+    value.permission_scope !== undefined &&
+    !isNonEmptyBoundedString(value.permission_scope, MAX_PERMISSION_SCOPE_LENGTH)
+  )
     return false;
   if (value.output_schema !== undefined && !isBoundedSchema(value.output_schema)) return false;
   if (value.estimated_latency_ms !== undefined && !isNonnegativeInteger(value.estimated_latency_ms))
@@ -247,6 +251,10 @@ function isStringArray(value: unknown): value is readonly string[] {
 
 function isNonnegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isNonEmptyBoundedString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= maxLength;
 }
 
 function isPositiveInteger(value: unknown): value is number {

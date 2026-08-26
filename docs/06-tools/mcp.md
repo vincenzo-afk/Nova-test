@@ -406,8 +406,9 @@ not establish a server connection.
 
 The runtime MCP tool-discovery boundary registers an already validated
 advertisement batch into the Tool Registry only as a batch. Input and output
-schemas must be JSON-safe objects whose serialized size is at most 128 KiB;
-malformed or oversized schemas fail closed before registry mutation. Nested
+schemas must be JSON-safe objects whose serialized size is at most 128 KiB, and
+explicit permission scopes must be non-empty strings of at most 256 characters;
+malformed or oversized metadata fails closed before registry mutation. Nested
 schemas are deep-cloned before exposure so caller-owned observed data cannot
 mutate registered metadata. If a later registry registration fails,
 entries registered earlier in that batch are removed before the failure is

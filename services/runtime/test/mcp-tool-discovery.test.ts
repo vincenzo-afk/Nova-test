@@ -126,6 +126,28 @@ describe("McpToolDiscovery", () => {
     });
   });
 
+  it("rejects an oversized permission scope before registry exposure", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+
+    const result = discovery.register("weather-server", [
+      {
+        name: "inspect",
+        inputSchema: { type: "object" },
+        nova: { permission_scope: "x".repeat(257) },
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(registry.get("weather-server.inspect")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
   it("rejects invalid execution metadata atomically before registry exposure", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);
