@@ -87,7 +87,8 @@ function isToolList(value: unknown): value is McpToolsListResult {
     !isRecord(value) ||
     !Array.isArray(value.tools) ||
     value.tools.length > MAX_TOOLS ||
-    !Array.isArray(value.rejected_tool_names)
+    !Array.isArray(value.rejected_tool_names) ||
+    value.rejected_tool_names.length > MAX_TOOLS
   ) {
     return false;
   }
