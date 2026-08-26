@@ -97,7 +97,7 @@ function isResourceList(value: unknown): value is McpResourcesListResult {
   ) {
     return false;
   }
-  if (!value.rejected_resource_uris.every((uri) => isBoundedString(uri, MAX_URI_LENGTH))) {
+  if (!value.rejected_resource_uris.every((uri) => isSafeResourceUri(uri))) {
     return false;
   }
   const uris = new Set<string>();
