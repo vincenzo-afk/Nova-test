@@ -34,6 +34,31 @@ describe("McpToolListUpdateInvalidator", () => {
     expect(cache.get("server-2")).toEqual({ ok: true, value: tools });
   });
 
+  it("fails closed on a non-string server ID without throwing or invalidating cache state", () => {
+    const cache = new McpToolCache({ now: () => 1_000 });
+    const invalidator = new McpToolListUpdateInvalidator(cache);
+    cache.put("server-1", tools);
+    const invalidServerId = {
+      toString(): string {
+        throw new Error("toString should not run for an untrusted server ID");
+      },
+    } as unknown as string;
+
+    expect(() =>
+      invalidator.apply(invalidServerId, {
+        jsonrpc: "2.0",
+        method: "notifications/tools/list_changed",
+      }),
+    ).not.toThrow();
+    expect(
+      invalidator.apply(invalidServerId, {
+        jsonrpc: "2.0",
+        method: "notifications/tools/list_changed",
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+    expect(cache.get("server-1")).toEqual({ ok: true, value: tools });
+  });
+
   it("rejects malformed notifications and server IDs without mutating the cache", () => {
     const cache = new McpToolCache({ now: () => 1_000 });
     const invalidator = new McpToolListUpdateInvalidator(cache);

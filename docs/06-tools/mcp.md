@@ -262,8 +262,9 @@ refresh after approval and capability checks.
 The runtime tool-list update invalidator combines a validated
 `notifications/tools/list_changed` signal with the local tool cache and removes
 the affected server’s listing. Resource and prompt list-change signals are not
-accepted by this tool-cache boundary. Invalid notifications and invalid server
-identities fail closed without mutating cached tools; invalidation does not
+accepted by this tool-cache boundary. Non-string or otherwise invalid server
+identities and invalid notifications fail closed without mutating cached tools;
+invalidation does not
 rediscover tools, refresh a listing, open a transport, or perform network I/O.
 
 The runtime resource-updated notification classifier accepts only a JSON-RPC 2.0

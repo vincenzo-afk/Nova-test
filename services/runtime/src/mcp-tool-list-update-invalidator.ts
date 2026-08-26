@@ -16,7 +16,7 @@ export class McpToolListUpdateInvalidator {
   public constructor(private readonly cache: McpToolCache) {}
 
   public apply(serverId: string, value: unknown): Result<McpToolListInvalidation> {
-    if (!SERVER_ID_PATTERN.test(serverId)) {
+    if (!isServerId(serverId)) {
       return err(this.error("MCP tool list update server id is invalid."));
     }
     const notification = this.classifier.parse(value);
@@ -33,4 +33,8 @@ export class McpToolListUpdateInvalidator {
   private error(message: string): ErrorInfo {
     return { code: "NOVA-CFG001", message, retryable: false };
   }
+}
+
+function isServerId(value: unknown): value is string {
+  return typeof value === "string" && SERVER_ID_PATTERN.test(value);
 }
