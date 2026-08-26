@@ -74,13 +74,14 @@ contact a server, or perform transport I/O.
 
 A separate response validator accepts only a successful JSON-RPC 2.0
 `tools/list` response whose response ID matches the request ID. It bounds the
-list, cursor, and TTL values; carries `inputSchema` and optional
-`outputSchema` forward; and ignores presentation-only fields such as titles
-and icons. A malformed individual tool is excluded while valid tools in the
-same response remain available, with only bounded rejected names reported to
-the caller. A malformed response-level result or a JSON-RPC error is rejected
-as a tool-contract failure. The validator returns normalized data for the
-registry adapter and does not perform network I/O.
+list, cursor, and TTL values; requires input and optional output schemas to be
+JSON-safe objects serialized to at most 128 KiB; carries valid schemas forward;
+and ignores presentation-only fields such as titles and icons. A malformed
+individual tool is excluded while valid tools in the same response remain
+available, with only bounded rejected names reported to the caller. A malformed
+response-level result or a JSON-RPC error is rejected as a tool-contract failure.
+The validator returns normalized data for the registry adapter and does not
+perform network I/O.
 
 The runtime tool-list cache stores one bounded normalized listing per server.
 An advertised positive TTL controls expiry, with a bounded default when the

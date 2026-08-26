@@ -14,6 +14,7 @@ const MAX_TOOL_NAME_LENGTH = 128;
 const MAX_DESCRIPTION_LENGTH = 2_048;
 const MAX_CURSOR_LENGTH = 256;
 const MAX_TTL_MS = 86_400_000;
+const MAX_SCHEMA_BYTES = 131_072;
 const VALID_SCHEMA_TYPES = new Set([
   "array",
   "boolean",
@@ -71,6 +72,7 @@ function parseTool(value: unknown): Result<McpToolAdvertisement> {
     value.name.length === 0 ||
     value.name.length > MAX_TOOL_NAME_LENGTH ||
     !/^[A-Za-z0-9_.-]+$/.test(value.name) ||
+    !isBoundedSchema(value.inputSchema) ||
     !isJsonSchema(value.inputSchema)
   ) {
     return err(invalidAdvertisement());
@@ -79,7 +81,10 @@ function parseTool(value: unknown): Result<McpToolAdvertisement> {
     if (typeof value.description !== "string" || value.description.length > MAX_DESCRIPTION_LENGTH)
       return err(invalidAdvertisement());
   }
-  if (value.outputSchema !== undefined && !isJsonSchema(value.outputSchema)) {
+  if (
+    value.outputSchema !== undefined &&
+    (!isBoundedSchema(value.outputSchema) || !isJsonSchema(value.outputSchema))
+  ) {
     return err(invalidAdvertisement());
   }
   return ok({
@@ -117,6 +122,16 @@ function parsePagination(
     ...(result.ttlMs === undefined ? {} : { ttl_ms: result.ttlMs }),
     ...(result.cacheScope === undefined ? {} : { cache_scope: result.cacheScope }),
   });
+}
+
+function isBoundedSchema(value: unknown): value is Readonly<Record<string, unknown>> {
+  if (!isRecord(value)) return false;
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized !== undefined && serialized.length <= MAX_SCHEMA_BYTES;
+  } catch {
+    return false;
+  }
 }
 
 function isJsonSchema(value: unknown): value is Readonly<Record<string, unknown>> {

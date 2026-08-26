@@ -79,6 +79,30 @@ describe("McpToolsListResponseValidator", () => {
     ).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
   });
 
+  it("rejects an oversized JSON schema before response normalization", () => {
+    const validator = new McpToolsListResponseValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          tools: [
+            {
+              name: "large_schema",
+              inputSchema: { type: "object", description: "x".repeat(131_073) },
+            },
+          ],
+        },
+      },
+      1,
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: { tools: [], rejected_tool_names: ["large_schema"] },
+    });
+  });
+
   it("filters malformed tools while retaining valid tools and bounded rejection names", () => {
     const validator = new McpToolsListResponseValidator();
 
