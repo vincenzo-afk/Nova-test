@@ -316,6 +316,14 @@ It fails closed on missing correlation, malformed filters, unsafe or duplicate
 resource URIs, and invalid values. This slice does not open, maintain, cancel,
 or reconnect a stream and does not perform network I/O.
 
+The runtime subscription-filter negotiator accepts an already validated local
+request filter and acknowledgment, returns only the acknowledged subset that
+was explicitly requested, clones resource subscriptions, and rejects
+unrequested event flags or resource URIs. Malformed filters and acknowledgments
+fail closed. This boundary performs no subscription, stream maintenance,
+cancellation, reconnection, transport send, or network I/O; an authoritative
+connection layer must own those effects after approval and capability checks.
+
 The typed `notifications/cancelled` builder constructs the JSON-RPC 2.0
 cancellation notification for a bounded string or safe integer request ID. It
 forwards no extra fields and performs no transport send, stream shutdown, or
