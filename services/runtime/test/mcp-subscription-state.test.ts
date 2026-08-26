@@ -68,6 +68,31 @@ describe("McpSubscriptionState", () => {
     });
   });
 
+  it("removes only the matching server-scoped subscription on validated cancellation", () => {
+    const state = new McpSubscriptionState();
+    state.register("server-1", negotiated);
+    state.register("server-2", negotiated);
+
+    expect(
+      state.cancel("server-1", {
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: "sub-1", reason: "user stopped listening" },
+      }),
+    ).toEqual({
+      ok: true,
+      value: { server_id: "server-1", subscription_id: "sub-1", status: "cancelled" },
+    });
+    expect(state.get("server-1", "sub-1")).toEqual({
+      ok: true,
+      value: { server_id: "server-1", status: "miss" },
+    });
+    expect(state.get("server-2", "sub-1")).toMatchObject({
+      ok: true,
+      value: { subscription_id: "sub-1" },
+    });
+  });
+
   it("rejects malformed or unknown completions without mutating active state", () => {
     const state = new McpSubscriptionState();
     state.register("server-1", negotiated);
@@ -96,6 +121,17 @@ describe("McpSubscriptionState", () => {
         },
       }),
     ).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(state.get("server-1", "sub-1")).toMatchObject({
+      ok: true,
+      value: { subscription_id: "sub-1" },
+    });
+    expect(
+      state.cancel("server-1", {
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: "other" },
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
     expect(state.get("server-1", "sub-1")).toMatchObject({
       ok: true,
       value: { subscription_id: "sub-1" },

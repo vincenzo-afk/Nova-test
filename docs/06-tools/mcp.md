@@ -340,10 +340,12 @@ This slice does not close or reconnect a stream and performs no transport I/O.
 The runtime subscription-state registry stores bounded negotiated subscription
 records by validated server and subscription ID, deep-clones notification
 filters on registration and lookup, and removes only an active server-scoped
-record after a validated matching completion response. Unknown completions,
-malformed records, invalid IDs, and invalid server identities fail closed
-without mutating active state. This local ledger does not open or close streams,
-send cancellation, reconnect, contact a transport, or perform network I/O.
+record after a validated matching completion response. A validated inbound
+`notifications/cancelled` message can likewise remove only its matching active
+server-scoped record. Unknown completions or cancellations, malformed records,
+invalid IDs, and invalid server identities fail closed without mutating active
+state. This local ledger does not open or close streams, send cancellation,
+reconnect, contact a transport, or perform network I/O.
 
 ## Transport
 

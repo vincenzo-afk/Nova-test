@@ -1,6 +1,7 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 import type { McpSubscriptionAcknowledgedNotifications } from "./mcp-subscription-acknowledged.js";
 import type { McpNegotiatedSubscription } from "./mcp-subscription-filter-negotiator.js";
+import { McpCancellationNotificationClassifier } from "./mcp-cancellation-notification.js";
 import { McpSubscriptionsListenCompleteResponseValidator } from "./mcp-subscriptions-listen-complete-response.js";
 
 export interface McpSubscriptionRecord {
@@ -20,6 +21,12 @@ export interface McpSubscriptionCompleted {
   readonly status: "completed";
 }
 
+export interface McpSubscriptionCancelled {
+  readonly server_id: string;
+  readonly subscription_id: string | number;
+  readonly status: "cancelled";
+}
+
 type SubscriptionLookup = McpSubscriptionRecord | McpSubscriptionStateMiss;
 
 const MAX_ENTRIES = 128;
@@ -31,6 +38,7 @@ const SERVER_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
 export class McpSubscriptionState {
   private readonly entries = new Map<string, McpSubscriptionRecord>();
   private readonly completionValidator = new McpSubscriptionsListenCompleteResponseValidator();
+  private readonly cancellationClassifier = new McpCancellationNotificationClassifier();
 
   public register(serverId: string, subscription: McpNegotiatedSubscription): Result<void> {
     if (!isServerId(serverId) || !isSubscription(subscription)) {
@@ -56,6 +64,26 @@ export class McpSubscriptionState {
     }
     const record = this.entries.get(key(serverId, subscriptionId));
     return record === undefined ? ok({ server_id: serverId, status: "miss" }) : ok(clone(record));
+  }
+
+  public cancel(serverId: string, value: unknown): Result<McpSubscriptionCancelled> {
+    if (!isServerId(serverId)) {
+      return err(this.error("MCP subscription cancellation server id is invalid."));
+    }
+    const cancellation = this.cancellationClassifier.parse(value);
+    if (!cancellation.ok) return cancellation;
+    const subscriptionKey = key(serverId, cancellation.value.request_id);
+    if (!this.entries.has(subscriptionKey)) {
+      return err(
+        this.error("MCP subscription cancellation is not associated with an active subscription."),
+      );
+    }
+    this.entries.delete(subscriptionKey);
+    return ok({
+      server_id: serverId,
+      subscription_id: cancellation.value.request_id,
+      status: "cancelled",
+    });
   }
 
   public complete(serverId: string, value: unknown): Result<McpSubscriptionCompleted> {
