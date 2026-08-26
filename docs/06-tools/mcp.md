@@ -58,6 +58,16 @@ misses do not trigger a probe or an implicit retry; a future transport layer
 must explicitly refresh the listing and then pass it through the validator
 again.
 
+The runtime resources/list validator applies the same correlated JSON-RPC
+boundary to resource advertisements. It preserves only bounded URI, name,
+description, MIME type, and size metadata; rejects endpoint credentials,
+file-path traversal, malformed pagination, and duplicate URI entries; and
+filters malformed individual resources while retaining valid entries. Icons,
+annotations, and other presentation-only fields are not forwarded to the
+runtime registry. This slice validates already-retrieved metadata only; it
+does not read resources, fetch HTTPS content, subscribe to updates, or perform
+network I/O.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
