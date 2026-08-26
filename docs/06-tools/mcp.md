@@ -97,6 +97,15 @@ runtime registry. This slice validates already-retrieved metadata only; it
 does not read resources, fetch HTTPS content, subscribe to updates, or perform
 network I/O.
 
+The runtime resource-list cache stores one bounded normalized resource listing
+per validated server. It applies the advertised positive TTL or a bounded
+default, deep-clones values on write and read, replaces listings atomically, and
+returns a server-scoped miss when an entry is absent or expired. Malformed
+server IDs or resource metadata fail closed without mutating a valid entry;
+misses never trigger resource discovery, refresh, reads, URI fetches,
+subscription, or transport I/O, and a future connection layer must explicitly
+obtain and validate fresh metadata.
+
 The runtime resources/read validator accepts only correlated successful
 responses with a bounded non-empty content list. Each content item must have a
 safe resource URI and exactly one bounded representation: text or validated
