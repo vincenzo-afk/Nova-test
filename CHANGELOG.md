@@ -58,6 +58,7 @@ All notable changes to Nova are documented in this file.
 - MCP server lifecycle management now fails closed on non-serializable records without mutating configured state.
 - MCP subscription state now fails closed on non-serializable notification filters without mutating active entries.
 - MCP subscription registration now rejects unknown notification-filter fields before active-state mutation.
+- MCP subscriptions/listen requests now reject unknown notification-filter fields before request-ID allocation.
 - MCP tool-list cache entries now reject listings containing more than 128 tools before cache mutation.
 - MCP tool-list cache entries now reject more than 128 rejected tool names before cache mutation.
 - MCP resource-list cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected resource URIs before cache mutation.

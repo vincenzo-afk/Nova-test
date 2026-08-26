@@ -49,6 +49,21 @@ describe("McpSubscriptionsListenRequestBuilder", () => {
     });
   });
 
+  it("rejects unknown filter fields before consuming an ID", () => {
+    const builder = new McpSubscriptionsListenRequestBuilder();
+
+    expect(builder.create({ toolsListChanged: true, observedMetadata: "untrusted" })).toMatchObject(
+      {
+        ok: false,
+        error: { code: "NOVA-TL002" },
+      },
+    );
+    expect(builder.create({ toolsListChanged: true })).toMatchObject({
+      ok: true,
+      value: { id: 1 },
+    });
+  });
+
   it("rejects empty filters, unsafe or duplicate URIs, invalid flags, and oversized values before consuming an ID", () => {
     const builder = new McpSubscriptionsListenRequestBuilder();
 

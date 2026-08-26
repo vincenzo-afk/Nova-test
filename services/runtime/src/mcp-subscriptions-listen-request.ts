@@ -36,6 +36,16 @@ export class McpSubscriptionsListenRequestBuilder {
     if (filterKeys.length === 0 || filterKeys.length > MAX_FILTER_KEYS) {
       return err(this.error("MCP subscriptions/listen filter must request an event type."));
     }
+    for (const key of filterKeys) {
+      if (
+        key !== "toolsListChanged" &&
+        key !== "promptsListChanged" &&
+        key !== "resourcesListChanged" &&
+        key !== "resourceSubscriptions"
+      ) {
+        return err(this.error("MCP subscriptions/listen filter contains an unknown field."));
+      }
+    }
 
     const notifications: McpSubscriptionsListenFilter = {};
     for (const key of ["toolsListChanged", "promptsListChanged", "resourcesListChanged"] as const) {

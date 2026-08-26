@@ -334,8 +334,8 @@ interpret request state, or perform network I/O.
 The typed subscriptions/listen request builder constructs fixed JSON-RPC 2.0
 requests with monotonic bounded IDs and an explicit notification filter. It
 accepts only supported list-change flags and bounded, unique safe resource URIs,
-rejects empty filters and malformed values before consuming an ID, and clones
-resource-subscription data. Request construction does not open a long-lived
+rejects unknown fields, empty filters, and malformed values before consuming an
+ID, and clones resource-subscription data. Request construction does not open a long-lived
 stream, subscribe a server, contact a transport, or bypass approval and
 capability checks.
 
