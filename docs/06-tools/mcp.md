@@ -201,10 +201,11 @@ as trusted planner instructions.
 The runtime prompt-list cache stores one bounded normalized prompt listing per
 validated server. It applies the advertised positive TTL or a bounded default,
 deep-clones values on write and read, replaces entries atomically, and returns a
-server-scoped miss when an entry is absent or expired. Malformed server IDs or
-prompt metadata fail closed without mutating an existing entry; misses never
-trigger prompt discovery, refresh, retrieval, rendering, execution, or transport
-I/O, and a future connection layer must explicitly obtain and validate fresh
+server-scoped miss when an entry is absent or expired. Rejected prompt names
+must be non-empty bounded metadata, and malformed server IDs or prompt metadata
+fail closed without mutating an existing entry. Misses never trigger prompt
+discovery, refresh, retrieval, rendering, execution, or transport I/O, and a
+future connection layer must explicitly obtain and validate fresh
 metadata.
 
 The runtime prompt-list update invalidator combines a validated

@@ -93,7 +93,9 @@ function isPromptList(value: unknown): value is McpPromptsListResult {
   ) {
     return false;
   }
-  if (!value.rejected_prompt_names.every((name) => isBoundedString(name, MAX_NAME_LENGTH))) {
+  if (
+    !value.rejected_prompt_names.every((name) => isNonEmptyBoundedString(name, MAX_NAME_LENGTH))
+  ) {
     return false;
   }
   const names = new Set<string>();
@@ -152,6 +154,10 @@ function isIdentifier(value: unknown): value is string {
 
 function isBoundedString(value: unknown, maxLength: number): value is string {
   return typeof value === "string" && value.length <= maxLength;
+}
+
+function isNonEmptyBoundedString(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= maxLength;
 }
 
 function isPositiveBoundedInteger(value: unknown): value is number {

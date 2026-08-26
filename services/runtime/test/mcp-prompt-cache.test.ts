@@ -62,5 +62,14 @@ describe("McpPromptCache", () => {
       error: { code: "NOVA-CFG001" },
     });
     expect(cache.get("server-1")).toEqual({ ok: true, value: prompts });
+    expect(
+      cache.put("server-1", {
+        ...prompts,
+        rejected_prompt_names: [""],
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
   });
 });
