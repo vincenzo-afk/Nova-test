@@ -69,6 +69,32 @@ export async function executeWindowsServiceRegistrationPlan(
   return plan;
 }
 
+export function createWindowsServiceRemovalPlan({ platform, serviceName }) {
+  if (platform !== "win32") {
+    throw new Error("Windows service removal requires win32");
+  }
+  if (!/^[A-Za-z0-9_.-]{1,128}$/.test(serviceName)) {
+    throw new Error("Windows service name is invalid");
+  }
+  return {
+    serviceName,
+    commands: [["delete", serviceName]],
+  };
+}
+
+export async function executeWindowsServiceRemovalPlan(
+  plan,
+  { confirmed, runCommand = runSc } = {},
+) {
+  if (confirmed !== true) {
+    throw new Error("NOVA-SEC001: Removing the Windows service requires explicit confirmation.");
+  }
+  for (const command of plan.commands) {
+    await runCommand(command, { cwd: process.cwd() });
+  }
+  return plan;
+}
+
 async function promptForPassword(serviceAccount) {
   const readline = createInterface({ input: process.stdin, output: process.stderr });
   try {
@@ -87,12 +113,37 @@ function quoteWindowsArgument(value) {
   return `"${value.replace(/"/g, '\\"')}"`;
 }
 
+async function promptForServiceRemovalConfirmation(serviceName) {
+  const readline = createInterface({ input: process.stdin, output: process.stderr });
+  try {
+    const answer = await readline.question(
+      `Type REMOVE ${serviceName} to unregister the Windows service: `,
+    );
+    return answer === `REMOVE ${serviceName}`;
+  } finally {
+    readline.close();
+  }
+}
+
 const isMain =
   process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   if (process.platform !== "win32") {
-    process.stderr.write("Windows service registration must be run on Windows.\n");
+    process.stderr.write("Windows service registration or removal must be run on Windows.\n");
     process.exitCode = 1;
+  } else if (process.argv.includes("--remove")) {
+    const serviceName = process.env.NOVA_SERVICE_NAME ?? "NovaHost";
+    const plan = createWindowsServiceRemovalPlan({
+      platform: process.platform,
+      serviceName,
+    });
+    promptForServiceRemovalConfirmation(serviceName)
+      .then((confirmed) => executeWindowsServiceRemovalPlan(plan, { confirmed }))
+      .then(() => process.stdout.write(`Unregistered ${plan.serviceName}.\n`))
+      .catch((error) => {
+        process.stderr.write(`${error instanceof Error ? error.message : error}\n`);
+        process.exitCode = 1;
+      });
   } else {
     const hostExecutablePath = process.env.NOVA_HOST_EXECUTABLE;
     const serviceAccount = process.env.NOVA_SERVICE_ACCOUNT;

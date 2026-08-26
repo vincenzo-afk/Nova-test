@@ -15,6 +15,7 @@
     "prepare:memory-test": "node scripts/prepare-memory-test.mjs",
     "install:windows": "node scripts/install-windows.mjs",
     "register:windows-service": "node scripts/windows-service.mjs",
+    "unregister:windows-service": "node scripts/windows-service.mjs --remove",
     "register:windows-browser-host": "node scripts/windows-browser-native-host.mjs",
     "package:windows": "pnpm --filter @nova/desktop package:win",
     "test": "pnpm --filter @nova/shared build && pnpm prepare:memory-test && pnpm --filter @nova/memory build && vitest run",
