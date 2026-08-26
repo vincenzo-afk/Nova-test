@@ -77,6 +77,13 @@ cache-scope metadata are bounded using the same rules as resource listings.
 This slice validates already-retrieved content only; it does not read a
 resource, fetch a URI, decode binary data, or perform network I/O.
 
+The runtime prompts/list validator preserves only bounded prompt names, display
+metadata, and argument descriptors. It filters malformed or duplicate prompts,
+rejects malformed pagination, and omits prompt messages or other content from
+the normalized result. Prompt descriptions and metadata remain untrusted
+observed data; this slice does not retrieve, render, execute, or treat a prompt
+as trusted planner instructions.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
