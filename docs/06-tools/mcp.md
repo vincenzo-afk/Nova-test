@@ -159,6 +159,14 @@ resource-subscription data. Request construction does not open a long-lived
 stream, subscribe a server, contact a transport, or bypass approval and
 capability checks.
 
+The runtime subscription acknowledgment validator accepts only the correlated
+`notifications/subscriptions/acknowledged` JSON-RPC notification. It retains a
+bounded subscription ID and the server's supported subset of list-change flags
+or safe resource URIs, while discarding other `_meta` and notification fields.
+It fails closed on missing correlation, malformed filters, unsafe or duplicate
+resource URIs, and invalid values. This slice does not open, maintain, cancel,
+or reconnect a stream and does not perform network I/O.
+
 ## Transport
 
 
