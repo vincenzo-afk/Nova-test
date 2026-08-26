@@ -79,5 +79,17 @@ describe("McpToolCache", () => {
       ok: false,
       error: { code: "NOVA-CFG001" },
     });
+    expect(
+      cache.put("server-1", {
+        ...tools,
+        tools: Array.from({ length: 129 }, (_, index) => ({
+          name: `tool_${index}`,
+          inputSchema: { type: "object" },
+        })),
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
   });
 });

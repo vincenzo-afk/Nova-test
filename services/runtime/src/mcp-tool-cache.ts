@@ -19,6 +19,7 @@ interface CacheEntry {
 }
 
 const MAX_ENTRIES = 128;
+const MAX_TOOLS = 128;
 const MAX_TTL_MS = 86_400_000;
 const DEFAULT_TTL_MS = 300_000;
 const MAX_TOOL_NAME_LENGTH = 128;
@@ -85,6 +86,7 @@ function isToolList(value: unknown): value is McpToolsListResult {
   if (
     !isRecord(value) ||
     !Array.isArray(value.tools) ||
+    value.tools.length > MAX_TOOLS ||
     !Array.isArray(value.rejected_tool_names)
   ) {
     return false;
