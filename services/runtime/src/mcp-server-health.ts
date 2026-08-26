@@ -62,9 +62,12 @@ export class McpServerHealthTracker {
   }
 }
 
-function isServerId(value: string): boolean {
+function isServerId(value: unknown): value is string {
   return (
-    value.length > 0 && value.length <= MAX_SERVER_ID_LENGTH && /^[A-Za-z0-9_.-]+$/.test(value)
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_SERVER_ID_LENGTH &&
+    /^[A-Za-z0-9_.-]+$/.test(value)
   );
 }
 

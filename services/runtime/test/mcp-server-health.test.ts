@@ -55,6 +55,33 @@ describe("McpServerHealthTracker", () => {
     });
   });
 
+  it("fails closed on non-string server IDs without throwing", () => {
+    const tracker = new McpServerHealthTracker();
+    const invalidServerId = {
+      get length(): number {
+        throw new Error("length should not be read from an untrusted server ID");
+      },
+    } as unknown as string;
+
+    expect(() =>
+      tracker.record(invalidServerId, "reachable", "2026-08-26T05:20:00.000Z"),
+    ).not.toThrow();
+    expect(tracker.record(invalidServerId, "reachable", "2026-08-26T05:20:00.000Z")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => tracker.get(invalidServerId)).not.toThrow();
+    expect(tracker.get(invalidServerId)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(() => tracker.remove(invalidServerId)).not.toThrow();
+    expect(tracker.remove(invalidServerId)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+  });
+
   it("returns bounded unknown health for unobserved servers", () => {
     const tracker = new McpServerHealthTracker();
 
