@@ -66,6 +66,17 @@ export class McpSubscriptionState {
     return record === undefined ? ok({ server_id: serverId, status: "miss" }) : ok(clone(record));
   }
 
+  public clearServer(serverId: string): Result<void> {
+    if (!isServerId(serverId)) {
+      return err(this.error("MCP subscription state cleanup server id is invalid."));
+    }
+    const prefix = `${serverId}\u0000`;
+    for (const entryKey of this.entries.keys()) {
+      if (entryKey.startsWith(prefix)) this.entries.delete(entryKey);
+    }
+    return ok(undefined);
+  }
+
   public cancel(serverId: string, value: unknown): Result<McpSubscriptionCancelled> {
     if (!isServerId(serverId)) {
       return err(this.error("MCP subscription cancellation server id is invalid."));

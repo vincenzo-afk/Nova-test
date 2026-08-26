@@ -35,6 +35,7 @@ export * from "./backup-manager.js";
 export * from "./restore-manager.js";
 export * from "./upgrade-manager.js";
 export * from "./mcp-server-manager.js";
+export * from "./mcp-server-local-state-cleanup.js";
 export * from "./mcp-tool-discovery.js";
 export * from "./mcp-tools-list-response.js";
 export * from "./mcp-tool-call-result.js";
