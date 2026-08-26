@@ -77,6 +77,14 @@ cache-scope metadata are bounded using the same rules as resource listings.
 This slice validates already-retrieved content only; it does not read a
 resource, fetch a URI, decode binary data, or perform network I/O.
 
+The runtime resources/templates/list validator preserves only bounded URI
+templates, names, display metadata, MIME types, and pagination/cache metadata.
+It rejects malformed URI templates, endpoint credentials, file-path traversal,
+duplicate names or templates, and malformed response-level metadata while
+retaining valid siblings. URI templates remain observed server metadata; this
+slice does not expand variables, autocomplete arguments, read a resolved
+resource, subscribe to updates, or perform network I/O.
+
 The runtime prompts/list validator preserves only bounded prompt names, display
 metadata, and argument descriptors. It filters malformed or duplicate prompts,
 rejects malformed pagination, and omits prompt messages or other content from
