@@ -37,6 +37,7 @@ All notable changes to Nova are documented in this file.
 - MCP discovery now rejects lockable-resource metadata lists larger than 64 entries or containing entries over 256 characters before Tool Registry mutation.
 - MCP discovery now rejects dependency metadata lists larger than 64 entries or containing entries over 256 characters before Tool Registry mutation.
 - MCP discovery now rejects target-entity metadata lists larger than 64 entries or containing entries over 256 characters before Tool Registry mutation.
+- MCP discovery now rejects estimated latency above 300,000 ms or timeout metadata outside 1–300,000 ms before Tool Registry mutation; these bounds validate observed metadata only and do not execute MCP operations.
 - MCP resource-read cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected content URIs before cache mutation.
 - MCP resource-read cache entries now reject more than 128 rejected content URIs before cache mutation.
 - MCP tool-list cache entries now reject malformed, oversized, or unsafe rejected tool names before cache mutation.

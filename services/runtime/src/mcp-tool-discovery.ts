@@ -38,6 +38,8 @@ const MAX_DEPENDENCIES = 64;
 const MAX_DEPENDENCY_LENGTH = 256;
 const MAX_TARGET_ENTITY_TYPES = 64;
 const MAX_TARGET_ENTITY_TYPE_LENGTH = 256;
+const MAX_LATENCY_MS = 300_000;
+const MAX_TIMEOUT_MS = 300_000;
 const DEFAULT_LATENCY_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -232,9 +234,13 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
   )
     return false;
   if (value.output_schema !== undefined && !isBoundedSchema(value.output_schema)) return false;
-  if (value.estimated_latency_ms !== undefined && !isNonnegativeInteger(value.estimated_latency_ms))
+  if (
+    value.estimated_latency_ms !== undefined &&
+    !isBoundedNonnegativeInteger(value.estimated_latency_ms, MAX_LATENCY_MS)
+  )
     return false;
-  if (value.timeout_ms !== undefined && !isPositiveInteger(value.timeout_ms)) return false;
+  if (value.timeout_ms !== undefined && !isBoundedPositiveInteger(value.timeout_ms, MAX_TIMEOUT_MS))
+    return false;
   if (
     value.estimated_cost_class !== undefined &&
     !["free", "low", "medium", "high"].includes(String(value.estimated_cost_class))
@@ -281,14 +287,14 @@ function isBoundedStringArray(
   );
 }
 
-function isNonnegativeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+function isBoundedNonnegativeInteger(value: unknown, maxValue: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= maxValue;
 }
 
 function isNonEmptyBoundedString(value: unknown, maxLength: number): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= maxLength;
 }
 
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
+function isBoundedPositiveInteger(value: unknown, maxValue: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= maxValue;
 }

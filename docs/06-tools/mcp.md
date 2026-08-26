@@ -411,8 +411,11 @@ explicit permission scopes must be non-empty strings of at most 256 characters;
 lockable-resource metadata must contain at most 64 strings of at most 256
 characters, dependency metadata must contain at most 64 strings of at most
 256 characters, and target-entity metadata must contain at most 64 strings of at
-most 256 characters; malformed or oversized metadata fails closed before registry
-mutation. Nested
+most 256 characters. Estimated latency and timeout metadata must be integer
+milliseconds within 0 through 300,000 and 1 through 300,000 respectively;
+malformed or oversized metadata fails closed before registry mutation. These
+bounds validate observed metadata only and do not execute, contact, or time out
+a server operation. Nested
 schemas are deep-cloned before exposure so caller-owned observed data cannot
 mutate registered metadata. If a later registry registration fails,
 entries registered earlier in that batch are removed before the failure is

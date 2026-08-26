@@ -216,6 +216,50 @@ describe("McpToolDiscovery", () => {
     });
   });
 
+  it("rejects an oversized estimated latency before registry exposure", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+
+    const result = discovery.register("weather-server", [
+      {
+        name: "inspect",
+        inputSchema: { type: "object" },
+        nova: { estimated_latency_ms: 300_001 },
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(registry.get("weather-server.inspect")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
+  it("rejects an oversized timeout before registry exposure", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+
+    const result = discovery.register("weather-server", [
+      {
+        name: "inspect",
+        inputSchema: { type: "object" },
+        nova: { timeout_ms: 300_001 },
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(registry.get("weather-server.inspect")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
   it("rejects invalid execution metadata atomically before registry exposure", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);
