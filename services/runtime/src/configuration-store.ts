@@ -4,6 +4,7 @@ import {
   type McpServerRecord,
   type RemovedMcpServer,
 } from "./mcp-server-manager.js";
+import type { McpServerLocalStateCleanup } from "./mcp-server-local-state-cleanup.js";
 
 export type ConfiguredRoutingPolicy =
   "privacy-first" | "latency-optimized" | "cost-optimized" | "manual";
@@ -98,6 +99,7 @@ export interface ConfigurationStoreOptions {
   readonly initial: NovaConfiguration;
   readonly availableProviderIds?: ReadonlySet<string>;
   readonly logger?: StructuredLogger;
+  readonly mcpServerLocalStateCleanup?: Pick<McpServerLocalStateCleanup, "clear">;
 }
 
 type ConfigurationListener = (configuration: NovaConfiguration) => void;
@@ -125,7 +127,10 @@ export class ConfigurationStore {
     this.availableProviderIds = options.availableProviderIds ?? new Set<string>();
     this.configuration = clone(options.initial);
     this.logger = options.logger;
-    this.mcpServerManager = new McpServerManager(this.configuration.mcp_servers);
+    this.mcpServerManager = new McpServerManager(
+      this.configuration.mcp_servers,
+      options.mcpServerLocalStateCleanup,
+    );
   }
 
   public snapshot(): NovaConfiguration {
@@ -149,8 +154,11 @@ export class ConfigurationStore {
       });
       return validation;
     }
+    if (section === "mcp_servers") {
+      const replacement = this.mcpServerManager.replace(value as NovaConfiguration["mcp_servers"]);
+      if (!replacement.ok) return replacement;
+    }
     this.configuration = { ...this.configuration, [section]: clone(value) } as NovaConfiguration;
-    if (section === "mcp_servers") this.mcpServerManager.replace(this.configuration.mcp_servers);
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
     this.logger?.info("configuration.updated", { section });
@@ -254,8 +262,9 @@ export class ConfigurationStore {
       const validation = this.validateSection(section, next[section]);
       if (!validation.ok) return validation;
     }
+    const replacement = this.mcpServerManager.replace(next.mcp_servers);
+    if (!replacement.ok) return replacement;
     this.configuration = next;
-    this.mcpServerManager.replace(this.configuration.mcp_servers);
     const snapshot = this.snapshot();
     for (const listener of this.listeners) listener(snapshot);
     this.logger?.info("configuration.imported", {

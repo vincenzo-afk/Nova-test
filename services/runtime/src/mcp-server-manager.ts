@@ -19,9 +19,21 @@ export class McpServerManager {
     for (const server of initial) this.servers.set(server.server_id, clone(server));
   }
 
-  public replace(servers: readonly McpServerRecord[]): void {
+  public replace(servers: readonly McpServerRecord[]): Result<void> {
+    const next = new Map<string, McpServerRecord>();
+    for (const server of servers) next.set(server.server_id, clone(server));
+
+    const removedServerIds = [...this.servers.keys()].filter((serverId) => !next.has(serverId));
+    if (this.localStateCleanup !== undefined) {
+      for (const serverId of removedServerIds) {
+        const cleared = this.localStateCleanup.clear(serverId);
+        if (!cleared.ok) return cleared;
+      }
+    }
+
     this.servers.clear();
-    for (const server of servers) this.servers.set(server.server_id, clone(server));
+    for (const [serverId, server] of next) this.servers.set(serverId, server);
+    return ok(undefined);
   }
 
   public add(server: McpServerRecord): Result<McpServerRecord> {

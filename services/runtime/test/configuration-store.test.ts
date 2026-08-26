@@ -5,6 +5,8 @@ import {
   type McpServerConfiguration,
   type NovaConfiguration,
 } from "../src/configuration-store.js";
+import { McpToolCache } from "../src/mcp-tool-cache.js";
+import { McpServerLocalStateCleanup } from "../src/mcp-server-local-state-cleanup.js";
 
 const capability = () => ({
   capability_id: "llm",
@@ -213,6 +215,53 @@ describe("ConfigurationStore", () => {
       value: { server_id: "local-files", state: "Removed" },
     });
     expect(store.snapshot().mcp_servers).toEqual([]);
+  });
+
+  it("clears removed server state during validated MCP configuration replacement", () => {
+    const initialServer: McpServerConfiguration = {
+      server_id: "local-files",
+      label: "Local files",
+      state: "Discovered",
+      transport: "stdio",
+      command: "node",
+    };
+    const toolsCache = new McpToolCache({ now: () => 1_000 });
+    const cleanup = new McpServerLocalStateCleanup({ toolsCache });
+    const store = new ConfigurationStore({
+      initial: { ...base(), mcp_servers: [initialServer] },
+      mcpServerLocalStateCleanup: cleanup,
+    });
+    toolsCache.put("local-files", {
+      tools: [{ name: "read", inputSchema: { type: "object" } }],
+      rejected_tool_names: [],
+    });
+
+    expect(store.update("mcp_servers", [])).toEqual({ ok: true, value: undefined });
+    expect(toolsCache.get("local-files")).toEqual({
+      ok: true,
+      value: { server_id: "local-files", status: "miss" },
+    });
+  });
+
+  it("keeps imported configuration unchanged when removed server cleanup fails", () => {
+    const initialServer: McpServerConfiguration = {
+      server_id: "local-files",
+      label: "Local files",
+      state: "Discovered",
+      transport: "stdio",
+      command: "node",
+    };
+    const cleanupFailure = {
+      ok: false as const,
+      error: { code: "NOVA-RUN001", message: "cleanup failed", retryable: false },
+    };
+    const store = new ConfigurationStore({
+      initial: { ...base(), mcp_servers: [initialServer] },
+      mcpServerLocalStateCleanup: { clear: () => cleanupFailure },
+    });
+
+    expect(store.import(JSON.stringify(base()))).toEqual(cleanupFailure);
+    expect(store.snapshot().mcp_servers).toEqual([initialServer]);
   });
 
   it("rejects invalid MCP additions without mutating the authoritative configuration", () => {

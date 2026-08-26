@@ -54,10 +54,12 @@ server’s local runtime state when the cleanup boundary is supplied, and return
 only a bounded `{ server_id, state: "Removed" }` result; the stored credential
 reference is not included in the removal result. Cleanup is attempted before
 configuration deletion, so a cleanup failure leaves the lifecycle record
-unchanged. Invalid transitions leave the prior state unchanged. These
-transitions manage local configuration state only and do not start a server
-process, open a network connection, enumerate tools, or bypass the
-protocol-level approval gate.
+unchanged. Validated bulk configuration replacement and import use the same
+cleanup boundary for server IDs that disappear, and leave the authoritative
+configuration unchanged when that cleanup fails. Invalid transitions leave
+the prior state unchanged. These transitions manage local configuration state
+only and do not start a server process, open a network connection, enumerate
+tools, or bypass the protocol-level approval gate.
 
 ## Desktop boundary
 
@@ -97,9 +99,11 @@ cleanup boundary that can clear that server’s discovery, tool, prompt,
 resource, resource-template, progress-state, health-observation, and
 subscription-state records. Cleanup validates the
 server ID before mutation, scopes every deletion to that server, and leaves
-other servers unchanged. This boundary does not delete persisted lifecycle
-configuration or credentials, and it does not stop processes, close streams,
-send cancellation, disconnect transports, or perform network I/O.
+other servers unchanged. The same boundary is used by validated configuration
+replacement and import when configured server IDs disappear. It does not
+delete persisted lifecycle configuration or credentials, and it does not stop
+processes, close streams, send cancellation, disconnect transports, or perform
+network I/O.
 
 ## Autonomous addition
 

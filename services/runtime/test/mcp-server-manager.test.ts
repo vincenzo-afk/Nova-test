@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { vi } from "vitest";
 import type { McpToolsListResult } from "../src/mcp-tools-list-response.js";
 import { McpToolCache } from "../src/mcp-tool-cache.js";
 import { McpServerLocalStateCleanup } from "../src/mcp-server-local-state-cleanup.js";
@@ -74,6 +75,33 @@ describe("McpServerManager", () => {
       ok: true,
       value: { server_id: "local-files", status: "miss" },
     });
+  });
+
+  it("clears only removed servers when replacing configured records", () => {
+    const retained = { ...server(), server_id: "retained" };
+    const clear = vi.fn(() => ({
+      ok: true as const,
+      value: { server_id: "local-files", status: "cleared" as const },
+    }));
+    const manager = new McpServerManager([server(), retained], { clear });
+
+    expect(manager.replace([retained])).toEqual({ ok: true, value: undefined });
+    expect(clear).toHaveBeenCalledOnce();
+    expect(clear).toHaveBeenCalledWith("local-files");
+    expect(manager.list()).toEqual([retained]);
+  });
+
+  it("keeps the prior records when replacement cleanup fails", () => {
+    const failure = {
+      ok: false as const,
+      error: { code: "NOVA-RUN001", message: "cleanup failed", retryable: false },
+    };
+    const clear = vi.fn(() => failure);
+    const manager = new McpServerManager([server()], { clear });
+
+    expect(manager.replace([])).toEqual(failure);
+    expect(manager.list()).toEqual([server()]);
+    expect(clear).toHaveBeenCalledWith("local-files");
   });
 
   it("rejects invalid transitions without mutating the lifecycle state", () => {
