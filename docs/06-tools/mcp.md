@@ -49,6 +49,15 @@ the caller. A malformed response-level result or a JSON-RPC error is rejected
 as a tool-contract failure. The validator returns normalized data for the
 registry adapter and does not perform network I/O.
 
+The runtime tool-list cache stores one bounded normalized listing per server.
+An advertised positive TTL controls expiry, with a bounded default when the
+server omits one; an entry is a miss at or after its expiry time. Cache reads
+and writes deep-clone normalized data, replacements are atomic, and
+source-scoped invalidation removes only the selected server's listing. Cache
+misses do not trigger a probe or an implicit retry; a future transport layer
+must explicitly refresh the listing and then pass it through the validator
+again.
+
 ## Transport
 
 The runtime transport planner now turns a validated server record into one
