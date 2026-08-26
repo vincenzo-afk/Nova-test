@@ -3,6 +3,7 @@ import type { McpPromptListResult } from "../src/mcp-prompts-list-response.js";
 import type { McpResourcesListResult } from "../src/mcp-resources-list-response.js";
 import type { McpResourcesTemplatesListResult } from "../src/mcp-resources-templates-list-response.js";
 import type { McpServerDiscoverResult } from "../src/mcp-server-discover-response.js";
+import { McpServerHealthTracker } from "../src/mcp-server-health.js";
 import type { McpNegotiatedSubscription } from "../src/mcp-subscription-filter-negotiator.js";
 import type { McpToolsListResult } from "../src/mcp-tools-list-response.js";
 import { McpPromptCache } from "../src/mcp-prompt-cache.js";
@@ -45,6 +46,7 @@ describe("McpServerLocalStateCleanup", () => {
     const resourceCache = new McpResourceListCache({ now: () => 1_000 });
     const templateCache = new McpResourceTemplatesListCache({ now: () => 1_000 });
     const discoveryCache = new McpServerDiscoveryCache({ now: () => 1_000 });
+    const health = new McpServerHealthTracker();
     const subscriptions = new McpSubscriptionState();
     const cleanup = new McpServerLocalStateCleanup({
       toolsCache,
@@ -52,6 +54,7 @@ describe("McpServerLocalStateCleanup", () => {
       resourceCache,
       templateCache,
       discoveryCache,
+      health,
       subscriptions,
     });
 
@@ -65,6 +68,8 @@ describe("McpServerLocalStateCleanup", () => {
     templateCache.put("server-2", templates);
     discoveryCache.put("server-1", discovery);
     discoveryCache.put("server-2", discovery);
+    health.record("server-1", "reachable", "2026-08-26T00:00:00.000Z");
+    health.record("server-2", "degraded", "2026-08-26T00:00:00.000Z");
     subscriptions.register("server-1", subscription);
     subscriptions.register("server-2", subscription);
 
@@ -77,6 +82,18 @@ describe("McpServerLocalStateCleanup", () => {
     expect(resourceCache.get("server-1")).toMatchObject({ ok: true, value: { status: "miss" } });
     expect(templateCache.get("server-1")).toMatchObject({ ok: true, value: { status: "miss" } });
     expect(discoveryCache.get("server-1")).toMatchObject({ ok: true, value: { status: "miss" } });
+    expect(health.get("server-1")).toEqual({
+      ok: true,
+      value: { server_id: "server-1", health: "unknown", checked_at: null },
+    });
+    expect(health.get("server-2")).toEqual({
+      ok: true,
+      value: {
+        server_id: "server-2",
+        health: "degraded",
+        checked_at: "2026-08-26T00:00:00.000Z",
+      },
+    });
     expect(subscriptions.get("server-1", "sub-1")).toMatchObject({
       ok: true,
       value: { status: "miss" },

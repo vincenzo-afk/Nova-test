@@ -1,4 +1,5 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
+import type { McpServerHealthTracker } from "./mcp-server-health.js";
 import type { McpSubscriptionState } from "./mcp-subscription-state.js";
 
 export interface McpServerLocalStateCleanupDependencies {
@@ -7,6 +8,7 @@ export interface McpServerLocalStateCleanupDependencies {
   readonly resourceCache?: ServerCache;
   readonly templateCache?: ServerCache;
   readonly discoveryCache?: ServerCache;
+  readonly health?: Pick<McpServerHealthTracker, "remove">;
   readonly subscriptions?: Pick<McpSubscriptionState, "clearServer">;
 }
 
@@ -37,6 +39,10 @@ export class McpServerLocalStateCleanup {
     ]) {
       if (cache === undefined) continue;
       const result = cache.invalidate(serverId);
+      if (!result.ok) return result;
+    }
+    if (this.dependencies.health !== undefined) {
+      const result = this.dependencies.health.remove(serverId);
       if (!result.ok) return result;
     }
     if (this.dependencies.subscriptions !== undefined) {
