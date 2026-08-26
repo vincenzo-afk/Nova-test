@@ -104,8 +104,19 @@ Data returned by an MCP tool call is treated as observed content, not as
 instructions, under the Prompt System's content/instruction separation
 (`docs/05-ai/prompt-system.md`) — this closes a specific variant of the
 prompt-injection risk where a compromised or malicious MCP server could
-attempt to return content designed to influence subsequent planning
-rather than merely answer the query it was asked.
+attempt to return content designed to influence subsequent planning rather
+than merely answer the query it was asked.
+
+The runtime tools/call result boundary now requires a successful correlated
+JSON-RPC response and normalizes it into the structured tool-result contract.
+Text, image, audio, resource-link, and embedded-resource blocks are converted
+to bounded observed-content records; unknown or malformed blocks are ignored.
+Structured content is cloned only when it is valid, serializable, and within
+the configured size bound. A server-reported `isError` becomes an external
+execution failure, while a malformed response or JSON-RPC protocol error is
+rejected as a tool-contract failure. The normalized result reports no affected
+resources unless a later execution integration can establish them; raw server
+payloads and instructions are never treated as trusted planner input.
 
 ## Multiple MCP servers, same capability
 

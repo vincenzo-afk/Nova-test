@@ -77,7 +77,9 @@ results use the `<server_id>.<tool_name>` registry namespace, carry a
 validated optional output schema, and remain confirmation-required when the
 advertisement omits verification metadata. A malformed individual
 advertisement is excluded without discarding valid tools from the same
-response.
+response. Tool-call results are normalized into the common structured result
+shape, with server content marked as observed and server-reported execution
+errors kept distinct from malformed protocol responses.
 This is the same screen the Setup Wizard's "Add an MCP server" step writes
 into — there is no separate first-run-only path. The current runtime slice
 only validates and registers an already-retrieved advertisement; it does not
