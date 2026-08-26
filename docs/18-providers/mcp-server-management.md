@@ -56,9 +56,9 @@ reference is not included in the removal result. Cleanup is attempted before
 configuration deletion, so a cleanup failure leaves the lifecycle record
 unchanged. Validated bulk configuration replacement and import use the same
 cleanup boundary for server IDs that disappear, and leave the authoritative
-configuration unchanged when that cleanup fails. Replacement also rejects
-duplicate server IDs before cleanup or lifecycle-map mutation. Invalid
-transitions leave
+configuration unchanged when that cleanup fails. The lifecycle manager also
+rejects duplicate server IDs in its initial records and replacements before
+cleanup or lifecycle-map mutation. Invalid transitions leave
 the prior state unchanged. These transitions manage local configuration state
 only and do not start a server process, open a network connection, enumerate
 tools, or bypass the protocol-level approval gate.

@@ -16,7 +16,12 @@ export class McpServerManager {
     initial: readonly McpServerRecord[] = [],
     private readonly localStateCleanup?: Pick<McpServerLocalStateCleanup, "clear">,
   ) {
-    for (const server of initial) this.servers.set(server.server_id, clone(server));
+    for (const server of initial) {
+      if (this.servers.has(server.server_id)) {
+        throw new Error("MCP server IDs must be unique.");
+      }
+      this.servers.set(server.server_id, clone(server));
+    }
   }
 
   public replace(servers: readonly McpServerRecord[]): Result<void> {

@@ -16,6 +16,13 @@ const server = (): McpServerRecord => ({
 });
 
 describe("McpServerManager", () => {
+  it("rejects duplicate initial server IDs instead of silently overwriting", () => {
+    const initial = server();
+    expect(() => new McpServerManager([initial, { ...initial, label: "Duplicate label" }])).toThrow(
+      "MCP server IDs must be unique.",
+    );
+  });
+
   it("moves a server through discovery, approval, disable, and re-enable states", () => {
     const manager = new McpServerManager();
 
