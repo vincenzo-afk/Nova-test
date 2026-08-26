@@ -52,6 +52,14 @@ center on first launch.
 
 ## Uninstallation
 
+On Windows, run `pnpm uninstall:windows` as a separate explicit action. The
+workflow removes the registered Windows service first and, through an explicit
+prompt, requires the user to choose either `retain` or `delete` for the
+user-scoped Memory/Knowledge Graph data. It then requires the exact
+service-specific confirmation phrase before invoking the service-manager
+operation. Data deletion is never the automatic default, and the helper refuses
+data roots outside `%LOCALAPPDATA%\\Nova`; retained data is never touched.
+
 Uninstalling NOVA removes the registered Windows service and, per an
 explicit prompt (not a silent default), offers the choice to retain or
 delete accumulated Memory/Knowledge Graph data — deletion is not the

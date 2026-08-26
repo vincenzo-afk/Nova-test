@@ -14,6 +14,7 @@
     "prepare:memory-client": "pnpm --filter @nova/memory prisma:generate",
     "prepare:memory-test": "node scripts/prepare-memory-test.mjs",
     "install:windows": "node scripts/install-windows.mjs",
+    "uninstall:windows": "node scripts/uninstall-windows.mjs",
     "register:windows-service": "node scripts/windows-service.mjs",
     "unregister:windows-service": "node scripts/windows-service.mjs --remove",
     "register:windows-browser-host": "node scripts/windows-browser-native-host.mjs",
