@@ -1,5 +1,6 @@
 import { err, ok, type ErrorInfo, type Result } from "@nova/shared";
 import type { McpServerConfiguration, McpServerLifecycleState } from "./configuration-store.js";
+import type { McpServerLocalStateCleanup } from "./mcp-server-local-state-cleanup.js";
 
 export type McpServerRecord = McpServerConfiguration;
 
@@ -11,7 +12,10 @@ export interface RemovedMcpServer {
 export class McpServerManager {
   private readonly servers = new Map<string, McpServerRecord>();
 
-  public constructor(initial: readonly McpServerRecord[] = []) {
+  public constructor(
+    initial: readonly McpServerRecord[] = [],
+    private readonly localStateCleanup?: Pick<McpServerLocalStateCleanup, "clear">,
+  ) {
     for (const server of initial) this.servers.set(server.server_id, clone(server));
   }
 
@@ -67,6 +71,10 @@ export class McpServerManager {
       });
     const server = this.servers.get(serverId);
     if (!server) return err(this.error("MCP server was not found."));
+    if (this.localStateCleanup !== undefined) {
+      const cleared = this.localStateCleanup.clear(serverId);
+      if (!cleared.ok) return cleared;
+    }
     this.servers.delete(serverId);
     return ok({ server_id: server.server_id, state: "Removed" });
   }
