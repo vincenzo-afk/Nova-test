@@ -48,6 +48,26 @@ describe("McpResourcesTemplatesListResponseValidator", () => {
     });
   });
 
+  it("rejects an oversized JSON response before template normalization", () => {
+    const validator = new McpResourcesTemplatesListResponseValidator();
+    const result = validator.parse(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          resourceTemplates: [{ uriTemplate: "file:///project/{path}", name: "files" }],
+          ignored: "x".repeat(1_048_577),
+        },
+      },
+      1,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+  });
+
   it("filters unsafe, malformed, and duplicate templates while retaining valid siblings", () => {
     const validator = new McpResourcesTemplatesListResponseValidator();
     const result = validator.parse(
