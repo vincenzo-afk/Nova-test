@@ -21,7 +21,9 @@ interface CacheEntry {
 const MAX_ENTRIES = 128;
 const MAX_TTL_MS = 86_400_000;
 const DEFAULT_TTL_MS = 300_000;
+const MAX_TOOL_NAME_LENGTH = 128;
 const SERVER_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
+const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 export class McpToolCache {
   private readonly entries = new Map<string, CacheEntry>();
@@ -87,13 +89,22 @@ function isToolList(value: unknown): value is McpToolsListResult {
     return false;
   }
   if (!value.tools.every(isToolAdvertisement)) return false;
-  if (!value.rejected_tool_names.every((name) => typeof name === "string")) return false;
+  if (!value.rejected_tool_names.every(isSafeToolName)) return false;
   if (value.next_cursor !== undefined && typeof value.next_cursor !== "string") return false;
   if (value.ttl_ms !== undefined && !isPositiveBoundedInteger(value.ttl_ms)) return false;
   return (
     value.cache_scope === undefined ||
     value.cache_scope === "public" ||
     value.cache_scope === "private"
+  );
+}
+
+function isSafeToolName(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_TOOL_NAME_LENGTH &&
+    TOOL_NAME_PATTERN.test(value)
   );
 }
 

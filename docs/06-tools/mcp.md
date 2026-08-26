@@ -85,10 +85,11 @@ registry adapter and does not perform network I/O.
 The runtime tool-list cache stores one bounded normalized listing per server.
 An advertised positive TTL controls expiry, with a bounded default when the
 server omits one; an entry is a miss at or after its expiry time. Cache reads
-and writes deep-clone normalized data, replacements are atomic, and
-source-scoped invalidation removes only the selected server's listing. Cache
-misses do not trigger a probe or an implicit retry; a future transport layer
-must explicitly refresh the listing and then pass it through the validator
+and writes deep-clone normalized data, replacements are atomic, and source-scoped
+invalidation removes only the selected server's listing. Rejected tool names are
+validated as bounded MCP-safe identifiers before a listing can mutate the cache.
+Cache misses do not trigger a probe or an implicit retry; a future transport
+layer must explicitly refresh the listing and then pass it through the validator
 again.
 
 The typed resources/list request builder constructs fixed JSON-RPC 2.0

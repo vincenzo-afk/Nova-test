@@ -61,5 +61,14 @@ describe("McpToolCache", () => {
       value: { server_id: "server-1", status: "miss" },
     });
     expect(cache.get("server-2")).toMatchObject({ ok: true, value: tools });
+    expect(
+      cache.put("server-1", {
+        ...tools,
+        rejected_tool_names: ["unsafe tool name"],
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
   });
 });
