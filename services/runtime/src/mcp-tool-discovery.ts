@@ -56,6 +56,44 @@ export class McpToolDiscovery {
     return ok(registrations);
   }
 
+  public replace(
+    serverId: string,
+    advertisements: readonly McpToolAdvertisement[],
+  ): Result<readonly RegisteredTool[]> {
+    const validation = this.validate(serverId, advertisements);
+    if (!validation.ok) return validation;
+
+    const tools = advertisements.map((advertisement) => toRegisteredTool(serverId, advertisement));
+    const query = this.registry.query({ execution_tier: "mcp" });
+    if (!query.ok) return query;
+    const prefix = `${serverId}.`;
+    const current = query.value.filter((tool) => tool.tool_id.startsWith(prefix));
+    const currentIds = new Set(current.map((tool) => tool.tool_id));
+    const duplicate = tools.find(
+      (tool) =>
+        query.value.some((registered) => registered.tool_id === tool.tool_id) &&
+        !currentIds.has(tool.tool_id),
+    );
+    if (duplicate) return err(this.error("An MCP tool is already registered.", duplicate.tool_id));
+
+    for (const tool of current) {
+      const result = this.registry.deregister(tool.tool_id);
+      if (!result.ok) return result;
+    }
+
+    const registrations: RegisteredTool[] = [];
+    for (const tool of tools) {
+      const result = this.registry.register(tool);
+      if (!result.ok) {
+        for (const registered of registrations) this.registry.deregister(registered.tool_id);
+        for (const previous of current) this.registry.register(previous);
+        return result;
+      }
+      registrations.push(result.value);
+    }
+    return ok(registrations);
+  }
+
   public deregister(serverId: string): Result<void> {
     if (!isServerId(serverId)) return err(this.error("MCP server id is invalid."));
     const prefix = `${serverId}.`;

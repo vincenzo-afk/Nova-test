@@ -400,6 +400,15 @@ credential references, or raw probe responses. Recording an observation does
 not perform the health check; transport-specific probing remains a later,
 explicit integration.
 
+The local MCP tool-discovery boundary can replace one server’s normalized Tool
+Registry source atomically. It validates the complete incoming advertisement
+batch and checks registry invariants before removing the server’s prior tools;
+if a subsequent registry registration fails, the prior source entries are
+restored. Replacement is scoped to the server namespace and never overwrites
+another source’s entries. This operation consumes already observed data only;
+it does not connect to a server, retrieve advertisements, invoke tools, or
+perform transport or network I/O.
+
 ## Trust boundary
 
 An MCP server is an external, potentially untrusted component. NOVA

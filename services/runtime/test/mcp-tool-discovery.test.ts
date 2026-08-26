@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { McpToolDiscovery } from "../src/mcp-tool-discovery.js";
 import { ToolRegistry } from "../src/tool-registry.js";
 
@@ -95,6 +95,83 @@ describe("McpToolDiscovery", () => {
       error: { code: "NOVA-TL002" },
     });
     expect(registry.get("weather-server.valid")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
+  it("replaces one server's registered tools without affecting another server", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+
+    expect(
+      discovery.register("first", [{ name: "old_lookup", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+    expect(
+      discovery.register("second", [{ name: "lookup", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+
+    expect(
+      discovery.replace("first", [{ name: "new_lookup", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+    expect(registry.get("first.old_lookup")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+    expect(registry.get("first.new_lookup")).toMatchObject({ ok: true });
+    expect(registry.get("second.lookup")).toMatchObject({ ok: true });
+  });
+
+  it("preserves the current source when replacement validation or collision checks fail", () => {
+    const registry = new ToolRegistry();
+    const discovery = new McpToolDiscovery(registry);
+
+    expect(
+      discovery.register("first", [{ name: "old_lookup", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+    expect(
+      discovery.register("second", [{ name: "lookup", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+
+    expect(
+      discovery.replace("first", [{ name: "", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(registry.get("first.old_lookup")).toMatchObject({ ok: true });
+
+    expect(
+      discovery.replace("first", [
+        { name: "new_lookup", inputSchema: { type: "object" } },
+        { name: "new_lookup", inputSchema: { type: "object" } },
+      ]),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-TL002" } });
+    expect(registry.get("first.old_lookup")).toMatchObject({ ok: true });
+  });
+
+  it("restores the previous source when registry registration fails during replacement", () => {
+    const backingRegistry = new ToolRegistry();
+    const initialDiscovery = new McpToolDiscovery(backingRegistry);
+    expect(
+      initialDiscovery.register("first", [{ name: "old_lookup", inputSchema: { type: "object" } }]),
+    ).toMatchObject({ ok: true });
+    const failure = {
+      ok: false as const,
+      error: { code: "NOVA-TL002", message: "registration failed", retryable: false },
+    };
+    const failingRegistry = {
+      get: backingRegistry.get.bind(backingRegistry),
+      query: backingRegistry.query.bind(backingRegistry),
+      register: vi.fn((tool: Parameters<ToolRegistry["register"]>[0]) =>
+        tool.tool_id === "first.new_lookup" ? failure : backingRegistry.register(tool),
+      ),
+      deregister: backingRegistry.deregister.bind(backingRegistry),
+    } as unknown as ToolRegistry;
+    const discovery = new McpToolDiscovery(failingRegistry);
+
+    expect(
+      discovery.replace("first", [{ name: "new_lookup", inputSchema: { type: "object" } }]),
+    ).toEqual(failure);
+    expect(backingRegistry.get("first.old_lookup")).toMatchObject({ ok: true });
+    expect(backingRegistry.get("first.new_lookup")).toMatchObject({
       ok: false,
       error: { code: "NOVA-TL004" },
     });
