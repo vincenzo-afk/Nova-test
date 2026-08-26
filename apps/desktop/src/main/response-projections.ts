@@ -1,6 +1,7 @@
 import type {
   DeliveryReceipt,
   EmailSendReceipt,
+  McpServerConfiguration,
   PairingOffer,
   PluginDiscoveryProposal,
   PluginDiscoveryResult,
@@ -24,6 +25,37 @@ export function projectPairingOffer(offer: PairingOffer): PairingOfferSummary {
     runtime_mode: offer.runtime_mode,
     expires_at: offer.expires_at,
   };
+}
+
+export interface McpServerSummary {
+  readonly server_id: string;
+  readonly label: string;
+  readonly state: McpServerConfiguration["state"];
+  readonly transport: McpServerConfiguration["transport"];
+}
+
+export function projectMcpServer(server: McpServerConfiguration): McpServerSummary {
+  return {
+    server_id: server.server_id,
+    label: server.label,
+    state: server.state,
+    transport: server.transport,
+  };
+}
+
+export function projectMcpServers(
+  servers: readonly McpServerConfiguration[],
+): readonly McpServerSummary[] {
+  return servers.map(projectMcpServer);
+}
+
+export interface McpServerRemovalSummary {
+  readonly server_id: string;
+  readonly state: "Removed";
+}
+
+export function projectMcpServerRemoval(result: McpServerRemovalSummary): McpServerRemovalSummary {
+  return { server_id: result.server_id, state: result.state };
 }
 
 export interface PluginRecordSummary {

@@ -262,6 +262,19 @@ const novaApi = {
     ipcRenderer.invoke("nova:models:load", { model_id: modelId, confirmed }),
   retireLocalModel: (modelId: string, confirmed: boolean) =>
     ipcRenderer.invoke("nova:models:retire", { model_id: modelId, confirmed }),
+  listMcpServers: () => ipcRenderer.invoke("nova:mcp:list"),
+  addMcpServer: (server: unknown, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:mcp:add", { server, confirmed }),
+  requestMcpServerApproval: (serverId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:mcp:request-approval", { server_id: serverId, confirmed }),
+  approveMcpServer: (serverId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:mcp:approve", { server_id: serverId, confirmed }),
+  disableMcpServer: (serverId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:mcp:disable", { server_id: serverId, confirmed }),
+  enableMcpServer: (serverId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:mcp:enable", { server_id: serverId, confirmed }),
+  removeMcpServer: (serverId: string, confirmed: boolean) =>
+    ipcRenderer.invoke("nova:mcp:remove", { server_id: serverId, confirmed }),
 };
 
 contextBridge.exposeInMainWorld("nova", novaApi);

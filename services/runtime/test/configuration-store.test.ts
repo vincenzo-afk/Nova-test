@@ -192,7 +192,7 @@ describe("ConfigurationStore", () => {
     };
     const store = new ConfigurationStore({ initial: { ...base(), mcp_servers: [initialServer] } });
 
-    expect(store.requestMcpServerApproval("local-files")).toMatchObject({
+    expect(store.requestMcpServerApproval("local-files", true)).toMatchObject({
       ok: true,
       value: { state: "Pending approval" },
     });
@@ -200,11 +200,11 @@ describe("ConfigurationStore", () => {
       ok: true,
       value: { state: "Connected" },
     });
-    expect(store.disableMcpServer("local-files")).toMatchObject({
+    expect(store.disableMcpServer("local-files", true)).toMatchObject({
       ok: true,
       value: { state: "Disabled" },
     });
-    expect(store.enableMcpServer("local-files")).toMatchObject({
+    expect(store.enableMcpServer("local-files", true)).toMatchObject({
       ok: true,
       value: { state: "Connected" },
     });
@@ -213,6 +213,22 @@ describe("ConfigurationStore", () => {
       value: { server_id: "local-files", state: "Removed" },
     });
     expect(store.snapshot().mcp_servers).toEqual([]);
+  });
+
+  it("rejects invalid MCP additions without mutating the authoritative configuration", () => {
+    const store = new ConfigurationStore({ initial: base() });
+    const before = store.snapshot();
+
+    expect(
+      store.addMcpServer({
+        server_id: "unsafe",
+        label: "Unsafe",
+        state: "Discovered",
+        transport: "streamable-http",
+        endpoint: "http://remote.example.test/server",
+      }),
+    ).toMatchObject({ ok: false, error: { code: "NOVA-CFG001" } });
+    expect(store.snapshot()).toEqual(before);
   });
 
   it("accepts documented MCP server connection records with deterministic transports", () => {

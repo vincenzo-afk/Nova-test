@@ -158,24 +158,29 @@ export class ConfigurationStore {
   }
 
   public addMcpServer(server: McpServerRecord): Result<McpServerRecord> {
+    const validation = this.validateSection("mcp_servers", [
+      ...this.configuration.mcp_servers,
+      server,
+    ]);
+    if (!validation.ok) return validation as Result<McpServerRecord>;
     const result = this.mcpServerManager.add(server);
     return result.ok ? this.commitMcpResult(result) : result;
   }
 
-  public requestMcpServerApproval(serverId: string): Result<McpServerRecord> {
-    return this.commitMcpResult(this.mcpServerManager.requestApproval(serverId));
+  public requestMcpServerApproval(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.requestApproval(serverId, confirmed));
   }
 
   public approveMcpServer(serverId: string, confirmed: boolean): Result<McpServerRecord> {
     return this.commitMcpResult(this.mcpServerManager.approve(serverId, confirmed));
   }
 
-  public disableMcpServer(serverId: string): Result<McpServerRecord> {
-    return this.commitMcpResult(this.mcpServerManager.disable(serverId));
+  public disableMcpServer(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.disable(serverId, confirmed));
   }
 
-  public enableMcpServer(serverId: string): Result<McpServerRecord> {
-    return this.commitMcpResult(this.mcpServerManager.enable(serverId));
+  public enableMcpServer(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    return this.commitMcpResult(this.mcpServerManager.enable(serverId, confirmed));
   }
 
   public removeMcpServer(serverId: string, confirmed: boolean): Result<RemovedMcpServer> {

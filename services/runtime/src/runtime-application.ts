@@ -54,9 +54,11 @@ import {
 import {
   ConfigurationStore,
   type ConfigurationSectionName,
+  type McpServerConfiguration,
   type NovaConfiguration,
 } from "./configuration-store.js";
 import { KnowledgeGraph, type GraphEdgeType, type GraphQueryResult } from "./knowledge-graph.js";
+import type { RemovedMcpServer } from "./mcp-server-manager.js";
 import {
   RuntimeTaskCoordinator,
   type TaskCheckpointPersistence,
@@ -510,6 +512,33 @@ export class RuntimeApplication {
         options.authorizeTopics ??
         (({ topics }) => topics.every((topic) => topic === "task.progress")),
     });
+  }
+
+  public addMcpServer(server: McpServerConfiguration): Result<McpServerConfiguration> {
+    return this.configuration.addMcpServer(server);
+  }
+
+  public requestMcpServerApproval(
+    serverId: string,
+    confirmed: boolean,
+  ): Result<McpServerConfiguration> {
+    return this.configuration.requestMcpServerApproval(serverId, confirmed);
+  }
+
+  public approveMcpServer(serverId: string, confirmed: boolean): Result<McpServerConfiguration> {
+    return this.configuration.approveMcpServer(serverId, confirmed);
+  }
+
+  public disableMcpServer(serverId: string, confirmed: boolean): Result<McpServerConfiguration> {
+    return this.configuration.disableMcpServer(serverId, confirmed);
+  }
+
+  public enableMcpServer(serverId: string, confirmed: boolean): Result<McpServerConfiguration> {
+    return this.configuration.enableMcpServer(serverId, confirmed);
+  }
+
+  public removeMcpServer(serverId: string, confirmed: boolean): Result<RemovedMcpServer> {
+    return this.configuration.removeMcpServer(serverId, confirmed);
   }
 
   public updateConfiguration<TSection extends ConfigurationSectionName>(

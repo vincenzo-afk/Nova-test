@@ -41,6 +41,7 @@ import {
   type LogicalClockValue,
   type JobState,
   type CapabilityGap,
+  type McpServerConfiguration,
   type SnapshotMetadata,
   type PreparedRestore,
   type UpgradeRequest,
@@ -83,6 +84,9 @@ import {
   projectBackupRestore,
   projectChannelDeliveryReceipt,
   projectEmailSendReceipt,
+  projectMcpServer,
+  projectMcpServerRemoval,
+  projectMcpServers,
   projectPairingOffer,
   projectPreparedRestore,
   projectPluginDiscoveryProposals,
@@ -1170,6 +1174,38 @@ ipcMain.handle(
     }
     return requestGateway<NovaConfiguration>("config.update", payload);
   },
+);
+
+ipcMain.handle("nova:mcp:list", () => requestGateway("mcp.list", undefined));
+ipcMain.handle(
+  "nova:mcp:add",
+  (_event, payload: { readonly server: McpServerConfiguration; readonly confirmed: boolean }) =>
+    requestGateway("mcp.add", payload),
+);
+ipcMain.handle(
+  "nova:mcp:request-approval",
+  (_event, payload: { readonly server_id: string; readonly confirmed: boolean }) =>
+    requestGateway("mcp.request-approval", payload),
+);
+ipcMain.handle(
+  "nova:mcp:approve",
+  (_event, payload: { readonly server_id: string; readonly confirmed: boolean }) =>
+    requestGateway("mcp.approve", payload),
+);
+ipcMain.handle(
+  "nova:mcp:disable",
+  (_event, payload: { readonly server_id: string; readonly confirmed: boolean }) =>
+    requestGateway("mcp.disable", payload),
+);
+ipcMain.handle(
+  "nova:mcp:enable",
+  (_event, payload: { readonly server_id: string; readonly confirmed: boolean }) =>
+    requestGateway("mcp.enable", payload),
+);
+ipcMain.handle(
+  "nova:mcp:remove",
+  (_event, payload: { readonly server_id: string; readonly confirmed: boolean }) =>
+    requestGateway("mcp.remove", payload),
 );
 
 const startGateway = async (): Promise<void> => {
@@ -2612,6 +2648,64 @@ const startGateway = async (): Promise<void> => {
     );
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
+  });
+  gateway.register("mcp.list", async () => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    return projectMcpServers(runtimeApplication.configuration.snapshot().mcp_servers);
+  });
+  gateway.register("mcp.add", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as {
+      readonly server?: unknown;
+      readonly confirmed?: unknown;
+    };
+    if (typeof payload.confirmed !== "boolean") throw new Error("MCP add confirmation is invalid.");
+    const result = runtimeApplication.addMcpServer(payload.server as McpServerConfiguration);
+    if (!result.ok) throw new Error(result.error.message);
+    return projectMcpServer(result.value);
+  });
+  const registerMcpTransition = (
+    method: "request-approval" | "approve" | "disable" | "enable",
+    operation: (
+      application: RuntimeApplication,
+      serverId: string,
+      confirmed: boolean,
+    ) => ReturnType<RuntimeApplication["requestMcpServerApproval"]>,
+  ) => {
+    gateway.register(`mcp.${method}`, async (data) => {
+      if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+      const payload = data as { readonly server_id?: unknown; readonly confirmed?: unknown };
+      if (typeof payload.server_id !== "string" || payload.server_id.trim() === "")
+        throw new Error("MCP server ID is required.");
+      if (typeof payload.confirmed !== "boolean")
+        throw new Error(`MCP ${method} confirmation is invalid.`);
+      const result = operation(runtimeApplication, payload.server_id, payload.confirmed);
+      if (!result.ok) throw new Error(result.error.message);
+      return projectMcpServer(result.value);
+    });
+  };
+  registerMcpTransition("request-approval", (application, serverId, confirmed) =>
+    application.requestMcpServerApproval(serverId, confirmed),
+  );
+  registerMcpTransition("approve", (application, serverId, confirmed) =>
+    application.approveMcpServer(serverId, confirmed),
+  );
+  registerMcpTransition("disable", (application, serverId, confirmed) =>
+    application.disableMcpServer(serverId, confirmed),
+  );
+  registerMcpTransition("enable", (application, serverId, confirmed) =>
+    application.enableMcpServer(serverId, confirmed),
+  );
+  gateway.register("mcp.remove", async (data) => {
+    if (!runtimeApplication) throw new Error("Nova runtime is not ready.");
+    const payload = data as { readonly server_id?: unknown; readonly confirmed?: unknown };
+    if (typeof payload.server_id !== "string" || payload.server_id.trim() === "")
+      throw new Error("MCP server ID is required.");
+    if (typeof payload.confirmed !== "boolean")
+      throw new Error("MCP remove confirmation is invalid.");
+    const result = runtimeApplication.removeMcpServer(payload.server_id, payload.confirmed);
+    if (!result.ok) throw new Error(result.error.message);
+    return projectMcpServerRemoval(result.value);
   });
   gateway.register("config.get", async () => {
     if (!runtimeApplication) throw new Error("Nova runtime is not ready.");

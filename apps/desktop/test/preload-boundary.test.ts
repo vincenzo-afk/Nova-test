@@ -162,6 +162,13 @@ describe("Electron preload boundary", () => {
       "downloadLocalModel",
       "loadLocalModel",
       "retireLocalModel",
+      "listMcpServers",
+      "addMcpServer",
+      "requestMcpServerApproval",
+      "approveMcpServer",
+      "disableMcpServer",
+      "enableMcpServer",
+      "removeMcpServer",
     ]);
   });
 
@@ -329,6 +336,13 @@ describe("Electron preload boundary", () => {
         downloadLocalModel: (modelId: string, confirmed: boolean) => unknown;
         loadLocalModel: (modelId: string, confirmed: boolean) => unknown;
         retireLocalModel: (modelId: string, confirmed: boolean) => unknown;
+        listMcpServers: () => unknown;
+        addMcpServer: (server: unknown, confirmed: boolean) => unknown;
+        requestMcpServerApproval: (serverId: string, confirmed: boolean) => unknown;
+        approveMcpServer: (serverId: string, confirmed: boolean) => unknown;
+        disableMcpServer: (serverId: string, confirmed: boolean) => unknown;
+        enableMcpServer: (serverId: string, confirmed: boolean) => unknown;
+        removeMcpServer: (serverId: string, confirmed: boolean) => unknown;
       },
     ];
 
@@ -538,6 +552,23 @@ describe("Electron preload boundary", () => {
     api.downloadLocalModel("whisper-small", true);
     api.loadLocalModel("whisper-small", true);
     api.retireLocalModel("whisper-small", true);
+    api.listMcpServers();
+    api.addMcpServer(
+      {
+        server_id: "local-files",
+        label: "Local files",
+        state: "Discovered",
+        transport: "stdio",
+        command: "node",
+        args: ["server.mjs"],
+      },
+      true,
+    );
+    api.requestMcpServerApproval("local-files", true);
+    api.approveMcpServer("local-files", true);
+    api.disableMcpServer("local-files", true);
+    api.enableMcpServer("local-files", true);
+    api.removeMcpServer("local-files", true);
 
     expect(invoke).toHaveBeenNthCalledWith(1, "nova:task:submit", { goal: "read README" });
     expect(invoke).toHaveBeenNthCalledWith(2, "nova:task:get", { task_id: "task-1" });
@@ -929,6 +960,38 @@ describe("Electron preload boundary", () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(140, "nova:models:retire", {
       model_id: "whisper-small",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(141, "nova:mcp:list");
+    expect(invoke).toHaveBeenNthCalledWith(142, "nova:mcp:add", {
+      server: {
+        server_id: "local-files",
+        label: "Local files",
+        state: "Discovered",
+        transport: "stdio",
+        command: "node",
+        args: ["server.mjs"],
+      },
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(143, "nova:mcp:request-approval", {
+      server_id: "local-files",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(144, "nova:mcp:approve", {
+      server_id: "local-files",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(145, "nova:mcp:disable", {
+      server_id: "local-files",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(146, "nova:mcp:enable", {
+      server_id: "local-files",
+      confirmed: true,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(147, "nova:mcp:remove", {
+      server_id: "local-files",
       confirmed: true,
     });
   });

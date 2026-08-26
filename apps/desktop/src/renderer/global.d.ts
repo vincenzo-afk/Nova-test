@@ -16,11 +16,19 @@ import type {
   WorkspaceIdentity,
   WorkspaceLock,
   WorkspaceState,
+  McpServerConfiguration,
   NovaConfiguration,
   PairingRequest,
 } from "@nova/runtime";
 import type { ServiceHealth, ShutdownStep, StartupStep } from "@nova/shared";
 import type { PermissionGrant } from "./shell-model.js";
+
+interface DesktopMcpServerSummary {
+  server_id: string;
+  label: string;
+  state: "Discovered" | "Pending approval" | "Connected" | "Disabled" | "Removed";
+  transport: "stdio" | "streamable-http";
+}
 
 interface DesktopMemorySearchInput {
   query: string;
@@ -1064,6 +1072,22 @@ declare global {
         model_id: string;
         status: "reclaimable";
       }>;
+      listMcpServers: () => Promise<DesktopMcpServerSummary[]>;
+      addMcpServer: (
+        server: McpServerConfiguration,
+        confirmed: boolean,
+      ) => Promise<DesktopMcpServerSummary>;
+      requestMcpServerApproval: (
+        serverId: string,
+        confirmed: boolean,
+      ) => Promise<DesktopMcpServerSummary>;
+      approveMcpServer: (serverId: string, confirmed: boolean) => Promise<DesktopMcpServerSummary>;
+      disableMcpServer: (serverId: string, confirmed: boolean) => Promise<DesktopMcpServerSummary>;
+      enableMcpServer: (serverId: string, confirmed: boolean) => Promise<DesktopMcpServerSummary>;
+      removeMcpServer: (
+        serverId: string,
+        confirmed: boolean,
+      ) => Promise<{ server_id: string; state: "Removed" }>;
     };
   }
 }

@@ -56,6 +56,17 @@ unchanged. These transitions manage local configuration state only and do not
 start a server process, open a network connection, enumerate tools, or bypass
 the protocol-level approval gate.
 
+## Desktop boundary
+
+The desktop runtime exposes the local lifecycle operations through the
+permission-first IPC path. Reads return only `server_id`, label, lifecycle
+state, and transport. Add, approval-request, approve, disable, enable, and
+remove operations carry an explicit boolean confirmation to the authoritative
+runtime; the preload bridge appends these methods without changing the order
+of existing public methods. Commands, arguments, endpoints, and vault
+references remain in the main/runtime boundary and are not projected to the
+renderer.
+
 ## Management surface
 
 Settings → MCP Servers lists every server in any of the above states,

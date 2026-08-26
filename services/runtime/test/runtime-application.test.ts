@@ -401,6 +401,40 @@ describe("RuntimeApplication", () => {
     ).toMatchObject({ ok: true });
   });
 
+  it("delegates MCP lifecycle operations through the authoritative configuration boundary", () => {
+    const application = new RuntimeApplication({
+      configuration,
+      planner: new Planner({ deterministic: new Map() }),
+      executor: new Executor(
+        new PermissionManager({ allowedToolIds: new Set(), confirmationTimeoutMs: 30_000 }),
+        new Map(),
+      ),
+      verifier: new Verifier(),
+    });
+    applications.push(application);
+    const server = {
+      server_id: "local-files",
+      label: "Local files",
+      state: "Discovered" as const,
+      transport: "stdio" as const,
+      command: "node",
+      args: ["server.mjs"],
+    };
+
+    expect(application.addMcpServer(server)).toMatchObject({ ok: true });
+    expect(application.requestMcpServerApproval("local-files", true)).toMatchObject({
+      ok: true,
+      value: { state: "Pending approval" },
+    });
+    expect(application.approveMcpServer("local-files", true)).toMatchObject({
+      ok: true,
+      value: { state: "Connected" },
+    });
+    expect(application.configuration.snapshot().mcp_servers).toMatchObject([
+      { server_id: "local-files", state: "Connected" },
+    ]);
+  });
+
   it("delegates inspectable adaptive personalization proposals through the composed runtime", () => {
     const configurationStore = new ConfigurationStore({ initial: configuration });
     const adaptive = new AdaptivePersonalization(

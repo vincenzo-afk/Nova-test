@@ -16,7 +16,7 @@ describe("McpServerManager", () => {
     const manager = new McpServerManager();
 
     expect(manager.add(server())).toMatchObject({ ok: true, value: { state: "Discovered" } });
-    expect(manager.requestApproval("local-files")).toMatchObject({
+    expect(manager.requestApproval("local-files", true)).toMatchObject({
       ok: true,
       value: { state: "Pending approval" },
     });
@@ -24,11 +24,11 @@ describe("McpServerManager", () => {
       ok: true,
       value: { state: "Connected" },
     });
-    expect(manager.disable("local-files")).toMatchObject({
+    expect(manager.disable("local-files", true)).toMatchObject({
       ok: true,
       value: { state: "Disabled" },
     });
-    expect(manager.enable("local-files")).toMatchObject({
+    expect(manager.enable("local-files", true)).toMatchObject({
       ok: true,
       value: { state: "Connected" },
     });
@@ -37,7 +37,7 @@ describe("McpServerManager", () => {
   it("requires explicit approval and removal confirmation and never returns the auth reference on removal", () => {
     const manager = new McpServerManager([server()]);
 
-    expect(manager.requestApproval("local-files")).toMatchObject({ ok: true });
+    expect(manager.requestApproval("local-files", true)).toMatchObject({ ok: true });
     expect(manager.approve("local-files", false)).toMatchObject({
       ok: false,
       error: { code: "NOVA-SEC001" },
@@ -56,12 +56,12 @@ describe("McpServerManager", () => {
   it("rejects invalid transitions without mutating the lifecycle state", () => {
     const manager = new McpServerManager([server()]);
 
-    expect(manager.enable("local-files")).toMatchObject({
+    expect(manager.enable("local-files", true)).toMatchObject({
       ok: false,
       error: { code: "NOVA-CFG001" },
     });
     expect(manager.list()).toMatchObject([{ server_id: "local-files", state: "Discovered" }]);
-    expect(manager.requestApproval("missing")).toMatchObject({
+    expect(manager.requestApproval("missing", true)).toMatchObject({
       ok: false,
       error: { code: "NOVA-CFG001" },
     });

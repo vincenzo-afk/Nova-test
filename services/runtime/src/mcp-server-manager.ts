@@ -33,7 +33,8 @@ export class McpServerManager {
     return [...this.servers.values()].map(clone);
   }
 
-  public requestApproval(serverId: string): Result<McpServerRecord> {
+  public requestApproval(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    if (confirmed !== true) return err(this.confirmationError("requesting MCP server approval"));
     return this.transition(serverId, "Discovered", "Pending approval");
   }
 
@@ -47,11 +48,13 @@ export class McpServerManager {
     return this.transition(serverId, "Pending approval", "Connected");
   }
 
-  public disable(serverId: string): Result<McpServerRecord> {
+  public disable(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    if (confirmed !== true) return err(this.confirmationError("disabling an MCP server"));
     return this.transition(serverId, "Connected", "Disabled");
   }
 
-  public enable(serverId: string): Result<McpServerRecord> {
+  public enable(serverId: string, confirmed: boolean): Result<McpServerRecord> {
+    if (confirmed !== true) return err(this.confirmationError("enabling an MCP server"));
     return this.transition(serverId, "Disabled", "Connected");
   }
 
@@ -80,6 +83,14 @@ export class McpServerManager {
     const updated = { ...server, state: to } as McpServerRecord;
     this.servers.set(serverId, updated);
     return ok(clone(updated));
+  }
+
+  private confirmationError(action: string): ErrorInfo {
+    return {
+      code: "NOVA-SEC001",
+      message: `Explicit confirmation is required before ${action}.`,
+      retryable: false,
+    };
   }
 
   private error(message: string): ErrorInfo {
