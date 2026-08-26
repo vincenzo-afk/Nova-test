@@ -69,10 +69,13 @@ successful connection and capability discovery
 validation as built-in tools — an MCP server that does not declare a
 verification signal for its exposed tools has those tools registered as
 confirmation-required-only, exactly as a built-in tool with the same gap
-would be. A validated MCP advertisement refresh may replace the existing
-entries in that server’s namespace only after the complete incoming batch has
-passed validation; registration failure restores the prior source entries, and
-entries from other sources are never overwritten.
+would be. A validated MCP advertisement batch is registered without partial
+exposure: if one registry insertion fails, earlier insertions from that same
+batch are removed before the error is returned. A validated MCP advertisement
+refresh may replace the existing entries in that server’s namespace only after
+the complete incoming batch has passed validation; registration failure
+restores the prior source entries, and entries from other sources are never
+overwritten.
 
 ## Deregistration
 

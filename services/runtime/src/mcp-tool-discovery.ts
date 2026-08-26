@@ -50,7 +50,10 @@ export class McpToolDiscovery {
     const registrations: RegisteredTool[] = [];
     for (const tool of tools) {
       const result = this.registry.register(tool);
-      if (!result.ok) return result;
+      if (!result.ok) {
+        for (const registered of registrations) this.registry.deregister(registered.tool_id);
+        return result;
+      }
       registrations.push(result.value);
     }
     return ok(registrations);

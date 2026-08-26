@@ -100,6 +100,38 @@ describe("McpToolDiscovery", () => {
     });
   });
 
+  it("rolls back earlier registrations when an initial batch fails", () => {
+    const backingRegistry = new ToolRegistry();
+    const failure = {
+      ok: false as const,
+      error: { code: "NOVA-TL002", message: "registration failed", retryable: false },
+    };
+    const failingRegistry = {
+      get: backingRegistry.get.bind(backingRegistry),
+      query: backingRegistry.query.bind(backingRegistry),
+      register: vi.fn((tool: Parameters<ToolRegistry["register"]>[0]) =>
+        tool.tool_id === "first.new_lookup" ? failure : backingRegistry.register(tool),
+      ),
+      deregister: backingRegistry.deregister.bind(backingRegistry),
+    } as unknown as ToolRegistry;
+    const discovery = new McpToolDiscovery(failingRegistry);
+
+    expect(
+      discovery.register("first", [
+        { name: "old_lookup", inputSchema: { type: "object" } },
+        { name: "new_lookup", inputSchema: { type: "object" } },
+      ]),
+    ).toEqual(failure);
+    expect(backingRegistry.get("first.old_lookup")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+    expect(backingRegistry.get("first.new_lookup")).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL004" },
+    });
+  });
+
   it("replaces one server's registered tools without affecting another server", () => {
     const registry = new ToolRegistry();
     const discovery = new McpToolDiscovery(registry);

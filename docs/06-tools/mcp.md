@@ -391,6 +391,13 @@ version or silently falling back to another transport. This slice performs
 only local selection; it does not send a handshake or request, and it does
 not establish a server connection.
 
+The runtime MCP tool-discovery boundary registers an already validated
+advertisement batch into the Tool Registry only as a batch: if a later registry
+registration fails, entries registered earlier in that batch are removed before
+the failure is returned. This preserves the no-partial-exposure invariant while
+leaving unrelated registry sources untouched; registration consumes observed
+data and performs no server contact or transport I/O.
+
 The runtime health-observation boundary stores only a server identifier, one
 provider-style health state (`reachable`, `degraded`, or `down`), and a
 validated check timestamp. Servers with no observation are exposed as
