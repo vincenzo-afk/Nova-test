@@ -51,9 +51,10 @@ approval-gated protocol operations.
 The runtime exposes a local lifecycle manager for configured MCP records. A
 new record must enter `Discovered`, then move to `Pending approval` before it
 can become `Connected`. Connected records can be `Disabled` and later
-re-enabled. Server records are deep-cloned at lifecycle boundaries; a
-non-serializable record fails closed without throwing or mutating configured
-state. Replacement remains atomic. Removal requires explicit confirmation,
+re-enabled. Records accepted through `add()` and `replace()` are deep-cloned
+before configuration mutation; a non-serializable record submitted through
+either update path fails closed without throwing or mutating configured state.
+Replacement remains atomic. Removal requires explicit confirmation,
 clears the selected server’s local runtime state when the cleanup boundary is
 supplied, and returns only a bounded `{ server_id, state: "Removed" }` result;
 the stored credential reference is not included in the removal result. Cleanup is attempted before
