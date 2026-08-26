@@ -140,6 +140,16 @@ function isSubscription(value: unknown): value is McpNegotiatedSubscription {
   }
   const keys = Object.keys(value.notifications);
   if (keys.length > 4) return false;
+  for (const key of keys) {
+    if (
+      key !== "tools_list_changed" &&
+      key !== "prompts_list_changed" &&
+      key !== "resources_list_changed" &&
+      key !== "resource_subscriptions"
+    ) {
+      return false;
+    }
+  }
   for (const key of [
     "tools_list_changed",
     "prompts_list_changed",

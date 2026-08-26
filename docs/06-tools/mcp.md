@@ -376,8 +376,9 @@ record after a validated matching completion response. A validated inbound
 server-scoped record. Notification filters are cloned before registration
 mutation and records are cloned before lookup exposure; non-serializable
 subscription records fail closed without throwing or mutating active state.
-Unknown completions or cancellations, malformed records, invalid IDs, and
-invalid server identities fail closed without mutating active state. This local ledger does not open or close streams, send cancellation,
+Unknown notification-filter fields, unknown completions or cancellations,
+malformed records, invalid IDs, and invalid server identities fail closed
+without mutating active state. This local ledger does not open or close streams, send cancellation,
 reconnect, contact a transport, or perform network I/O.
 
 ## Transport
