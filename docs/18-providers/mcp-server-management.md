@@ -72,9 +72,13 @@ renderer.
 Settings → MCP Servers lists every server in any of the above states,
 showing: connection health (from the same `healthCheck()` mechanism as
 any provider, per `docs/18-providers/provider-interface.md`), the tool
-list with risk tiers, and last-invoked timestamps. This is the same
-screen the Setup Wizard's "Add an MCP server" step writes into — there is
-no separate first-run-only path.
+list with risk tiers, and last-invoked timestamps. Normalized discovery
+results use the `<server_id>.<tool_name>` registry namespace and remain
+confirmation-required when the advertisement omits verification metadata.
+This is the same screen the Setup Wizard's "Add an MCP server" step writes
+into — there is no separate first-run-only path. The current runtime slice
+only validates and registers an already-retrieved advertisement; it does not
+perform the transport connection or health check.
 
 ## Autonomous addition
 

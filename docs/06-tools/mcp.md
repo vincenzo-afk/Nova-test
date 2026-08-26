@@ -19,11 +19,25 @@ On configuration of a new MCP server (endpoint, authentication reference),
 NOVA performs capability discovery per the MCP specification: enumerating
 the server's exposed tools, resources, and prompts. Each discovered tool
 is then mapped into NOVA's `tool-interface.md` schema — this mapping
-requires the MCP server's tool descriptions to supply enough information
-to populate risk tier and verification signal; where they do not, the
+requires the MCP server's tool descriptions to supply enough information to
+populate risk tier and verification signal; where they do not, the
 tool is registered conservatively as `verification_signal: "none"`,
 restricting it to confirmation-required execution, per
 `tool-interface.md`'s hard rule.
+
+The runtime's discovery-normalization boundary accepts an already-retrieved
+bounded `tools/list` advertisement and registers each tool under the
+`<server_id>.<tool_name>` namespace. The advertisement's input schema is
+preserved as the action input schema; absent output metadata is represented
+by a generic object schema. Missing execution metadata defaults to
+`risk_tier: "destructive_irreversible"`, `verification_signal: "none"`,
+`idempotent: false`, and the server-scoped permission `mcp:<server_id>`.
+These defaults prevent an unverified external advertisement from becoming
+eligible for unattended execution. The full advertisement batch is validated
+before any registry mutation, duplicate names are rejected, and a server's
+registered tools can be deregistered by source without affecting other MCP
+servers. This boundary does not open a transport, spawn a process, or claim
+that the remote advertisement was successfully obtained.
 
 ## Transport
 
@@ -62,7 +76,7 @@ MCP server itself claims about its own safety:
 ## Server-side scope denial
 
 Distinct from the permission scope enforced above (which bounds what
-NOVA will *attempt*): an MCP server may itself reject a call because the
+NOVA will _attempt_): an MCP server may itself reject a call because the
 credential NOVA holds for it lacks a required scope (e.g., an OAuth
 token missing a specific API permission the server now requires). When
 this happens, NOVA surfaces the specific missing scope to the user with
