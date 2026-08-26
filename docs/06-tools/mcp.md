@@ -51,6 +51,15 @@ registry adapter and does not perform network I/O.
 
 ## Transport
 
+The runtime transport planner now turns a validated server record into one
+explicit transport plan without opening the connection. A `stdio` record
+produces only a local command and bounded argument list; a
+`streamable-http` record produces only a safe endpoint and optional vault
+reference. Mixed command/endpoint forms, inline credentials, unsafe URLs,
+and unsupported transport values are rejected with the configuration error
+contract. The planner never probes one transport after another, so a plan
+failure cannot silently fall back to a different mechanism.
+
 Transport is JSON-RPC per the MCP specification, over one of exactly two
 mechanisms, selected deterministically from the server's configured
 connection type at registration time — never negotiated, probed, or

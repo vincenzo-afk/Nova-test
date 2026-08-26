@@ -39,6 +39,7 @@ export * from "./mcp-tool-discovery.js";
 export * from "./mcp-tools-list-response.js";
 export * from "./mcp-tool-call-result.js";
 export * from "./mcp-tool-call-request.js";
+export * from "./mcp-transport-planner.js";
 export * from "./repair-manager.js";
 export * from "./resource-arbitration.js";
 export * from "./job-scheduler.js";
