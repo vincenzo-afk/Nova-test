@@ -396,9 +396,11 @@ provider-style health state (`reachable`, `degraded`, or `down`), and a
 validated check timestamp. Servers with no observation are exposed as
 `unknown`; removing a server clears its health observation. This state is
 separate from lifecycle configuration and never includes endpoints, commands,
-credential references, or raw probe responses. Recording an observation does
-not perform the health check; transport-specific probing remains a later,
-explicit integration.
+credential references, or raw probe responses. Storage is bounded to 128
+server observations: existing servers may be updated at capacity, while a
+new server observation is rejected without mutation once the limit is reached.
+Recording an observation does not perform the health check; transport-specific
+probing remains a later, explicit integration.
 
 The local MCP tool-discovery boundary can replace one server’s normalized Tool
 Registry source atomically. It validates the complete incoming advertisement

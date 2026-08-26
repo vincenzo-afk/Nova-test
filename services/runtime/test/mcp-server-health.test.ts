@@ -26,6 +26,35 @@ describe("McpServerHealthTracker", () => {
     ]);
   });
 
+  it("rejects new observations beyond the bounded record capacity without mutation", () => {
+    const tracker = new McpServerHealthTracker();
+    for (let index = 0; index < 128; index += 1) {
+      expect(
+        tracker.record(`server-${index}`, "reachable", "2026-08-26T05:20:00.000Z"),
+      ).toMatchObject({ ok: true });
+    }
+
+    expect(tracker.record("server-0", "down", "2026-08-26T05:21:00.000Z")).toMatchObject({
+      ok: true,
+      value: { server_id: "server-0", health: "down" },
+    });
+    expect(tracker.record("server-over-capacity", "reachable", "2026-08-26T05:20:00.000Z")).toEqual(
+      {
+        ok: false,
+        error: {
+          code: "NOVA-CFG001",
+          message: "MCP health observation capacity has been reached.",
+          retryable: false,
+        },
+      },
+    );
+    expect(tracker.get("server-127")).toMatchObject({ ok: true, value: { health: "reachable" } });
+    expect(tracker.get("server-over-capacity")).toMatchObject({
+      ok: true,
+      value: { health: "unknown", checked_at: null },
+    });
+  });
+
   it("returns bounded unknown health for unobserved servers", () => {
     const tracker = new McpServerHealthTracker();
 

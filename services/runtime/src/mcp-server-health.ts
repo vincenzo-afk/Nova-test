@@ -22,6 +22,9 @@ export class McpServerHealthTracker {
     if (!isServerId(serverId) || !isObservedHealth(health) || !isTimestamp(checkedAt)) {
       return err(this.error("MCP health observation is invalid."));
     }
+    if (!this.observations.has(serverId) && this.observations.size >= MAX_PUBLIC_HEALTH_RECORDS) {
+      return err(this.error("MCP health observation capacity has been reached."));
+    }
     const summary: McpServerHealthSummary = {
       server_id: serverId,
       health,
