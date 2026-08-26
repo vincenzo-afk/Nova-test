@@ -210,6 +210,15 @@ navigate to a URL, expose secrets, or perform network I/O. A future interaction
 owner must apply the requested form or URL policy and associate responses with
 the originating operation.
 
+The runtime MRTR `input_required` result validator accepts only a correlated
+successful JSON-RPC 2.0 result with a bounded request ID, at least one of a
+validated elicitation-request map or opaque bounded request state, and no
+unsupported input-request types. Elicitation map keys are bounded and the
+nested requests pass through the elicitation validator; request state is retained
+as an opaque string and is never parsed or modified. This boundary does not
+retry the original request, satisfy input requests, render UI, apply consent,
+interpret request state, or perform network I/O.
+
 The typed subscriptions/listen request builder constructs fixed JSON-RPC 2.0
 requests with monotonic bounded IDs and an explicit notification filter. It
 accepts only supported list-change flags and bounded, unique safe resource URIs,
