@@ -36,6 +36,8 @@ const MAX_LOCKABLE_RESOURCES = 64;
 const MAX_LOCKABLE_RESOURCE_LENGTH = 256;
 const MAX_DEPENDENCIES = 64;
 const MAX_DEPENDENCY_LENGTH = 256;
+const MAX_TARGET_ENTITY_TYPES = 64;
+const MAX_TARGET_ENTITY_TYPE_LENGTH = 256;
 const DEFAULT_LATENCY_MS = 1_000;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -255,13 +257,16 @@ function isMcpToolMetadata(value: unknown): value is McpToolMetadata | undefined
     !isBoundedStringArray(value.dependencies, MAX_DEPENDENCIES, MAX_DEPENDENCY_LENGTH)
   )
     return false;
-  if (value.target_entity_types !== undefined && !isStringArray(value.target_entity_types))
+  if (
+    value.target_entity_types !== undefined &&
+    !isBoundedStringArray(
+      value.target_entity_types,
+      MAX_TARGET_ENTITY_TYPES,
+      MAX_TARGET_ENTITY_TYPE_LENGTH,
+    )
+  )
     return false;
   return true;
-}
-
-function isStringArray(value: unknown): value is readonly string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function isBoundedStringArray(
