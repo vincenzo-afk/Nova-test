@@ -507,10 +507,10 @@ than merely answer the query it was asked.
 
 The runtime tools/call request boundary now constructs only fixed
 JSON-RPC 2.0 `tools/call` requests with monotonic bounded numeric IDs. It
-accepts tool names using the MCP-safe identifier characters and clones only
-JSON-serializable argument objects within the configured size bound; circular,
-non-object, oversized, or malformed inputs are rejected before a request ID
-is consumed. The builder also supports bounded MRTR retry fields: cloned
+accepts only string tool names using the MCP-safe identifier characters and
+clones only JSON-serializable argument objects within the configured size bound;
+circular, non-object, oversized, or malformed inputs are rejected before a
+request ID is consumed. The builder also supports bounded MRTR retry fields: cloned
 elicitation responses under `inputResponses` and an opaque bounded `requestState`;
 unknown fields and malformed retry data fail closed. Request construction does not
 invoke a server, retry an operation, interpret request state, or replace the

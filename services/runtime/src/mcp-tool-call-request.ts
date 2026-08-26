@@ -106,9 +106,12 @@ function parseInputResponses(
   return ok(normalized);
 }
 
-function isToolName(value: string): boolean {
+function isToolName(value: unknown): value is string {
   return (
-    value.length > 0 && value.length <= MAX_TOOL_NAME_LENGTH && /^[A-Za-z0-9_.-]+$/.test(value)
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_TOOL_NAME_LENGTH &&
+    /^[A-Za-z0-9_.-]+$/.test(value)
   );
 }
 

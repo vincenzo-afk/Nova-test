@@ -23,6 +23,25 @@ describe("McpToolCallRequestBuilder", () => {
     });
   });
 
+  it("fails closed on a non-string tool name without throwing", () => {
+    const builder = new McpToolCallRequestBuilder();
+    const invalidToolName = {
+      get length(): number {
+        throw new Error("length should not be read from an untrusted tool name");
+      },
+    } as unknown as string;
+
+    expect(() => builder.create(invalidToolName, {})).not.toThrow();
+    expect(builder.create(invalidToolName, {})).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-TL002" },
+    });
+    expect(builder.create("valid", {})).toMatchObject({
+      ok: true,
+      value: { id: 1 },
+    });
+  });
+
   it("rejects invalid tool names and non-object arguments", () => {
     const builder = new McpToolCallRequestBuilder();
 
