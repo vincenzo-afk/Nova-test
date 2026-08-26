@@ -106,6 +106,14 @@ misses never trigger resource discovery, refresh, reads, URI fetches,
 subscription, or transport I/O, and a future connection layer must explicitly
 obtain and validate fresh metadata.
 
+The runtime resource-list update invalidator combines a validated
+`notifications/resources/list_changed` signal with the local resource-list cache
+and removes only the affected server’s listing. Tool and prompt list-change
+signals, malformed notifications, and invalid server identities fail closed
+without mutating the cache. Invalidation does not rediscover resources, refresh
+a listing, read or fetch a URI, open a subscription, contact a transport, or
+perform network I/O.
+
 The runtime resources/read validator accepts only correlated successful
 responses with a bounded non-empty content list. Each content item must have a
 safe resource URI and exactly one bounded representation: text or validated
