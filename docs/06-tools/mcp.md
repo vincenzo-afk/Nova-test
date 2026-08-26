@@ -93,6 +93,12 @@ retaining valid siblings. URI templates remain observed server metadata; this
 slice does not expand variables, autocomplete arguments, read a resolved
 resource, subscribe to updates, or perform network I/O.
 
+The typed prompts/list request builder constructs fixed JSON-RPC 2.0 requests
+with monotonic bounded IDs and an optional bounded opaque pagination cursor.
+Unknown option fields are not forwarded, and malformed or oversized cursors fail
+closed before an ID is consumed. Building a request does not discover prompts,
+contact a server, or perform transport I/O.
+
 The runtime prompts/list validator preserves only bounded prompt names, display
 metadata, and argument descriptors. It filters malformed or duplicate prompts,
 rejects malformed pagination, and omits prompt messages or other content from
