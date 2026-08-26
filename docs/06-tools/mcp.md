@@ -184,6 +184,14 @@ does not verify that the token belongs to an active request, enforce increasing
 progress across notifications, track completion, maintain a stream, or perform
 network I/O.
 
+The runtime cancellation-notification classifier accepts only a JSON-RPC 2.0
+`notifications/cancelled` notification with a bounded string or safe integer
+request ID and an optional bounded reason. It returns only the normalized request
+ID and reason, discarding unknown metadata and rejecting response-shaped or
+malformed messages. This slice does not look up an active request, stop work,
+close a subscription stream, or perform network I/O; an authoritative lifecycle
+owner must apply cancellation semantics and race handling.
+
 The typed subscriptions/listen request builder constructs fixed JSON-RPC 2.0
 requests with monotonic bounded IDs and an explicit notification filter. It
 accepts only supported list-change flags and bounded, unique safe resource URIs,
