@@ -192,6 +192,16 @@ malformed messages. This slice does not look up an active request, stop work,
 close a subscription stream, or perform network I/O; an authoritative lifecycle
 owner must apply cancellation semantics and race handling.
 
+The runtime elicitation-request validator accepts an `elicitation/create` request
+with a bounded human-readable message and either form mode or HTTPS URL mode.
+Omitted mode defaults to form; form requests require a bounded cloned object
+schema, while URL requests reject non-HTTPS URLs and embedded URL credentials.
+Unknown request fields are discarded. Server-provided schemas, messages, and URLs
+remain untrusted observed data: this slice does not render a UI, collect or
+expose credentials, open a URL, obtain consent, validate submitted content, or
+perform network I/O. A future interaction owner must provide explicit user review,
+decline/cancel controls, and secure URL navigation.
+
 The typed subscriptions/listen request builder constructs fixed JSON-RPC 2.0
 requests with monotonic bounded IDs and an explicit notification filter. It
 accepts only supported list-change flags and bounded, unique safe resource URIs,
