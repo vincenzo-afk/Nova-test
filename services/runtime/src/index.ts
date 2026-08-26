@@ -46,6 +46,7 @@ export * from "./mcp-tool-cache.js";
 export * from "./mcp-tool-call-timeout.js";
 export * from "./mcp-scope-denial.js";
 export * from "./mcp-resources-list-response.js";
+export * from "./mcp-resources-list-request.js";
 export * from "./mcp-resources-read-response.js";
 export * from "./mcp-resource-read-request.js";
 export * from "./mcp-resources-templates-list-response.js";

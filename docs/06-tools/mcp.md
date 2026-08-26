@@ -58,6 +58,12 @@ misses do not trigger a probe or an implicit retry; a future transport layer
 must explicitly refresh the listing and then pass it through the validator
 again.
 
+The typed resources/list request builder constructs fixed JSON-RPC 2.0
+requests with monotonic bounded IDs and an optional bounded opaque pagination
+cursor. Unknown option fields are not forwarded, and malformed or oversized
+cursors fail closed before an ID is consumed. Building a request does not
+discover resources, contact a server, or perform transport I/O.
+
 The runtime resources/list validator applies the same correlated JSON-RPC
 boundary to resource advertisements. It preserves only bounded URI, name,
 description, MIME type, and size metadata; rejects endpoint credentials,
