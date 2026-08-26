@@ -373,9 +373,11 @@ records by validated server and subscription ID, deep-clones notification
 filters on registration and lookup, and removes only an active server-scoped
 record after a validated matching completion response. A validated inbound
 `notifications/cancelled` message can likewise remove only its matching active
-server-scoped record. Unknown completions or cancellations, malformed records,
-invalid IDs, and invalid server identities fail closed without mutating active
-state. This local ledger does not open or close streams, send cancellation,
+server-scoped record. Notification filters are cloned before registration
+mutation and records are cloned before lookup exposure; non-serializable
+subscription records fail closed without throwing or mutating active state.
+Unknown completions or cancellations, malformed records, invalid IDs, and
+invalid server identities fail closed without mutating active state. This local ledger does not open or close streams, send cancellation,
 reconnect, contact a transport, or perform network I/O.
 
 ## Transport

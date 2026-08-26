@@ -40,6 +40,31 @@ describe("McpSubscriptionState", () => {
     });
   });
 
+  it("fails closed on a non-serializable notification filter without mutating active state", () => {
+    const state = new McpSubscriptionState();
+    state.register("server-1", negotiated);
+    const circularNotifications: Record<string, unknown> = {};
+    circularNotifications.self = circularNotifications;
+    const nonSerializable = {
+      subscription_id: "sub-circular",
+      notifications: circularNotifications,
+    } as unknown as McpNegotiatedSubscription;
+
+    expect(() => state.register("server-1", nonSerializable)).not.toThrow();
+    expect(state.register("server-1", nonSerializable)).toMatchObject({
+      ok: false,
+      error: { code: "NOVA-CFG001" },
+    });
+    expect(state.get("server-1", "sub-1")).toMatchObject({
+      ok: true,
+      value: { subscription_id: "sub-1", notifications: negotiated.notifications },
+    });
+    expect(state.get("server-1", "sub-circular")).toEqual({
+      ok: true,
+      value: { server_id: "server-1", status: "miss" },
+    });
+  });
+
   it("removes only the matching server-scoped subscription on validated completion", () => {
     const state = new McpSubscriptionState();
     state.register("server-1", negotiated);

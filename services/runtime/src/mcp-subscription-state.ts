@@ -44,10 +44,14 @@ export class McpSubscriptionState {
     if (!isServerId(serverId) || !isSubscription(subscription)) {
       return err(this.error("MCP subscription state registration is invalid."));
     }
+    const notifications = tryClone(subscription.notifications);
+    if (notifications === undefined) {
+      return err(this.error("MCP subscription record cannot be cloned safely."));
+    }
     const record: McpSubscriptionRecord = {
       server_id: serverId,
       subscription_id: subscription.subscription_id,
-      notifications: clone(subscription.notifications),
+      notifications,
     };
     this.entries.set(key(serverId, subscription.subscription_id), record);
     while (this.entries.size > MAX_ENTRIES) {
@@ -63,7 +67,11 @@ export class McpSubscriptionState {
       return err(this.error("MCP subscription state lookup is invalid."));
     }
     const record = this.entries.get(key(serverId, subscriptionId));
-    return record === undefined ? ok({ server_id: serverId, status: "miss" }) : ok(clone(record));
+    if (record === undefined) return ok({ server_id: serverId, status: "miss" });
+    const cloned = tryClone(record);
+    return cloned === undefined
+      ? err(this.error("MCP subscription record cannot be cloned safely."))
+      : ok(cloned);
   }
 
   public clearServer(serverId: string): Result<void> {
@@ -190,6 +198,11 @@ function key(serverId: string, subscriptionId: string | number): string {
   return `${serverId}\u0000${typeof subscriptionId}:${String(subscriptionId)}`;
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+function tryClone<T>(value: T): T | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : (JSON.parse(serialized) as T);
+  } catch {
+    return undefined;
+  }
 }

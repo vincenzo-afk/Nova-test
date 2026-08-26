@@ -56,6 +56,7 @@ All notable changes to Nova are documented in this file.
 - MCP resource-template cache reads and writes now fail closed on non-serializable values without mutating an existing entry.
 - MCP resource-read cache reads and writes now fail closed on non-serializable values without mutating existing entries.
 - MCP server lifecycle management now fails closed on non-serializable records without mutating configured state.
+- MCP subscription state now fails closed on non-serializable notification filters without mutating active entries.
 - MCP tool-list cache entries now reject listings containing more than 128 tools before cache mutation.
 - MCP tool-list cache entries now reject more than 128 rejected tool names before cache mutation.
 - MCP resource-list cache entries now reject malformed, credential-bearing, traversal-prone, or oversized rejected resource URIs before cache mutation.
