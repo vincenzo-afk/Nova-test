@@ -17,6 +17,7 @@ export interface McpResourcesListResult {
   readonly rejected_resource_uris: readonly string[];
 }
 
+const MAX_RESPONSE_BYTES = 1_048_576;
 const MAX_RESOURCES = 128;
 const MAX_URI_LENGTH = 2_048;
 const MAX_NAME_LENGTH = 256;
@@ -28,6 +29,10 @@ const MAX_RESOURCE_SIZE_BYTES = Number.MAX_SAFE_INTEGER;
 
 export class McpResourcesListResponseValidator {
   public parse(response: unknown, expectedId: string | number): Result<McpResourcesListResult> {
+    const serialized = safeJson(response);
+    if (serialized === undefined || serialized.length > MAX_RESPONSE_BYTES) {
+      return err(this.error("MCP resources/list response is invalid or too large."));
+    }
     if (!isRecord(response) || response.jsonrpc !== "2.0" || response.id !== expectedId) {
       return err(this.error("MCP resources/list response correlation is invalid."));
     }
@@ -183,4 +188,13 @@ function invalidResource(): ErrorInfo {
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeJson(value: unknown): string | undefined {
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? undefined : serialized;
+  } catch {
+    return undefined;
+  }
 }
