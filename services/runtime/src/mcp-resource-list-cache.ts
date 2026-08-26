@@ -93,7 +93,8 @@ function isResourceList(value: unknown): value is McpResourcesListResult {
     !isRecord(value) ||
     !Array.isArray(value.resources) ||
     value.resources.length > MAX_RESOURCES ||
-    !Array.isArray(value.rejected_resource_uris)
+    !Array.isArray(value.rejected_resource_uris) ||
+    value.rejected_resource_uris.length > MAX_RESOURCES
   ) {
     return false;
   }
